@@ -1,6 +1,16 @@
 # portfolio-allocation
 Backtest portfolio allocation strategies and live trade them on Interactive Brokers  
 
+# Install Requirements
+
+A requirements file has been added to be able to install the required libraries. To install them, you need to run:
+
+```bash
+pip install -r requirements
+```
+
+A virtual environment should normally also be setup.
+
 
 # Dataset explanation
 
