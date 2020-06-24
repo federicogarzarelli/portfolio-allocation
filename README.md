@@ -32,5 +32,5 @@ A virtual environment should normally also be setup.
 - [ ] Define the bonds proxy based on yields
 - [ ] Create a small function to emulate leverage
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
-
+- [ ] Create a script to create and execute orders on IBKR
 
