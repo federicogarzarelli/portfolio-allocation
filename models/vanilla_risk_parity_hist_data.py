@@ -16,11 +16,6 @@ import matplotlib.pyplot as plt
 from utils import backtest
 import os
 
-
-
-
-
-
 class RiskParity(bt.Strategy):
     """
     Vanilla Risk Parity Strategy. 
@@ -79,9 +74,9 @@ class RiskParity(bt.Strategy):
 
 
 def add_leverage(df, leverage = 1):
-    df['log_ret'] = (np.log(df.price) - np.log(df.price.shift(1)))*leverage
-    df['price'] = df['price'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
-    df = df[['price']].dropna()
+    df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))*leverage
+    df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
+    df = df[['close']].dropna()
     return(df)
 
 def import_process_hist(dataLabel):
@@ -90,31 +85,31 @@ def import_process_hist(dataLabel):
     if dataLabel == 'GLD':
         datapath = (wd + '\data\Gold.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-        df = df.rename(columns={"Gold USD": "price"}, index={'Date': 'date'})
-        df['price'] = df['price'].str.replace(',', '').astype(float)
+        df = df.rename(columns={"Gold USD": "close"}, index={'Date': 'date'})
+        df['close'] = df['close'].str.replace(',', '').astype(float)
         
     elif dataLabel == 'SP500':
         datapath = (wd + '\data\^GSPC.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-        df = df.rename(columns={"Adj Close": "price"}, index={'Date': 'date'})
+        df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'date'})
     
     elif dataLabel == 'COM':
         datapath = (wd + '\data\SPGSCITR_IND.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-        df = df.rename(columns={"Close": "price"}, index={'Date': 'date'})
-        df['price'] = df['price'].str.replace(',', '').astype(float)
+        df = df.rename(columns={"Close": "close"}, index={'Date': 'date'})
+        df['close'] = df['close'].str.replace(',', '').astype(float)
         # Eliminate the flash crashes between Apr 08 - Jul 08 from the data
-        df['log_ret'] = (np.log(df.price) - np.log(df.price.shift(1)))
+        df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))
         df = df.dropna()
         df = df[(abs(df['log_ret']) < 1)] # filter out the flash crash!
-        df['price'] = df['price'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
+        df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
         
     elif dataLabel == 'LTB':
         datapath = (wd + '\data\^TYX.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
         df = df[df['yield'] != 'null']
-        df['price'] =  100/np.power(1+df['yield']/100,30)
+        df['close'] =  100/np.power(1+df['yield']/100,30)
         df = df.dropna()
         
     elif dataLabel == 'ITB':
@@ -122,7 +117,7 @@ def import_process_hist(dataLabel):
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
         df = df[df['yield'] != 'null']
-        df['price'] =  100/np.power(1+df['yield']/100,5)
+        df['close'] =  100/np.power(1+df['yield']/100,5)
         df = df.dropna()
         
     elif dataLabel == 'TIP':
@@ -131,10 +126,10 @@ def import_process_hist(dataLabel):
         df = df.rename(columns={"DFII10": "yield"}, index={'DATE': 'date'})
         df = df[df['yield'] != '.']
         df['yield'] = df['yield'].astype(float)
-        df['price'] =  100/np.power(1+df['yield']/100,10)
+        df['close'] =  100/np.power(1+df['yield']/100,10)
         df = df.dropna()
         
-    df = df[['price']]
+    df = df[['close']]
     return(df)
     
 class PandasData(btfeeds.DataBase):
@@ -169,26 +164,17 @@ if __name__ == '__main__':
     start = datetime.datetime(2017, 1, 1)
     end = datetime.datetime(2020, 6, 1)
     
-    #data = pd.DataFrame(columns=['price'])
-    #data.index.name = 'Date'
     data = []
 
-    assetLabels = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']
-    #i = 0
+    assetLabels = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']   
+        
     for assetLabel in assetLabels:
-        #i = i+1
         df = import_process_hist(assetLabel)
         df = add_leverage(df, leverage = 3)
-        #if i == 1:
-        #    data = df
-        #else:
-        #    data.merge(df, on='Date', how='inner', left_index=True, right_index=True) 
-        data.append(bt.feeds.PandasData(dataname=df))
+        data.append(bt.feeds.PandasData(dataname=df, fromdate=start, todate=end))
         
-    #data = bt.feeds.PandasData(dataname=data)
-
     dd, cagr, sharpe = backtest(data, RiskParity,
-                                plot = False, 
+                                plot = True, 
                                 reb_days = 20, 
                                 initial_cash = 100000, 
                                 monthly_cash = 0, 
