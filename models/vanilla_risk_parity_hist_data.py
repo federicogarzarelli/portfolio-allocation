@@ -15,6 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import backtest
 import os
+import argparse
+
 
 class RiskParity(bt.Strategy):
     """
@@ -79,22 +81,31 @@ def add_leverage(df, leverage = 1):
     df = df[['close']].dropna()
     return(df)
 
-def import_process_hist(dataLabel):
+def import_process_hist(dataLabel,args):
     wd = os.path.dirname(os.getcwd())
    
     if dataLabel == 'GLD':
-        datapath = (wd + '\data\Gold.csv')
-        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
+        if args.system == 'linux':
+            datapath = (wd + '/data/Gold.csv')
+        else:
+            datapath = (wd + '\data\Gold.csv')
+        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
         df = df.rename(columns={"Gold USD": "close"}, index={'Date': 'date'})
         df['close'] = df['close'].str.replace(',', '').astype(float)
         
     elif dataLabel == 'SP500':
-        datapath = (wd + '\data\^GSPC.csv')
+        if args.system == 'linux':
+            datapath = (wd + '/data/^GSPC.csv')
+        else:
+            datapath = (wd + '\data\^GSPC.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'date'})
     
     elif dataLabel == 'COM':
-        datapath = (wd + '\data\SPGSCITR_IND.csv')
+        if args.system == 'linux':
+            datapath = (wd + '/data/SPGSCITR_IND.csv')
+        else:
+            datapath = (wd + '\data\SPGSCITR_IND.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"Close": "close"}, index={'Date': 'date'})
         df['close'] = df['close'].str.replace(',', '').astype(float)
@@ -105,15 +116,21 @@ def import_process_hist(dataLabel):
         df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
         
     elif dataLabel == 'LTB':
-        datapath = (wd + '\data\^TYX.csv')
-        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
+        if args.system == 'linux':
+            datapath = (wd + '/data/^TYX.csv')
+        else:
+            datapath = (wd + '\data\^TYX.csv')
+        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
         df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
         df = df[df['yield'] != 'null']
         df['close'] =  100/np.power(1+df['yield']/100,30)
         df = df.dropna()
         
     elif dataLabel == 'ITB':
-        datapath = (wd + '\data\^FVX.csv')
+        if args.system == 'linux':
+            datapath = (wd + '/data/^FVX.csv')
+        else:
+            datapath = (wd + '\data\^FVX.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
         df = df[df['yield'] != 'null']
@@ -121,7 +138,10 @@ def import_process_hist(dataLabel):
         df = df.dropna()
         
     elif dataLabel == 'TIP':
-        datapath = (wd + '\data\DFII10.csv')
+        if args.system == 'linux':
+            datapath = (wd + '/data/DFII10.csv')
+        else:
+            datapath = (wd + '\data\DFII10.csv')
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
         df = df.rename(columns={"DFII10": "yield"}, index={'DATE': 'date'})
         df = df[df['yield'] != '.']
@@ -161,15 +181,22 @@ class PandasData(btfeeds.DataBase):
 
 if __name__ == '__main__':
 
-    start = datetime.datetime(2017, 1, 1)
+    start = datetime.datetime(1975, 1, 1)
     end = datetime.datetime(2020, 6, 1)
+
+    # parse several options to be run 
+    parser = argparse.ArgumentParser(description='Process some parameters')
+    parser.add_argument('--system',  type=str, help='operating system, to deal with different paths', default='microsoft')
+    args = parser.parse_args()
+
+
     
     data = []
 
     assetLabels = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']   
         
     for assetLabel in assetLabels:
-        df = import_process_hist(assetLabel)
+        df = import_process_hist(assetLabel,args)
         df = add_leverage(df, leverage = 3)
         data.append(bt.feeds.PandasData(dataname=df, fromdate=start, todate=end))
         

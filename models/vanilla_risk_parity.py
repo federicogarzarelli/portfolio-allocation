@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     
 
-    start = datetime.datetime(2017, 1, 1)
+    start = datetime.datetime(2016, 1, 1)
     end = datetime.datetime(2020, 6, 1)
 
     UGLD = bt.feeds.YahooFinanceData(dataname="UGLD", fromdate=start, todate=end)

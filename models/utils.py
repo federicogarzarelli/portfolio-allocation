@@ -25,9 +25,9 @@ def backtest(datas, strategy, plot=False, **kwargs):
     
     
     if plot: # plot results if asked
-        cerebro.plot()
+        cerebro.plot(volume=False)
 
-
+    
     return (res[0].analyzers.drawdown.get_analysis()['max']['drawdown'],
             res[0].analyzers.returns.get_analysis()['rnorm100'],
             res[0].analyzers.sharperatio.get_analysis()['sharperatio'])
