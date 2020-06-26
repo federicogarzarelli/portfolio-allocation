@@ -75,6 +75,7 @@ class RiskParity(bt.Strategy):
         self.counter +=1
 
 
+
 def add_leverage(df, leverage = 1):
     df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))*leverage
     df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
@@ -152,7 +153,7 @@ def import_process_hist(dataLabel,args):
     df = df[['close']]
     return(df)
     
-class PandasData(btfeeds.DataBase):
+class HistData(btfeeds.DataBase):
     '''
     The ``dataname`` parameter inherited from ``feed.DataBase`` is the pandas
     DataFrame
@@ -164,7 +165,7 @@ class PandasData(btfeeds.DataBase):
         #  -1 : autodetect position or case-wise equal name
         #  >= 0 : numeric index to the colum in the pandas dataframe
         #  string : column name (as index) in the pandas dataframe
-        ('datetime', None),
+        #('datetime', None),
 
         # Possible values below:
         #  None : column not present
@@ -174,9 +175,9 @@ class PandasData(btfeeds.DataBase):
         ('open', None),
         ('high', None),
         ('low', None),
-        ('close', 1),
+        ('close', 'close'),
         ('volume', None),
-        ('openinterest', None),
+        ('openinterest', None)
     )
 
 if __name__ == '__main__':
@@ -198,13 +199,13 @@ if __name__ == '__main__':
     for assetLabel in assetLabels:
         df = import_process_hist(assetLabel,args)
         df = add_leverage(df, leverage = 3)
-        data.append(bt.feeds.PandasData(dataname=df, fromdate=start, todate=end))
+        data.append(bt.feeds.HistData(dataname=df, fromdate=start, todate=end, timeframe=bt.TimeFrame.Days, compression = 1))
         
     dd, cagr, sharpe = backtest(data, RiskParity,
                                 plot = True, 
                                 reb_days = 20, 
                                 initial_cash = 100000, 
-                                monthly_cash = 0, 
+                                monthly_cash = 1000,
                                 alloc_ugld = 0.12,
                                 alloc_utsl = 0.13,
                                 alloc_upro = 0.20,

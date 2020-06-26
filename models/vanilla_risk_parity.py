@@ -70,8 +70,8 @@ if __name__ == '__main__':
 
     
 
-    start = datetime.datetime(2016, 1, 1)
-    end = datetime.datetime(2020, 6, 1)
+    start = datetime.datetime(2019, 1, 1)
+    end = datetime.datetime(2020, 6, 30)
 
     UGLD = bt.feeds.YahooFinanceData(dataname="UGLD", fromdate=start, todate=end)
     UTSL = bt.feeds.YahooFinanceData(dataname="UTSL", fromdate=start, todate=end)
@@ -84,11 +84,11 @@ if __name__ == '__main__':
                                 reb_days = 20, 
                                 initial_cash = 100000, 
                                 monthly_cash = 0, 
-                                alloc_ugld = 0.12,
-                                alloc_utsl = 0.13,
-                                alloc_upro = 0.20,
-                                alloc_tmf = 0.15,
-                                alloc_tyd = 0.40)
+                                alloc_ugld = 0,
+                                alloc_utsl = 0,
+                                alloc_upro = 0,
+                                alloc_tmf = 0,
+                                alloc_tyd = 0)
 
     print('Drowndown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
