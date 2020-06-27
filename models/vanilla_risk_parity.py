@@ -1,3 +1,4 @@
+from math import *
 import pandas as pd
 import pandas_datareader.data as web
 import datetime
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     
 
     start = datetime.datetime(2019, 1, 1)
-    end = datetime.datetime(2020, 6, 30)
+    end = datetime.datetime(2020, 6, 26)
 
     UGLD = bt.feeds.YahooFinanceData(dataname="UGLD", fromdate=start, todate=end)
     UTSL = bt.feeds.YahooFinanceData(dataname="UTSL", fromdate=start, todate=end)
@@ -79,17 +80,20 @@ if __name__ == '__main__':
     TMF = bt.feeds.YahooFinanceData(dataname="TMF", fromdate=start, todate=end)
     TYD = bt.feeds.YahooFinanceData(dataname="TYD", fromdate=start, todate=end)
     
-    dd, cagr, sharpe = backtest([UGLD, UTSL, UPRO, TMF, TYD], RiskParity,
-                                plot = True, 
-                                reb_days = 20, 
-                                initial_cash = 100000, 
-                                monthly_cash = 0, 
-                                alloc_ugld = 0,
-                                alloc_utsl = 0,
-                                alloc_upro = 0,
-                                alloc_tmf = 0,
-                                alloc_tyd = 0)
-
-    print('Drowndown:%0.3f' %dd)
+    dd, cagr, sharpe, maxdd, stddev = backtest([UGLD, UTSL, UPRO, TMF, TYD], RiskParity,
+                                              plot = True, 
+                                              reb_days = 20, 
+                                              initial_cash = 100000, 
+                                              monthly_cash = 0, 
+                                              alloc_ugld = 0.12,
+                                              alloc_utsl = 0.13,
+                                              alloc_upro = 0.20,
+                                              alloc_tmf = 0.15,
+                                               alloc_tyd = 0.40)
+    print('#'*50)
+    print('Worst Year:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
-    print('Sharpe:%0.3f' %sharpe)
+    print('Stddev (annualized from monthly returns):%0.3f' %(stddev*sqrt(12)*100))
+    print('Sharpe Ratio (annualized from monthly excess return):%0.3f' %(sharpe*sqrt(12)))
+    print('Max. Drawdown:%0.3f' %maxdd)
+    print('#'*50)
