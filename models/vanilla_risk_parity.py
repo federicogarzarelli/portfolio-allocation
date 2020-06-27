@@ -91,7 +91,7 @@ if __name__ == '__main__':
                                               alloc_tmf = 0.15,
                                                alloc_tyd = 0.40)
     print('#'*50)
-    print('Worst Year:%0.3f' %dd)
+    print('Drawdown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
     print('Stddev (annualized from monthly returns):%0.3f' %(stddev*sqrt(12)*100))
     print('Sharpe Ratio (annualized from monthly excess return):%0.3f' %(sharpe*sqrt(12)))
