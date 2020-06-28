@@ -7,9 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import backtest
 
-
-
-
 class RiskParity(bt.Strategy):
     """
     Vanilla Risk Parity Strategy. 
@@ -19,7 +16,7 @@ class RiskParity(bt.Strategy):
     
     Every month, we add extra cash to the account.
     """
-    params = (
+    params =     (
         ('reb_days', 20), # every month, we rebalance the portfolio
         ('initial_cash', 100000), # initial amount of cash to be invested
         ('monthly_cash', 10000), # amount of cash to buy invested every month
@@ -69,8 +66,6 @@ class RiskParity(bt.Strategy):
 
 if __name__ == '__main__':
 
-    
-
     start = datetime.datetime(2019, 1, 1)
     end = datetime.datetime(2020, 6, 26)
 
@@ -89,7 +84,7 @@ if __name__ == '__main__':
                                               alloc_utsl = 0.13,
                                               alloc_upro = 0.20,
                                               alloc_tmf = 0.15,
-                                               alloc_tyd = 0.40)
+                                              alloc_tyd = 0.40)
     print('#'*50)
     print('Drawdown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)

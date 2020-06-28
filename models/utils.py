@@ -1,7 +1,6 @@
 import backtrader as bt
 import numpy as np
 
-
 def backtest(datas, strategy, plot=False, **kwargs):
     # initialize cerebro
     cerebro = bt.Cerebro()
