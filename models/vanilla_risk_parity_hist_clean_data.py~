@@ -1,13 +1,16 @@
-from math import *
+# -*- coding: utf-8 -*-
+
+import math
 import pandas as pd
 import pandas_datareader.data as web
 import datetime
 import backtrader as bt
+import backtrader.feeds as btfeeds
 import numpy as np
 import matplotlib.pyplot as plt
 from utils import backtest
-
-
+import os
+import argparse
 
 
 class RiskParity(bt.Strategy):
@@ -67,29 +70,58 @@ class RiskParity(bt.Strategy):
         self.counter +=1
 
 
+
+def add_leverage(df, leverage = 1):
+    df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))*leverage
+    df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
+    df = df[['close']].dropna()
+    return(df)
+
+
 if __name__ == '__main__':
 
-    
+    wd = os.path.dirname(os.getcwd())
+    start = datetime.datetime(1979, 1, 1)
+    end = datetime.datetime(2020, 6, 1)
 
-    start = datetime.datetime(2017, 6, 26)
-    end = datetime.datetime(2020, 6, 26)
+    # parse several options to be run 
+    parser = argparse.ArgumentParser(description='Process some parameters')
+    parser.add_argument('--system',  type=str, help='operating system, to deal with different paths', default='microsoft')
+    args = parser.parse_args()
 
-    UGLD = bt.feeds.YahooFinanceData(dataname="UGLD", fromdate=start, todate=end)
-    UTSL = bt.feeds.YahooFinanceData(dataname="UTSL", fromdate=start, todate=end)
-    UPRO = bt.feeds.YahooFinanceData(dataname="TQQQ", fromdate=start, todate=end)
-    TMF = bt.feeds.YahooFinanceData(dataname="TMF", fromdate=start, todate=end)
-    TYD = bt.feeds.YahooFinanceData(dataname="TYD", fromdate=start, todate=end)
+
     
-    dd, cagr, sharpe, maxdd, stddev = backtest([UGLD, UTSL, UPRO, TMF, TYD], RiskParity,
-                                              plot = True, 
-                                              reb_days = 20, 
-                                              initial_cash = 100000, 
-                                              monthly_cash = 10000, 
-                                              alloc_ugld = 0.11,
-                                              alloc_utsl = 0.06,
-                                              alloc_upro = 0.18,
-                                              alloc_tmf = 0.18,
-                                               alloc_tyd = 0.47)
+    data = []
+
+    assetLabels = ['clean_gld.csv', 'clean_spgscitr.csv', 'clean_gspc.csv', 'clean_tyx.csv', 'clean_fvx.csv']   
+        
+    for assetLabel in assetLabels:
+        tmp_data = btfeeds.GenericCSVData(
+            dataname=wd+'/modified_data/'+assetLabel,
+            fromdate=start,
+            todate=end,
+            dtformat=('%Y-%m-%d'),
+            datetime=0,
+            close=1,
+            high=-1,
+            low=-1,
+            open=-1,
+            volume=-1,
+            openinterest=-1
+        )
+        data.append(tmp_data)
+        
+    dd, cagr, sharpe, maxdd, stddev = backtest(data, RiskParity,
+                                               plot = True, 
+                                               reb_days = 20, 
+                                               initial_cash = 100000, 
+                                               monthly_cash = 1000,
+                                               alloc_ugld = 0.12,
+                                               alloc_utsl = 0.13,
+                                               alloc_upro = 0.20,
+                                               alloc_tmf = 0.15,
+                                               alloc_tyd = 0.40)
+
     print('#'*50)
     print('Drawdown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
@@ -97,3 +129,4 @@ if __name__ == '__main__':
     print('Sharpe Ratio (annualized from monthly excess return):%0.3f' %(sharpe*sqrt(12)))
     print('Max. Drawdown:%0.3f' %maxdd)
     print('#'*50)
+

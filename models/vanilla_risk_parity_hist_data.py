@@ -182,7 +182,7 @@ class HistData(btfeeds.DataBase):
 
 if __name__ == '__main__':
 
-    start = datetime.datetime(1975, 1, 1)
+    start = datetime.datetime(1990, 1, 1)
     end = datetime.datetime(2020, 6, 1)
 
     # parse several options to be run 
@@ -199,19 +199,24 @@ if __name__ == '__main__':
     for assetLabel in assetLabels:
         df = import_process_hist(assetLabel,args)
         df = add_leverage(df, leverage = 3)
-        data.append(bt.feeds.HistData(dataname=df, fromdate=start, todate=end, timeframe=bt.TimeFrame.Days, compression = 1))
+        data.append(HistData(dataname=df, fromdate=start, todate=end, timeframe=bt.TimeFrame.Days, compression = 1))
         
-    dd, cagr, sharpe = backtest(data, RiskParity,
-                                plot = True, 
-                                reb_days = 20, 
-                                initial_cash = 100000, 
-                                monthly_cash = 1000,
-                                alloc_ugld = 0.12,
-                                alloc_utsl = 0.13,
-                                alloc_upro = 0.20,
-                                alloc_tmf = 0.15,
-                                alloc_tyd = 0.40)
+    dd, cagr, sharpe, maxdd, stddev = backtest(data, RiskParity,
+                                               plot = True, 
+                                               reb_days = 20, 
+                                               initial_cash = 100000, 
+                                               monthly_cash = 1000,
+                                               alloc_ugld = 0.12,
+                                               alloc_utsl = 0.13,
+                                               alloc_upro = 0.20,
+                                               alloc_tmf = 0.15,
+                                               alloc_tyd = 0.40)
 
-    print('Drowndown:%0.3f' %dd)
+    print('#'*50)
+    print('Drawdown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
-    print('Sharpe:%0.3f' %sharpe)
+    print('Stddev (annualized from monthly returns):%0.3f' %(stddev*sqrt(12)*100))
+    print('Sharpe Ratio (annualized from monthly excess return):%0.3f' %(sharpe*sqrt(12)))
+    print('Max. Drawdown:%0.3f' %maxdd)
+    print('#'*50)
+
