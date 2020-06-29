@@ -71,20 +71,6 @@ class RiskParity(bt.Strategy):
 
 
 
-def add_leverage(price, leverage=1, expense_ratio=0.0):
-    """
-    Simulates a leverage ETF given its proxy, leverage, and expense ratio.
-
-    Daily percent change is calculated by taking the daily log-return of
-    the price, subtracting the daily expense ratio, then multiplying by the leverage.
-    """
-    initial_value = price.iloc[0]
-    log_ret = np.log(price) - np.log(price.shift(1))
-    log_ret = (log_ret - expense_ratio / 252) * leverage
-    new_price = initial_value * np.exp(np.cumsum(log_ret))
-    new_price[0] = initial_value
-    return new_price
-
 
 if __name__ == '__main__':
 
