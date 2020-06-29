@@ -71,11 +71,19 @@ class RiskParity(bt.Strategy):
 
 
 
-def add_leverage(df, leverage = 1):
-    df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))*leverage
-    df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
-    df = df[['close']].dropna()
-    return(df)
+def add_leverage(price, leverage=1, expense_ratio=0.0):
+    """
+    Simulates a leverage ETF given its proxy, leverage, and expense ratio.
+
+    Daily percent change is calculated by taking the daily log-return of
+    the price, subtracting the daily expense ratio, then multiplying by the leverage.
+    """
+    initial_value = price.iloc[0]
+    log_ret = np.log(price) - np.log(price.shift(1))
+    log_ret = (log_ret - expense_ratio / 252) * leverage
+    new_price = initial_value * np.exp(np.cumsum(log_ret))
+    new_price[0] = initial_value
+    return new_price
 
 
 if __name__ == '__main__':
@@ -93,7 +101,7 @@ if __name__ == '__main__':
     
     data = []
 
-    assetLabels = ['clean_gld.csv', 'clean_spgscitr.csv', 'clean_gspc.csv', 'clean_tyx.csv', 'clean_fvx.csv']   
+    assetLabels = ['clean_gld.csv', 'clean_spgscitr.csv', 'clean_gspc.csv', 'clean_tyx.csv', 'clean_fvx.csv']
         
     for assetLabel in assetLabels:
         tmp_data = btfeeds.GenericCSVData(
@@ -103,14 +111,14 @@ if __name__ == '__main__':
             dtformat=('%Y-%m-%d'),
             datetime=0,
             close=1,
-            high=-1,
-            low=-1,
-            open=-1,
-            volume=-1,
+            high=1,
+            low=1,
+            open=1,
+            volume=1,
             openinterest=-1
         )
         data.append(tmp_data)
-        
+
     dd, cagr, sharpe, maxdd, stddev = backtest(data, RiskParity,
                                                plot = True, 
                                                reb_days = 20, 

@@ -24,8 +24,11 @@ if __name__ == '__main__':
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
     df = df.rename(columns={"Gold USD": "close"}, index={'Date': 'date'})
     df['close'] = df['close'].str.replace(',', '').astype(float)
-
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_gld.csv')
 
@@ -36,7 +39,11 @@ if __name__ == '__main__':
         datapath = (wd + '\data\^GSPC.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
     df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'date'})
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_gspc.csv')
 
@@ -53,7 +60,11 @@ if __name__ == '__main__':
     df = df.dropna()
     df = df[(abs(df['log_ret']) < 1)] # filter out the flash crash!
     df['close'] = df['close'].iloc[0]*np.exp(np.cumsum(df['log_ret']))
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_spgscitr.csv')
 
@@ -68,7 +79,11 @@ if __name__ == '__main__':
     df = df[df['yield'] != 'null']
     df['close'] =  100/np.power(1+df['yield']/100,30)
     df = df.dropna()
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_tyx.csv')
 
@@ -83,8 +98,11 @@ if __name__ == '__main__':
     df = df[df['yield'] != 'null']
     df['close'] =  100/np.power(1+df['yield']/100,5)
     df = df.dropna()
-
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_fvx.csv')
 
@@ -99,6 +117,10 @@ if __name__ == '__main__':
     df['yield'] = df['yield'].astype(float)
     df['close'] =  100/np.power(1+df['yield']/100,10)
     df = df.dropna()
-    df = df[['close']]
+    # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
+    for column in ["open", "high", "low"]:
+        df[column] = df["close"]
+    df['volume'] = 0
+    df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_dfii10.csv')
