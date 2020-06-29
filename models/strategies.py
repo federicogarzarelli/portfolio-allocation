@@ -1,34 +1,31 @@
 # -*- coding: utf-8 -*-
 import matplotlib
+from math import *
+import pandas as pd
+import pandas_datareader.data as web
+import datetime
+import backtrader as bt
+import numpy as np
 import matplotlib.pyplot as plt
 
-from datetime import datetime
-import backtrader as bt
 
-# Create a subclass of Strategy to define the indicators and logic
-class Strats(bt.Strategy):
+# Create a subclass of bt.Strategy to define the indicators and logic.
+class StandaloneStrat(bt.Strategy):
     # parameters which are configurable for the strategy
     params = (
         ('reb_days', 20),  # every month, we rebalance the portfolio
         ('initial_cash', 100000),  # initial amount of cash to be invested
         ('monthly_cash', 10000),  # amount of cash to buy invested every month
-        ('n_assets', 1),
+        ('n_assets', 5),
+        ('printlog', True),
     )
-    params['tr_strategy'] = None
-
-    def log(self, txt, dt = None, doprint = False):
-        ''' Logging function fot this strategy txt is the statement and dt can be used to specify a specific datetime'''
-        if self.params.printlog or doprint:
-            dt = dt or self.datas[0].datetime.date(0)
-            print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
-        self.tr_strategy = self.params.tr_strategy
         self.counter = 0
         self.assets = []
         self.dataclose = []
-        for asset in range(1, self.params.n_assets):
-            self.assets[asset] = self.datas[asset]
+        for asset in range(0, self.params.n_assets):
+            self.assets.append(self.datas[asset])
             self.dataclose.append(self.datas[asset].close)  # Keep a reference to the close price
 
         # To keep track of pending orders and buy price/commission
@@ -36,103 +33,153 @@ class Strats(bt.Strategy):
         self.buyprice = None
         self.buycomm = None
 
-    def next(self, strategy_type=""):
-        tr_str = self.tr_strategy
-        print(self.tr_strategy)
+    def start(self):
+        # Activate the fund mode and set the default value at 100000
+        self.broker.set_fundmode(fundmode=True, fundstartval=self.params.initial_cash)
 
-        # Log the closing prices of the series
-        self.log("Close, {0:8.2f} ".format(self.dataclose[0]))
+        self.cash_start = self.broker.get_cash()
+        self.val_start = self.params.initial_cash
 
-        if tr_str == "only_stocks":
-            alloc_vanilla_risk_parity = [0, 0, 1, 0, 0]
-            if self.counter % self.params.reb_days:
-                for asset in range(1, self.params.n_assets):
-                    self.order_target_percent(self.assets[asset], target=alloc_vanilla_risk_parity[asset])
-            self.counter += 1
+        # Add a timer which will be called on the 1st trading day of the month
+        self.add_timer(
+            bt.timer.SESSION_END,
+            monthdays=[1],  # called on the 1st day of the month
+            monthcarry=True  # called on another day if 1st day is vacation/weekend)
+        )
 
-        if tr_str == "sixty_forty":
-            alloc_vanilla_risk_parity = [0, 0, 0.6, 0.20, 0.20]
-            if self.counter % self.params.reb_days:
-                for asset in range(1, self.params.n_assets):
-                    self.order_target_percent(self.assets[asset], target=alloc_vanilla_risk_parity[asset])
-            self.counter += 1
+    def notify_timer(self, timer, when, *args, **kwargs):
+        # Add the monthly cash to the broker
+        self.broker.add_cash(self.params.monthly_cash)
 
-        if tr_str == "uniform":
-            alloc_vanilla_risk_parity = [1/self.params.n_assets] * self.params.n_assets
-            if self.counter % self.params.reb_days:
-                for asset in range(1, self.params.n_assets):
-                    self.order_target_percent(self.assets[asset], target=alloc_vanilla_risk_parity[asset])
-            self.counter += 1
+    def log(self, txt, dt=None):
+        ''' Logging function fot this strategy txt is the statement and dt can be used to specify a specific datetime'''
+        if self.params.printlog:
+            dt = dt or self.datas[0].datetime.date(0)
+            print('%s, %s' % (dt.isoformat(), txt))
 
-        if tr_str == "mean_var":
-        # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
+            return
 
-        if tr_str == "vanilla_risk_parity":
-            alloc_vanilla_risk_parity = [0.12, 0.13, 0.20, 0.15, 0.40]
-            if self.counter % self.params.reb_days:
-                for asset in range(1, self.params.n_assets):
-                    self.order_target_percent(self.assets[asset], target=alloc_vanilla_risk_parity[asset])
-            self.counter += 1
+        # Check if an order has been completed
+        # Attention: broker could reject order if not enough cash
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.log(
+                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
+            elif order.issell():
+                self.log(
+                    'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
 
-        if tr_str == "risk_parity":
+            self.bar_executed = len(self)
 
-        print('Current Portfolio Value: %.2f' % cerebro.broker.getvalue())
-"""
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log('Order Canceled/Margin/Rejected')
+
+        # Write down: no pending order
+        self.order = None
+
     def notify_trade(self, trade):
         if not trade.isclosed:
             return
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
 
-        self.log('OPERATION PROFIT, GROSS {0:8.2f}, NET {1:8.2f}'.format(
-            trade.pnl, trade.pnlcomm))
+class Sixty_Forty(StandaloneStrat):
+    def next(self):
+        alloc_target = [0, 0, 0.6, 0.20, 0.20]
+        if self.counter % self.params.reb_days:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=alloc_target[asset])
+        self.counter += 1
 
 
-strategy_final_values = [0, 0, 0, 0]
-strategies = ["cross", "simple1", "simple2", "BB"]
+class onlystocksStrat(StandaloneStrat):
+    def next(self):
+        alloc_target = [0, 0, 1, 0, 0]
+        if self.counter % self.params.reb_days:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=alloc_target[asset])
+        self.counter += 1
 
-for tr_strategy in strategies:
+
+class vanillariskparityStrat(StandaloneStrat):
+    def next(self):
+        alloc_target = [0.12, 0.13, 0.20, 0.15, 0.40]
+        if self.counter % self.params.reb_days:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=alloc_target[asset])
+        self.counter += 1
+
+
+class uniformStrat(StandaloneStrat):
+    def next(self):
+        alloc_target = [1 / self.params.n_assets] * self.params.n_assets
+        if self.counter % self.params.reb_days:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=alloc_target[asset])
+        self.counter += 1
+
+
+class meanvarStrat(StandaloneStrat):
+    def next(self):
+        print("Work in progress")
+    # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
+
+
+class riskParityStrat(StandaloneStrat):
+    def next(self):
+        print("Work in progress")
+
+"""
+Sample code for testing the Strategy classes. 
+"""
+
+
+if __name__ == '__main__':
+    start = datetime.datetime(2017, 6, 26)
+    end = datetime.datetime(2020, 6, 26)
+
+    UGLD = bt.feeds.YahooFinanceData(dataname="UGLD", fromdate=start, todate=end)
+    UTSL = bt.feeds.YahooFinanceData(dataname="UTSL", fromdate=start, todate=end)
+    UPRO = bt.feeds.YahooFinanceData(dataname="TQQQ", fromdate=start, todate=end)
+    TMF = bt.feeds.YahooFinanceData(dataname="TMF", fromdate=start, todate=end)
+    TYD = bt.feeds.YahooFinanceData(dataname="TYD", fromdate=start, todate=end)
+
+    # strategies = ["cross", "simple1", "simple2", "BB"]
+    # for tr_strategy in strategies:
     cerebro = bt.Cerebro()  # create a "Cerebro" engine instance
 
-    data = bt.feeds.GenericCSVData(
-        dataname='GE.csv',
-
-        fromdate=datetime(2019, 1, 1),
-        todate=datetime(2019, 9, 13),
-
-        nullvalue=0.0,
-
-        dtformat=('%Y-%m-%d'),
-
-        datetime=0,
-        high=2,
-        low=3,
-        open=1,
-        close=4,
-        adjclose=5,
-        volume=6,
-        openinterest=-1
-
-    )
-
-    print("data")
-    print(data)
-    cerebro.adddata(data)  # Add the data feed
+    cerebro.adddata(UGLD)  # Add the data feed
+    cerebro.adddata(UTSL)  # Add the data feed
+    cerebro.adddata(UPRO)  # Add the data feed
+    cerebro.adddata(TMF)  # Add the data feed
+    cerebro.adddata(TYD)  # Add the data feed
 
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    cerebro.addstrategy(Strats, tr_strategy=tr_strategy)  # Add the trading strategy
+#    cerebro.addstrategy(StandaloneStrat)  # Add the trading strategy
+    cerebro.addstrategy(uniformStrat)
     result = cerebro.run()  # run it all
     figure = cerebro.plot(iplot=False)[0][0]
     figure.savefig('example.png')
 
     # Print out the final result
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    ind = strategies.index(tr_strategy)
-    strategy_final_values[ind] = cerebro.broker.getvalue()
+#   ind = strategies.index(uniformStrat)
+#   strategy_final_values[ind] = cerebro.broker.getvalue()
 
-print("Final Vaues for Strategies")
-for tr_strategy in strategies:
-    ind = strategies.index(tr_strategy)
-    print("{} {}  ".format(tr_strategy, strategy_final_values[ind]))
-
-"""
+#   print("Final Values for Strategies")
+# for tr_strategy in strategies:
+#   ind = strategies.index(uniformStrat)
+#  print("{} {}  ".format(uniformStrat, strategy_final_values[ind]))
