@@ -75,7 +75,7 @@ class RiskParity(bt.Strategy):
 if __name__ == '__main__':
 
     wd = os.path.dirname(os.getcwd())
-    start = datetime.datetime(1979, 1, 1)
+    start = datetime.datetime(2013, 1, 1)
     end = datetime.datetime(2020, 6, 1)
 
     # parse several options to be run 

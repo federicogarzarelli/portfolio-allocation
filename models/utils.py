@@ -6,7 +6,7 @@ import numpy as np
 def backtest(datas, strategy, plot=False, **kwargs):
     # initialize cerebro
     cerebro = bt.Cerebro()
-
+    
     # add the data
     for data in datas:
         cerebro.adddata(data)
@@ -19,13 +19,13 @@ def backtest(datas, strategy, plot=False, **kwargs):
     cerebro.addanalyzer(bt.analyzers.PeriodStats, timeframe=bt.TimeFrame.Months)
 
     # create broker, still need to tweak it
-    broker_kwargs = dict(coc=True)
+    broker_kwargs = dict(cash=10000,coc=True)
     cerebro.broker = bt.brokers.BackBroker(**broker_kwargs)
+
     
     # add the strategy
     cerebro.addstrategy(strategy, **kwargs)
     res = cerebro.run()
-    
     
     if plot: # plot results if asked
         cerebro.plot(volume=False)
@@ -77,8 +77,8 @@ def add_leverage(price, leverage=1, expense_ratio=0.0):
     the price, subtracting the daily expense ratio, then multiplying by the leverage.
     """
     initial_value = price.iloc[0]
-    log_ret = np.log(price) - np.log(price.shift(1))
-    log_ret = (log_ret - expense_ratio / 252) * leverage
-    new_price = initial_value * (1+log_ret).cumprod()
+    ret = (price - price.shift(1))/price.shift(1)
+    ret = (ret - expense_ratio / 252) * leverage
+    new_price = initial_value * (1+ret).cumprod()
     new_price[0] = initial_value
     return new_price
