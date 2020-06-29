@@ -7,13 +7,14 @@ import datetime
 import backtrader as bt
 import numpy as np
 import matplotlib.pyplot as plt
-
+from risk_budgeting import target_risk_contribution
 
 # Create a subclass of bt.Strategy to define the indicators and logic.
 class StandaloneStrat(bt.Strategy):
     # parameters which are configurable for the strategy
     params = (
         ('reb_days', 20),  # every month, we rebalance the portfolio
+        ('lookback_period', 60),  # period to calculate the indicators used by the strategy (e.g. covariance)
         ('initial_cash', 100000),  # initial amount of cash to be invested
         ('monthly_cash', 10000),  # amount of cash to buy invested every month
         ('n_assets', 5),
@@ -94,57 +95,74 @@ class StandaloneStrat(bt.Strategy):
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
 
-class Sixty_Forty(StandaloneStrat):
+"""
+The child classes below are specific to one strategy. 
+"""
+class sixtyforty(StandaloneStrat):
     def next(self):
         alloc_target = [0, 0, 0.6, 0.20, 0.20]
-        if self.counter % self.params.reb_days:
+        if self.counter % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=alloc_target[asset])
         self.counter += 1
 
 
-class onlystocksStrat(StandaloneStrat):
+class onlystocks(StandaloneStrat):
     def next(self):
         alloc_target = [0, 0, 1, 0, 0]
-        if self.counter % self.params.reb_days:
+        if self.counter % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=alloc_target[asset])
         self.counter += 1
 
 
-class vanillariskparityStrat(StandaloneStrat):
+class vanillariskparity(StandaloneStrat):
     def next(self):
         alloc_target = [0.12, 0.13, 0.20, 0.15, 0.40]
-        if self.counter % self.params.reb_days:
+        if self.counter % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=alloc_target[asset])
         self.counter += 1
 
 
-class uniformStrat(StandaloneStrat):
+class uniform(StandaloneStrat):
     def next(self):
         alloc_target = [1 / self.params.n_assets] * self.params.n_assets
-        if self.counter % self.params.reb_days:
+        if self.counter % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=alloc_target[asset])
         self.counter += 1
 
-
+# Optimal tangent portfolio according to the Modern Portfolio theory by Markowitz. The implementation is based on:
+# https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
 class meanvarStrat(StandaloneStrat):
     def next(self):
         print("Work in progress")
-    # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
 
-
-class riskParityStrat(StandaloneStrat):
+# Risk parity portfolio. The implementation is based on:
+# https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
+class riskparity(StandaloneStrat):
     def next(self):
-        print("Work in progress")
+        target_risk = [1 / self.params.n_assets] * self.params.n_assets
+
+        if len(self) > self.params.lookback_period:
+            # stack the closes together into a numpy array for ease of calculation
+            closes = np.stack(([d.close.get(size = self.params.lookback_period).tolist() for d in self.datas]))
+            rets = np.diff(np.log(closes))
+            # covariance matrix. will be shoved somewhere else for records
+            cov = np.cov(rets)
+            alloc_target = target_risk_contribution(target_risk, cov)
+
+            if len(self) % self.params.reb_days == 0:
+                for asset in range(0, self.params.n_assets):
+                    self.order_target_percent(self.assets[asset], target=alloc_target[asset])
+
 
 """
-Sample code for testing the Strategy classes. 
+Simple test of the Strategy classes. 
 """
 
-
+"""
 if __name__ == '__main__':
     start = datetime.datetime(2017, 6, 26)
     end = datetime.datetime(2020, 6, 26)
@@ -165,11 +183,11 @@ if __name__ == '__main__':
     cerebro.adddata(TMF)  # Add the data feed
     cerebro.adddata(TYD)  # Add the data feed
 
+    cerebro.addstrategy(uniformStrat)
+
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-#    cerebro.addstrategy(StandaloneStrat)  # Add the trading strategy
-    cerebro.addstrategy(uniformStrat)
     result = cerebro.run()  # run it all
     figure = cerebro.plot(iplot=False)[0][0]
     figure.savefig('example.png')
@@ -183,3 +201,5 @@ if __name__ == '__main__':
 # for tr_strategy in strategies:
 #   ind = strategies.index(uniformStrat)
 #  print("{} {}  ".format(uniformStrat, strategy_final_values[ind]))
+
+"""

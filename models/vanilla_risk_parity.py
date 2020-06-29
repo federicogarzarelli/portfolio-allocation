@@ -6,7 +6,7 @@ import backtrader as bt
 import numpy as np
 import matplotlib.pyplot as plt
 from utils import backtest
-
+from strategies import sixtyforty, onlystocks, vanillariskparity, uniform, riskparity
 
 
 
@@ -58,7 +58,7 @@ class RiskParity(bt.Strategy):
         
         
     def next(self):
-        if self.counter % self.params.reb_days:
+        if self.counter % self.params.reb_days == 0:
             self.order_target_percent(self.ugld, target=self.params.alloc_ugld)
             self.order_target_percent(self.utsl, target=self.params.alloc_utsl)
             self.order_target_percent(self.upro, target=self.params.alloc_upro)
@@ -69,8 +69,6 @@ class RiskParity(bt.Strategy):
 
 if __name__ == '__main__':
 
-    
-
     start = datetime.datetime(2017, 6, 26)
     end = datetime.datetime(2020, 6, 26)
 
@@ -80,16 +78,15 @@ if __name__ == '__main__':
     TMF = bt.feeds.YahooFinanceData(dataname="TMF", fromdate=start, todate=end)
     TYD = bt.feeds.YahooFinanceData(dataname="TYD", fromdate=start, todate=end)
     
-    dd, cagr, sharpe, maxdd, stddev = backtest([UGLD, UTSL, UPRO, TMF, TYD], RiskParity,
-                                              plot = True, 
-                                              reb_days = 20, 
-                                              initial_cash = 100000, 
-                                              monthly_cash = 10000, 
-                                              alloc_ugld = 0.11,
-                                              alloc_utsl = 0.06,
-                                              alloc_upro = 0.18,
-                                              alloc_tmf = 0.18,
-                                               alloc_tyd = 0.47)
+    dd, cagr, sharpe, maxdd, stddev = backtest([UGLD, UTSL, UPRO, TMF, TYD], onlystocks,
+                                              plot = True,
+                                              reb_days = 20,
+                                              lookback_period = 60,
+                                              initial_cash = 100000,
+                                              monthly_cash = 10000,
+                                              n_assets = 5,
+                                              printlog = False
+                                              )
     print('#'*50)
     print('Drawdown:%0.3f' %dd)
     print('CAGR:%0.3f' %cagr)
