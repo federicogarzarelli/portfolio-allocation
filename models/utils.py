@@ -1,3 +1,5 @@
+import pandas as pd
+import os
 import backtrader as bt
 import numpy as np
 
@@ -34,3 +36,49 @@ def backtest(datas, strategy, plot=False, **kwargs):
             res[0].analyzers.sharperatio.get_analysis()['sharperatio'],
             res[0].analyzers.timedrawdown.get_analysis()['maxdrawdown'],
             res[0].analyzers.periodstats.get_analysis()['stddev'])
+
+
+
+def import_process_hist(dataLabel, args):
+    wd = os.path.dirname(os.getcwd())
+
+    mapping_path_linux = {
+        'GLD':wd+'/modified_data/clean_gld.csv',
+        'SP500':wd+'/modified_data/clean_gspc.csv',
+        'COM':wd+'/modified_data/clean_spgscitr.csv',
+        'LTB':wd+'/modified_data/clean_tyx.csv',
+        'ITB':wd+'/modified_data/clean_fvx.csv',
+        'TIP':wd+'/modified_data/clean_dfii10.csv'
+    }
+
+    mapping_path_windows = {
+        'GLD':wd+'\modified_data\clean_gld.csv',
+        'SP500':wd+'\modified_data\clean_gspc.csv',
+        'COM':wd+'\modified_data\clean_spgscitr.csv',
+        'LTB':wd+'\modified_data\clean_tyx.csv',
+        'ITB':wd+'\modified_data\clean_fvx.csv',
+        'TIP':wd+'\modified_data\clean_dfii10.csv'
+    }
+
+    if args.system == 'linux':
+        datapath = (mapping_path_linux[dataLabel])
+    else:
+        datapath = (mapping_path_windows[dataLabel])
+    df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
+    
+    return df
+
+        
+def add_leverage(price, leverage=1, expense_ratio=0.0):
+    """
+    Simulates a leverage ETF given its proxy, leverage, and expense ratio.
+
+    Daily percent change is calculated by taking the daily log-return of
+    the price, subtracting the daily expense ratio, then multiplying by the leverage.
+    """
+    initial_value = price.iloc[0]
+    log_ret = np.log(price) - np.log(price.shift(1))
+    log_ret = (log_ret - expense_ratio / 252) * leverage
+    new_price = initial_value * (1+log_ret).cumprod()
+    new_price[0] = initial_value
+    return new_price
