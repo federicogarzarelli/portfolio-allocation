@@ -12,11 +12,11 @@ def backtest(datas, strategy, plot=False, **kwargs):
         cerebro.adddata(data)
 
     # keep track of certain metrics
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, riskfreerate=0.03, timeframe=bt.TimeFrame.Months)
-    cerebro.addanalyzer(bt.analyzers.Returns)
-    cerebro.addanalyzer(bt.analyzers.DrawDown)
-    cerebro.addanalyzer(bt.analyzers.TimeDrawDown, timeframe=bt.TimeFrame.Months)
-    cerebro.addanalyzer(bt.analyzers.PeriodStats, timeframe=bt.TimeFrame.Months)
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio, riskfreerate=0.03, timeframe=bt.TimeFrame.Months, fund=True)
+    cerebro.addanalyzer(bt.analyzers.Returns, fund=True)
+    cerebro.addanalyzer(bt.analyzers.DrawDown, fund=True)
+    cerebro.addanalyzer(bt.analyzers.TimeDrawDown, timeframe=bt.TimeFrame.Months, fund=True)
+    cerebro.addanalyzer(bt.analyzers.PeriodStats, timeframe=bt.TimeFrame.Months, fund=True)
 
     # create broker, still need to tweak it
     broker_kwargs = dict(cash=10000,coc=True)
