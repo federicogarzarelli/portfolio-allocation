@@ -27,10 +27,10 @@ A virtual environment should normally also be setup.
 # Todo List
 
 - [X] Create simple vanilla risk parity strategy
-- [ ] Add the function to automatically calculate the different weights
-- [ ] Make the format of the data csv files homogeneous among the different sources
-- [ ] Define the bonds proxy based on yields
-- [ ] Create a small function to emulate leverage
+- [X] Add the function to automatically calculate the different weights
+- [X] Make the format of the data csv files homogeneous among the different sources
+- [X] Define the bonds proxy based on yields
+- [X] Create a small function to emulate leverage
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
 - [ ] Create a script to create and execute orders on IBKR
 
