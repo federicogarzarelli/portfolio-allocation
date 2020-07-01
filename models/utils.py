@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import backtrader as bt
 import numpy as np
+from observers import WeightsObserver, GetDate
+from datetime import datetime as dt
 
 def backtest(datas, strategy, plot=False, **kwargs):
     # initialize cerebro
@@ -18,25 +20,44 @@ def backtest(datas, strategy, plot=False, **kwargs):
     cerebro.addanalyzer(bt.analyzers.TimeDrawDown, timeframe=bt.TimeFrame.Months, fund=True)
     cerebro.addanalyzer(bt.analyzers.PeriodStats, timeframe=bt.TimeFrame.Months, fund=True)
 
-    # create broker, still need to tweak it
-    broker_kwargs = dict(cash=10000,coc=True)
-    cerebro.broker = bt.brokers.BackBroker(**broker_kwargs)
+    # Add custom observer to get the weights
+    n_assets = kwargs.get('n_assets')
+    cerebro.addobserver(WeightsObserver, n_assets=n_assets)
+    cerebro.addobserver(GetDate)
 
-    
     # add the strategy
     cerebro.addstrategy(strategy, **kwargs)
+
     res = cerebro.run()
-    
+
     if plot: # plot results if asked
-        cerebro.plot(volume=False)
+        figure = cerebro.plot(volume=False, iplot=False)[0][0]
+        figure.savefig('Strategy %s.png' % strategy.strategy_name)
 
-    
-    return (res[0].analyzers.drawdown.get_analysis()['max']['drawdown'],
-            res[0].analyzers.returns.get_analysis()['rnorm100'],
-            res[0].analyzers.sharperatio.get_analysis()['sharperatio'],
-            res[0].analyzers.timedrawdown.get_analysis()['maxdrawdown'],
-            res[0].analyzers.periodstats.get_analysis()['stddev'])
+    metrics = (res[0].analyzers.returns.get_analysis()['rnorm100'],
+               res[0].analyzers.periodstats.get_analysis()['stddev'],
+               res[0].analyzers.sharperatio.get_analysis()['sharperatio'],
+               res[0].analyzers.timedrawdown.get_analysis()['maxdrawdown'],
+               res[0].analyzers.drawdown.get_analysis()['max']['drawdown']
+               )
 
+    # Asset weights
+    size_weights = 60 # get weights for the last 60 days
+    weight_df = pd.DataFrame()
+
+    weight_df['Year'] = pd.Series(res[0].observers[3].year.get(size=size_weights))
+    weight_df['Month'] = pd.Series(res[0].observers[3].month.get(size=size_weights))
+    weight_df['Day'] = pd.Series(res[0].observers[3].day.get(size=size_weights))
+    for i in range(0, n_assets):
+        weight_df['asset_'+str(i)] = res[0].observers[2].lines[i].get(size=size_weights)
+
+    """    
+    weights = [res[0].observers[3].year.get(size=size_weights),
+               res[0].observers[3].month.get(size=size_weights),
+               res[0].observers[3].day.get(size=size_weights),
+               [res[0].observers[2].lines[i].get(size=size_weights) for i in range(0, n_assets)]]
+    """
+    return metrics, weight_df
 
 
 def import_process_hist(dataLabel, args):
