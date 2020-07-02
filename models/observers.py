@@ -1,5 +1,8 @@
 import backtrader as bt
 
+"""
+Custom observer to save the weights 
+"""
 class WeightsObserver(bt.observer.Observer):
     params = (('n_assets', 100),) # set conservatively to 100 as the dynamic assignment does not work
     lines = tuple(['asset_'+str(i) for i in range(0, params[0][1])])
@@ -10,7 +13,9 @@ class WeightsObserver(bt.observer.Observer):
         for asset in range(0, self.params.n_assets):
             self.lines[asset][0] = self._owner.weights[asset]
 
-
+"""
+Custom observer to get dates 
+"""
 class GetDate(bt.observer.Observer):
     lines = ('year','month', 'day',)
 

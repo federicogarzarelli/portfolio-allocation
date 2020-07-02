@@ -12,14 +12,8 @@ from risk_budgeting import target_risk_contribution
 import os
 
 """
-Custom observer to save the weights 
-"""
-
-"""
 Custom indicator to set the minimum period. 
 """
-
-
 class MinPeriodSetter(bt.Indicator):
     lines = ('dummyline',)
 

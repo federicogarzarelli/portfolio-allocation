@@ -24,11 +24,12 @@ def target_risk_contribution(target_risk, cov):
     """
     n = cov.shape[0]
     init_guess = np.repeat(1/n, n)
-    bounds = ((0.0,1.0),)*n
+    bounds = ((0.0, 1.0),)*n
     # construct the constants
-    weights_sum_to_1 = {'type':'eq',
+    weights_sum_to_1 = {'type': 'eq',
                         'fun': lambda w: np.sum(w) - 1
                         }
+
     def msd_risk(w, target_risk, cov):
         """
         Returns the Mean Squared Difference in risk contributions between weights and target_risk
@@ -38,9 +39,9 @@ def target_risk_contribution(target_risk, cov):
 
     w = minimize(msd_risk, init_guess,
                  args=(target_risk, cov), method='SLSQP',
-                 options = {'disp' : False},
-                 constraints = weights_sum_to_1,
-                 bounds = bounds)
+                 options={'disp' : False},
+                 constraints=weights_sum_to_1,
+                 bounds=bounds)
     return w.x
 
 """
