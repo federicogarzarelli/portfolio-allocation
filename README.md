@@ -13,7 +13,6 @@ A virtual environment should normally also be setup.
 
 
 # Dataset explanation
-
 | Symbol  |                  Meaning                            																					|
 |---------|-----------------------------------------------------------------------------------------------------------------------------------------|
 | DFII10  |     10 Year Treasury Inflation-Indexed Security     																					|
@@ -25,8 +24,8 @@ A virtual environment should normally also be setup.
 |  T10Y2Y |          10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity https://fred.stlouisfed.org/series/T10Y2Y           |
 |  DFII20 |          20-Year Treasury Inflation-Indexed Security, Constant Maturity https://fred.stlouisfed.org/series/DFII20                       |
 |  T10YIE |          10-Year Breakeven Inflation Rate (T10YIE) https://fred.stlouisfed.org/series/T10YIE                                            |
-# Todo List
 
+# Todo List
 - [X] Create simple vanilla risk parity strategy
 - [X] Add the function to automatically calculate the different weights
 - [X] Make the format of the data csv files homogeneous among the different sources
