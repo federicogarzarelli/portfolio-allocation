@@ -25,19 +25,19 @@ or run the bash script **install_reports.sh**
 
 
 # Dataset explanation
-
-| Symbol  |                  Meaning                            |
-|---------|-----------------------------------------------------|
-| DFII10  |     10 Year Treasury Inflation-Indexed Security     |
-|  Gold   |               Gold Prices                           |
-|SPGSCITR |  SP5 GSCI Total Return Index (commodity and infl.)  |
-|  FVX    |          Treasury Yield 5 Years                     |
-|  GSPC   |               SP500 Index                           |
-|  TYX    |          Treasury Yield 30 Years                    |
-
+| Symbol  |                  Meaning                            																					|
+|---------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| DFII10  |     10 Year Treasury Inflation-Indexed Security     																					|
+|  Gold   |               Gold Prices                           																					|
+|SPGSCITR |  SP5 GSCI Total Return Index (commodity and infl.)  																					|
+|  FVX    |          Treasury Yield 5 Years                     																					|
+|  GSPC   |               SP500 Index                           																					|
+|  TYX    |          Treasury Yield 30 Years                    																					|
+|  T10Y2Y |          10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity https://fred.stlouisfed.org/series/T10Y2Y           |
+|  DFII20 |          20-Year Treasury Inflation-Indexed Security, Constant Maturity https://fred.stlouisfed.org/series/DFII20                       |
+|  T10YIE |          10-Year Breakeven Inflation Rate (T10YIE) https://fred.stlouisfed.org/series/T10YIE                                            |
 
 # Todo List
-
 - [X] Create simple vanilla risk parity strategy
 - [X] Add the function to automatically calculate the different weights
 - [X] Make the format of the data csv files homogeneous among the different sources
@@ -45,4 +45,5 @@ or run the bash script **install_reports.sh**
 - [X] Create a small function to emulate leverage
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
 - [ ] Create a script to create and execute orders on IBKR
+- [ ] Implement asset rotation strategy and integrate it with the risk parity one
 
