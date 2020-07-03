@@ -12,6 +12,18 @@ pip install -r requirements
 A virtual environment should normally also be setup.
 
 
+# Install Backtrader Reports
+
+```bash
+$ pip3 install jinja2
+$ pip install WeasyPrint
+```
+
+or run the bash script **install_reports.sh**
+
+# Usage of main
+
+
 # Dataset explanation
 
 | Symbol  |                  Meaning                            |
