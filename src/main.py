@@ -1,3 +1,4 @@
+import os
 from utils import *
 from strategies import *
 import datetime
@@ -28,7 +29,7 @@ if __name__=='__main__':
 
     args = parse_args()
 
-    startdate = datetime.datetime.strptime(args.startdate,"%Y-%m%-%d")
+    startdate = datetime.datetime.strptime(args.startdate,"%Y-%m-%d")
     enddate = datetime.datetime.strptime(args.enddate,"%Y-%m-%d")
     
     data = []
@@ -53,7 +54,7 @@ if __name__=='__main__':
 
         # download the datas
         assets_dic = {}
-        for i in range(len(assets)):
+        for i in range(len(shares_list)):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i],"yahoo",startdate, enddate)["Adj Close"] # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
             
@@ -81,7 +82,7 @@ if __name__=='__main__':
         # allocate the weights to the right spots
         params = ()
         for i in range(len(shares_list)):
-            params += (('alloc_%s' shares_list[i],weights_list[i]),)
+            params += (('alloc_%s' %shares_list[i],weights_list[i]),)
 
 
 
@@ -97,7 +98,7 @@ if __name__=='__main__':
         
     if create_report:
         cerebro.report('reports')
-
+        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
         
         
     
