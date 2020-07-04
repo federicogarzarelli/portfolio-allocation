@@ -44,6 +44,9 @@ or run the bash script **install_reports.sh**
 - [X] Define the bonds proxy based on yields
 - [X] Create a small function to emulate leverage
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
-- [ ] Create a script to create and execute orders on IBKR
-- [ ] Implement asset rotation strategy and integrate it with the risk parity one
+- [ ] Create a script to create and execute orders on IBKR (paper trading and live)
+- [ ] Bucketing by asset classes and put into place the strategy for the weights of each bucket
+- [ ] Implement asset rotation strategy and integrate it with the risk parity one (comparison with RP)
+- [ ] think about alarms if something is going wrong
+
 
