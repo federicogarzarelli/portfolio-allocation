@@ -5,6 +5,7 @@ import datetime
 import argparse
 import backtrader as bt
 import riskparityportfolio as rp
+from report import *
 
 
 def parse_args():
@@ -74,7 +75,7 @@ if __name__=='__main__':
         else:
             cov = covariances(shares=shares_list, start=startdate,end=enddate)
             target = np.array([1/len(shares_list)]*len(shares_list))
-            port = rp.RiskParityPortfolio(covariance=cov, budge=target)
+            port = rp.RiskParityPortfolio(covariance=cov, budget=target)
             port.design()
             weights_list = port.weights
 
@@ -91,12 +92,12 @@ if __name__=='__main__':
 
     for dt in data:
         cerebro.adddata(dt)
-    
-    cerebro.addstrategy(strategy, **kwargs)
+
+    cerebro.addstrategy(vanillariskparity, n_assets=len(data))
     cerebro.run()
     cerebro.plot(volume=False)
         
-    if create_report:
+    if args.create_report:
         cerebro.report('reports')
         os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
         

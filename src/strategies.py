@@ -145,8 +145,8 @@ class onlystocks(StandaloneStrat):
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    #def __init__(self, **kwargs):
+    #    self.__dict__.update(kwargs)
         
     def next(self):
         self.weights = [0.12, 0.13, 0.20, 0.15, 0.40]
