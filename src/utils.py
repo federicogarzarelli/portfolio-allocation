@@ -3,6 +3,7 @@ import os
 import backtrader as bt
 import numpy as np
 import datetime
+
 from datetime import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
@@ -216,3 +217,25 @@ def covariances(shares=['GLD','TLT','SPY'],
                   prices.asfreq('W-FRI').pct_change().iloc[1:, :].cov().values
 
     return covariances
+
+
+
+
+def timestamp2str(ts):
+    """ Converts Timestamp object to str containing date and time
+    """
+    date = ts.date().strftime("%Y-%m-%d")
+    time = ts.time().strftime("%H:%M:%S")
+    return ' '.join([date, time])
+
+
+def get_now():
+    """ Return current datetime as str
+    """
+    return timestamp2str(datetime.datetime.now())
+
+
+def dir_exists(foldername):
+    """ Return True if folder exists, else False
+    """
+    return os.path.isdir(foldername)

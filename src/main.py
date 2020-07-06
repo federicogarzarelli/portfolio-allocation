@@ -5,7 +5,7 @@ import datetime
 import argparse
 import backtrader as bt
 import riskparityportfolio as rp
-from report import *
+from report import Cerebro
 
 
 def parse_args():
@@ -48,6 +48,12 @@ if __name__=='__main__':
             df = import_process_hist(assetLabel, args)
             for column in ['open','high', 'low', 'close']:
                 df[column]=add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+
+            for column in ['open','high', 'low']:
+                df[column] = df['close']
+                
+            df['volume'] = 0
+                
             data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate,timeframe=bt.TimeFrame.Days))
         
     else:
@@ -58,12 +64,17 @@ if __name__=='__main__':
         for i in range(len(shares_list)):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i],"yahoo",startdate, enddate)["Adj Close"] # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
+            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].rename(columns={"High":"high", "Low":"low","Open":"open", "Adj Close":"close"})
+            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].drop(columns=[0,"Close"])
+
+            for column in ['open','high', 'low']:
+                assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
+                
+            assets_dic[shares_list[i]]['volume'] = 0
+
             
-            for column in ["open", "high", "low"]:
-                assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]["close"]
-
-            assets_dic[shares_list[i]]["volume"] = 0
-
+            #print(assets_dic[shares_list[0]])
+            #break
             data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]],fromdate=startdate, todate=enddate,timeframe=bt.TimeFrame.Days))
         
         # if you provide the weights, use them
@@ -87,7 +98,7 @@ if __name__=='__main__':
 
 
 
-    cerebro = bt.Cerebro()
+    cerebro = Cerebro()
     cerebro.broker.set_cash(args.initial_cash)
 
     for dt in data:
@@ -98,7 +109,7 @@ if __name__=='__main__':
     cerebro.plot(volume=False)
         
     if args.create_report:
-        cerebro.report('reports')
+        cerebro.report('reports/')
         os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
         
         
