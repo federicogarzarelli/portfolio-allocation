@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
-
+from strategies import *
 
 
 def backtest(datas, strategy, plot=False, **kwargs):
@@ -239,3 +239,27 @@ def dir_exists(foldername):
     """ Return True if folder exists, else False
     """
     return os.path.isdir(foldername)
+
+
+def strat_dictionary(stratname):
+    assert stratname in ['sixtyforty', 'onlystocks',
+                         'vanillariskparity','uniform','riskparity', 'meanvar'], "unknown strategy"
+
+    if stratname == 'sixtyforty':
+        return sixtyforty
+
+    elif stratname == 'onlystocks':
+        return onlystocks
+
+    elif stratname == 'vanillariskparity':
+        return vanillariskparity
+
+    elif stratname == 'riskparity':
+        return riskparity
+
+    elif stratname == 'uniform':
+        return uniform
+
+    elif stratname == 'meanvarStrat':
+        return meanvarStrat
+    
