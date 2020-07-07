@@ -104,14 +104,10 @@ if __name__=='__main__':
     for dt in data:
         cerebro.adddata(dt)
 
-    cerebro.addstrategy(vanillariskparity, n_assets=len(data))
+    cerebro.addstrategy(uniform, n_assets=len(data))
     cerebro.run()
     cerebro.plot(volume=False)
         
     if args.create_report:
         cerebro.report('reports/')
         os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
-        
-        
-    
-    

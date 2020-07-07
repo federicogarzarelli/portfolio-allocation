@@ -6,15 +6,16 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 from utils import timestamp2str, get_now, dir_exists
+import numpy as np
 
 
 class PerformanceReport:
-    """ Report with performce stats for given backtest run
+    """ Report with performance stats for given backtest run
     """
 
     def __init__(self, stratbt, infilename,
                  outputdir, user, memo):
-        self.stratbt = stratbt  # works for only 1 stategy
+        self.stratbt = stratbt  # works for only 1 strategy
         self.infilename = infilename
         self.outputdir = outputdir
         self.user = user
@@ -36,41 +37,53 @@ class PerformanceReport:
             self.memo = 'No comments'
 
     def get_performance_stats(self):
-        """ Return dict with performace stats for given strategy withing backtest
+        """ Return dict with performance stats for given strategy withing backtest
         """
         st = self.stratbt
         dt = st.data._dataname['open'].index
-        trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
-        rpl = trade_analysis.pnl.net.total
-        total_return = rpl / self.get_startcash()
-        total_number_trades = trade_analysis.total.total
-        trades_closed = trade_analysis.total.closed
+        #trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
+        #rpl = trade_analysis.pnl.net.total
+        #total_return = rpl / self.get_startcash()
+        #total_number_trades = trade_analysis.total.total
+        #trades_closed = trade_analysis.total.closed
         bt_period = dt[-1] - dt[0]
         bt_period_days = bt_period.days
         drawdown = st.analyzers.myDrawDown.get_analysis()
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
         sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
+        returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
+        annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
+        endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]
+        vwr = st.analyzers.myVWR.get_analysis()['vwr']
+
+        tot_return = 1
+        for key, value in annualreturns.items():
+            tot_return = tot_return * (1 + value)
+
+
         kpi = {# PnL
                'start_cash': self.get_startcash(),
-               'rpl': rpl,
-               'result_won_trades': trade_analysis.won.pnl.total,
-               'result_lost_trades': trade_analysis.lost.pnl.total,
-               'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
-               'rpl_per_trade': rpl / trades_closed,
-               'total_return': 100 * total_return,
-               'annual_return': (100 * (1 + total_return)**(365.25 / bt_period_days) - 100),
+               'end_value': endValue,
+               #'rpl': rpl,
+               #'result_won_trades': trade_analysis.won.pnl.total,
+               #'result_lost_trades': trade_analysis.lost.pnl.total,
+               #'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
+               #'rpl_per_trade': rpl / trades_closed,
+               'total_return': tot_return,
+               'annual_return': returns['rnorm100'],
+               'annual_return_asset': ((1 + returns['rtot'])**(365.25 / bt_period_days) - 1),
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
                # trades
-               'total_number_trades': total_number_trades,
-               'trades_closed': trades_closed,
-               'pct_winning': 100 * trade_analysis.won.total / trades_closed,
-               'pct_losing': 100 * trade_analysis.lost.total / trades_closed,
-               'avg_money_winning': trade_analysis.won.pnl.average,
-               'avg_money_losing':  trade_analysis.lost.pnl.average,
-               'best_winning_trade': trade_analysis.won.pnl.max,
-               'worst_losing_trade': trade_analysis.lost.pnl.max,
+               #'total_number_trades': total_number_trades,
+#               'pct_winning': 100 * trade_analysis.won.total / trades_closed,
+#               'pct_losing': 100 * trade_analysis.lost.total / trades_closed,
+#               'avg_money_winning': trade_analysis.won.pnl.average,
+#               'avg_money_losing':  trade_analysis.lost.pnl.average,
+#               'best_winning_trade': trade_analysis.won.pnl.max,
+#               'worst_losing_trade': trade_analysis.lost.pnl.max,
                #  performance
+               'vwr': vwr,
                'sharpe_ratio': sharpe_ratio,
                'sqn_score': sqn_score,
                'sqn_human': self._sqn2rating(sqn_score)
@@ -108,23 +121,26 @@ class PerformanceReport:
     def __str__(self):
         msg = ("*** PnL: ***\n"
                "Start capital         : {start_cash:4.2f}\n"
-               "Total net profit      : {rpl:4.2f}\n"
-               "Result winning trades : {result_won_trades:4.2f}\n"
-               "Result lost trades    : {result_lost_trades:4.2f}\n"
-               "Profit factor         : {profit_factor:4.2f}\n"
+               #"Total net profit      : {rpl:4.2f}\n"
+               "End capital           : {end_value:4.2f}\n"
+               #"Result winning trades : {result_won_trades:4.2f}\n"
+               #"Result lost trades    : {result_lost_trades:4.2f}\n"
+               #"Profit factor         : {profit_factor:4.2f}\n"
                "Total return          : {total_return:4.2f}%\n"
-               "Annual return         : {annual_return:4.2f}%\n"
+               "Annual return (asset) : {annual_return_asset:4.2f}%\n"
+               "Annual return (fund)  : {annual_return:4.2f}%\n"
                "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
                "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
-               "*** Trades ***\n"
-               "Number of trades      : {total_number_trades:d}\n"
-               "    %winning          : {pct_winning:4.2f}%\n"
-               "    %losing           : {pct_losing:4.2f}%\n"
-               "    avg money winning : {avg_money_winning:4.2f}\n"
-               "    avg money losing  : {avg_money_losing:4.2f}\n"
-               "    best winning trade: {best_winning_trade:4.2f}\n"
-               "    worst losing trade: {worst_losing_trade:4.2f}\n\n"
+               #"*** Trades ***\n"
+               #"Number of trades      : {total_number_trades:d}\n"
+               #"    %winning          : {pct_winning:4.2f}%\n"
+               #"    %losing           : {pct_losing:4.2f}%\n"
+               #"    avg money winning : {avg_money_winning:4.2f}\n"
+               #"    avg money losing  : {avg_money_losing:4.2f}\n"
+               #"    best winning trade: {best_winning_trade:4.2f}\n"
+               #"    worst losing trade: {worst_losing_trade:4.2f}\n\n"
                "*** Performance ***\n"
+               "Variability Weighted Return: {vwr:4.2f}\n"
                "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
                "SQN score             : {sqn_score:4.2f}\n"
                "SQN human             : {sqn_human:s}"
@@ -279,15 +295,28 @@ class Cerebro(bt.Cerebro):
             self.addanalyzer(bt.analyzers.SharpeRatio,
                              _name="mySharpe",
                              riskfreerate=riskfree,
-                             timeframe=bt.TimeFrame.Months)
-            self.addanalyzer(bt.analyzers.DrawDown,
+                             timeframe=bt.TimeFrame.Days,
+                             convertrate=True,
+                             factor=252,
+                             annualize=True,
+                             fund=True)
+            self.addanalyzer(bt.analyzers.DrawDown, fund=True,
                              _name="myDrawDown")
             self.addanalyzer(bt.analyzers.AnnualReturn,
-                             _name="myReturn")
-            self.addanalyzer(bt.analyzers.TradeAnalyzer,
-                             _name="myTradeAnalysis")
+                             _name="myAnnualReturn")
+            #self.addanalyzer(bt.analyzers.TradeAnalyzer,
+            #                 _name="myTradeAnalysis")
+            self.addanalyzer(bt.analyzers.Returns, fund=True,
+                             _name="myReturns")
             self.addanalyzer(bt.analyzers.SQN,
                              _name="mySqn")
+            self.addanalyzer(bt.analyzers.VWR,
+                             timeframe=bt.TimeFrame.Days,
+                             tau=2,
+                             sdev_max=0.2,
+                             fund=True,
+                             _name="myVWR")
+
 
     def get_strategy_backtest(self):
         return self.runstrats[0][0]

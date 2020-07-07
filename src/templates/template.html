@@ -142,28 +142,20 @@ th {
     <td>{{start_cash|round|int if start_cash != None else 'N/A'}}</td>
   </tr>
   <tr>
-    <td><b>total net profit</b></td>
-    <td>{{rpl|round(2, 'floor') if rpl != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>$ winning trades</b></td>
-    <td>{{result_won_trades|round(2, 'floor') if result_won_trades != None else 'N/A'}}</td>
+    <td><b>end capital</b></td>
+    <td>{{end_value|round(2, 'floor') if end_value != None else 'N/A'}}</td>
   </tr>
   <tr>
   <tr>
-    <td><b>$ lost trades</b></td>
-    <td>{{result_lost_trades|round(2, 'floor') if result_lost_trades != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>profit factor</b></td>
-    <td>{{profit_factor|round(2, 'floor') if profit_factor != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>total return</b></td>
+    <td><b>total return (assets)</b></td>
     <td>{{total_return|round(2, 'floor') if total_return != None else 'N/A'}}%</td>
   </tr>
   <tr>
-    <td><b>annual return</b></td>
+    <td><b>annual return (assets)</b></td>
+    <td>{{annual_return_asset|round(2, 'floor') if total_return != None else 'N/A'}}%</td>
+  </tr>
+  <tr>
+    <td><b>annual return (fund)</b></td>
     <td>{{annual_return|round(2, 'floor') if annual_return != None else 'N/A'}}%</td>
   </tr>
   <tr>
@@ -178,52 +170,6 @@ th {
 <tr>
   </table>
 
-<!-- Trades table -->
-
-  <table style="float: left" width="100%">
-  <col style="width:67%">
-  <col style="width:33%">  
- <caption><b><center>Trades</center></b></caption>
-  <tr>
-    <td><b>number of trades</b></td>
-    <td>{{total_number_trades|round|int if total_number_trades != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>%winning</b></td>
-    <td>{{pct_winning|round(2, 'floor') if pct_winning != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-    <td><b>%losing</b></td>
-    <td>{{pct_losing|round(2, 'floor') if pct_losing != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-    <td><b>avg $ winning</b></td>
-    <td>{{avg_money_winning|round(2, 'floor') if avg_money_winning != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>avg $ losing</b></td>
-    <td>{{avg_money_losing|round(2, 'floor') if avg_money_losing != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>best winning trade</b></td>
-    <td>{{best_winning_trade|round(2, 'floor') if best_winning_trade}}</td>
-  </tr>
-  <tr>
-    <td><b>worst losing trade</b></td>
-    <td>{{worst_losing_trade|round(2, 'floor') if worst_losing_trade}}</td>
-  </tr>
-  <tr>
-<tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-  <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-  <tr>
-  </table>
-
 <!-- KPI table -->
 
 
@@ -231,6 +177,10 @@ th {
   <col style="width:67%">
   <col style="width:33%">  
  <caption><b><center>KPI's</center></b></caption>
+  <tr>
+    <td><b>Variability Weighted Return</b></td>
+    <td>{{vwr|round(2, 'floor') if vwr != None else 'N/A'}}</td>
+  </tr>
   <tr>
     <td><b>sharpe ratio</b></td>
     <td>{{sharpe_ratio|round(2, 'floor') if sharpe_ratio != None else 'N/A'}}</td>
