@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument('--historic', action='store_true', default=False, required=False,help='would you like to use the historical manual data')
     parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,help='string corresponding to list of shares if not using historic')
     parser.add_argument('--weights', type=str, default='', required=False,help='string corresponding to list of weights. if no values, risk parity weights are taken')
+    parser.add_argument('--strategy', type=str, default='', required=True, help='string corresponding to the strategy that you would like to apply')
     parser.add_argument('--initial_cash', type=int, default=100000, required=False,help='initial_cash to start with')
     parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')
     parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')
@@ -104,7 +105,7 @@ if __name__=='__main__':
     for dt in data:
         cerebro.adddata(dt)
 
-    cerebro.addstrategy(uniform, n_assets=len(data))
+    cerebro.addstrategy(strat_dictionary(args.strategy), n_assets=len(data))
     cerebro.run()
     cerebro.plot(volume=False)
         
