@@ -33,17 +33,14 @@ if __name__=='__main__':
 
     startdate = datetime.datetime.strptime(args.startdate,"%Y-%m-%d")
     enddate = datetime.datetime.strptime(args.enddate,"%Y-%m-%d")
+
     
     data = []
     if args.historic:
         
         assetLabels = ['GLD','COM', 'SP500', 'LTB', 'ITB']
+        weights_list = [0.12,0.13,0.25,0.15,0.45]
 
-        params = (('alloc_gld', 0.12),
-                  ('alloc_com',0.13),
-                  ('alloc_spy',0.25),
-                  ('alloc_ltb',0.15),
-                  ('alloc_itb',0.45))
         
         for assetLabel in assetLabels:
             df = import_process_hist(assetLabel, args)
@@ -65,23 +62,19 @@ if __name__=='__main__':
         for i in range(len(shares_list)):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i],"yahoo",startdate, enddate)["Adj Close"] # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
-            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].rename(columns={"High":"high", "Low":"low","Open":"open", "Adj Close":"close"})
-            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].drop(columns=[0,"Close"])
-
+            
             for column in ['open','high', 'low']:
                 assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
                 
             assets_dic[shares_list[i]]['volume'] = 0
 
             
-            #print(assets_dic[shares_list[0]])
-            #break
             data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]],fromdate=startdate, todate=enddate,timeframe=bt.TimeFrame.Days))
         
         # if you provide the weights, use them
         if args.weights != '':
             weights_list = args.weights.split(',')
-            weights_listt = [int(i) for i in weights_list]
+            weights_list = [float(i) for i in weights_list]
               
         # otherwise, calculate the risk parity weights
         else:
@@ -91,24 +84,20 @@ if __name__=='__main__':
             port.design()
             weights_list = port.weights
 
-            
-        # allocate the weights to the right spots
-        params = ()
-        for i in range(len(shares_list)):
-            params += (('alloc_%s' %shares_list[i],weights_list[i]),)
 
 
-
+    
     cerebro = Cerebro()
     cerebro.broker.set_cash(args.initial_cash)
 
     for dt in data:
         cerebro.adddata(dt)
 
-    cerebro.addstrategy(strat_dictionary(args.strategy), n_assets=len(data))
+    cerebro.addstrategy(strat_dictionary(args.strategy), weights=weights_list)
     cerebro.run()
     cerebro.plot(volume=False)
         
     if args.create_report:
+        enddate = datetime.datetime.strftime(enddate, '%Y-%m-%d')
         cerebro.report('reports/')
-        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
+        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, enddate))

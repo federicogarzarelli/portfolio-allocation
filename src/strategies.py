@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from risk_budgeting import target_risk_contribution
 import os
 
+
+
 """
 Custom indicator to set the minimum period. 
 """
@@ -31,17 +33,20 @@ class StandaloneStrat(bt.Strategy):
         ('lookback_period_long', 180),  # period to calculate the correlation
         ('initial_cash', 100000),  # initial amount of cash to be invested
         ('monthly_cash', 10000),  # amount of cash to buy invested every month
-        ('n_assets', 5),  # number of assets
         ('printlog', True),
-        ('corrmethod', 'pearson'),  # 'spearman' # method for the calculation of the correlation matrix
+        ('corrmethod', 'pearson'),
+        ('weights', [])
     )
 
+    
     def __init__(self):
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
-        for asset in range(0, self.params.n_assets):
+        self.n_assets = len(self.datas)
+        for asset in range(0, self.n_assets):
             self.assets.append(self.datas[asset])
             self.assetclose.append(self.datas[asset].close)
+
 
         MinPeriodSetter(period=self.params.lookback_period_long)  # Set the minimum period
 
@@ -50,7 +55,6 @@ class StandaloneStrat(bt.Strategy):
         self.buyprice = None
         self.buycomm = None
 
-        self.weights = [0] * self.params.n_assets
 
     def start(self):
         self.broker.set_fundmode(fundmode=True)  # Activate the fund mode, default has 100 shares
@@ -122,49 +126,44 @@ The child classes below are specific to one strategy.
 
 class sixtyforty(StandaloneStrat):
     strategy_name = "60-40 Portfolio"
-
+        
     def next(self):
-        self.weights = [0, 0, 0.6, 0.20, 0.20]
 
         if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            for asset in range(0, self.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
 
 class onlystocks(StandaloneStrat):
     strategy_name = "Only Stocks Portfolio"
 
+        
     def next(self):
-        self.weights = [0, 0, 1, 0, 0]
 
         if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            for asset in range(0, self.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
 
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
-    #def __init__(self, **kwargs):
-    #    self.__dict__.update(kwargs)
         
     def next(self):
-        self.weights = [0.12, 0.13, 0.20, 0.15, 0.40]
-
         if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            for asset in range(0, self.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
 
 class uniform(StandaloneStrat):
     strategy_name = "Uniform Portfolio"
 
+        
     def next(self):
-        self.weights = [1 / self.params.n_assets] * self.params.n_assets
 
         if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            for asset in range(0, self.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
 
                 
@@ -173,8 +172,9 @@ class uniform(StandaloneStrat):
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
+        
     def next(self):
-        target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
+        target_risk = [1 / self.n_assets] * self.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
             logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
@@ -189,8 +189,8 @@ class riskparity(StandaloneStrat):
 
             self.weights = target_risk_contribution(target_risk, cov)
 
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            for asset in range(0, self.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
             self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
                                                                           self.broker.get_cash(),
@@ -202,6 +202,7 @@ class riskparity(StandaloneStrat):
 class meanvarStrat(StandaloneStrat):
     strategy_name = "Tangent Portfolio"
 
+    
     def next(self):
         print("Work in progress")
 
