@@ -98,6 +98,7 @@ if __name__=='__main__':
     cerebro.plot(volume=False)
         
     if args.create_report:
+        startdate = datetime.datetime.strftime(startdate, '%Y-%m-%d')
         enddate = datetime.datetime.strftime(enddate, '%Y-%m-%d')
         cerebro.report('reports/')
-        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, enddate))
+        os.rename('reports/report.pdf', 'reports/%s_%s_%s.pdf' %(args.strategy, startdate, enddate))
