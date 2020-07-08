@@ -124,46 +124,19 @@ The child classes below are specific to one strategy.
 """
 
 
-class sixtyforty(StandaloneStrat):
-    strategy_name = "60-40 Portfolio"
-        
-    def next(self):
-
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
-
-
-class onlystocks(StandaloneStrat):
-    strategy_name = "Only Stocks Portfolio"
-
-        
-    def next(self):
-
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
-
-
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
         
     def next(self):
         if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.n_assets):
+            
+            for asset in range(0, self.n_assets): 
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.n_assets): 
                 self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
-
-class uniform(StandaloneStrat):
-    strategy_name = "Uniform Portfolio"
-
-        
-    def next(self):
-
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.params.weights[asset])
 
 
                 
