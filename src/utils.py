@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
+
+
 def backtest(datas, strategy, plot=False, **kwargs):
     # initialize cerebro
     cerebro = bt.Cerebro()
