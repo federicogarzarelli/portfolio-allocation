@@ -3,7 +3,7 @@ import os
 import backtrader as bt
 import numpy as np
 import datetime
-
+from strategies import *
 from datetime import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
@@ -254,3 +254,27 @@ def load_economic_curves(start, end):
     df_fundamental['Max'] = df_fundamental.idxmax(axis=1)
     df_fundamental.index.name = 'Date'
     return df_fundamental
+
+
+
+def strat_dictionary(stratname):
+    assert stratname in ['sixtyforty', 'onlystocks',
+                         'vanillariskparity','uniform','riskparity', 'meanvar'], "unknown strategy"
+
+    if stratname == 'sixtyforty':
+        return sixtyforty
+
+    elif stratname == 'onlystocks':
+        return onlystocks
+
+    elif stratname == 'vanillariskparity':
+        return vanillariskparity
+
+    elif stratname == 'riskparity':
+        return riskparity
+
+    elif stratname == 'uniform':
+        return uniform
+
+    elif stratname == 'meanvarStrat':
+        return meanvarStrat

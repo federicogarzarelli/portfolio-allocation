@@ -45,6 +45,8 @@ class GetDate(bt.observer.Observer):
         self.lines.day[0] = self._owner.datas[0].datetime.date(0).day
 
 
+
+
 """
 Custom indicator to set the minimum period. 
 """
@@ -75,6 +77,7 @@ class StandaloneStrat(bt.Strategy):
         ('corrmethod', 'pearson'),  # 'spearman' # method for the calculation of the correlation matrix
     )
 
+
     def __init__(self):
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
@@ -101,8 +104,6 @@ class StandaloneStrat(bt.Strategy):
 
     def start(self):
         self.broker.set_fundmode(fundmode=True)  # Activate the fund mode, default has 100 shares
-        self.broker.set_checksubmit(checksubmit=False) # Do not check if there is enough margin or cash before executing the order
-        self.broker.set_shortcash(True)
         self.broker.set_cash(self.params.initial_cash)  # Set initial cash of the account
 
         # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
@@ -347,6 +348,7 @@ class rotationstrat(StandaloneStrat):
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
+
     def next(self):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
@@ -413,6 +415,7 @@ class riskparity_pylib(StandaloneStrat):
 # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
 class meanvarStrat(StandaloneStrat):
     strategy_name = "Tangent Portfolio"
+
 
     def next(self):
         print("Work in progress")

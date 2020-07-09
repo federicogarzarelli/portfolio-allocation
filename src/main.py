@@ -69,6 +69,8 @@ if __name__=='__main__':
         for i in range(len(shares_list)):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"] # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
+
+            for column in ['open','high', 'low']:
             #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].rename(columns={"High":"high", "Low":"low","Open":"open", "Adj Close":"close"})
             #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].drop(columns=[0,"Close"])
 
