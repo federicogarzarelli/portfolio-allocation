@@ -10,10 +10,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 from risk_budgeting import target_risk_contribution
 import os
+import riskparityportfolio as rp
+
+
+"""
+Custom observer to save the weights 
+"""
+
+
+class WeightsObserver(bt.observer.Observer):
+    params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
+    lines = tuple(['asset_' + str(i) for i in range(0, params[0][1])])
+
+    plotinfo = dict(plot=True, subplot=True, plotlinelabels=True)
+
+    def next(self):
+        for asset in range(0, self.params.n_assets):
+            self.lines[asset][0] = self._owner.weights[asset]
+
+
+"""
+Custom observer to get dates 
+"""
+
+
+class GetDate(bt.observer.Observer):
+    lines = ('year', 'month', 'day',)
+
+    plotinfo = dict(plot=False, subplot=False)
+
+    def next(self):
+        self.lines.year[0] = self._owner.datas[0].datetime.date(0).year
+        self.lines.month[0] = self._owner.datas[0].datetime.date(0).month
+        self.lines.day[0] = self._owner.datas[0].datetime.date(0).day
+
 
 """
 Custom indicator to set the minimum period. 
 """
+
+
 class MinPeriodSetter(bt.Indicator):
     lines = ('dummyline',)
 
@@ -21,6 +57,7 @@ class MinPeriodSetter(bt.Indicator):
 
     def __init__(self):
         self.addminperiod(self.params.period)
+
 
 # Create a subclass of bt.Strategy to define the indicators and logic.
 class StandaloneStrat(bt.Strategy):
@@ -32,6 +69,8 @@ class StandaloneStrat(bt.Strategy):
         ('initial_cash', 100000),  # initial amount of cash to be invested
         ('monthly_cash', 10000),  # amount of cash to buy invested every month
         ('n_assets', 5),  # number of assets
+        ('shareclass', []),  # class of assets
+        ('assetweights', []),  # weights of portfolio items (if provided)
         ('printlog', True),
         ('corrmethod', 'pearson'),  # 'spearman' # method for the calculation of the correlation matrix
     )
@@ -42,6 +81,14 @@ class StandaloneStrat(bt.Strategy):
         for asset in range(0, self.params.n_assets):
             self.assets.append(self.datas[asset])
             self.assetclose.append(self.datas[asset].close)
+
+        self.indassets = []  # Save indicators here
+        self.indassetsclose = []  # Keep a reference to the close price
+        indicator_idxs = [i for i, e in enumerate(self.params.shareclass) if e == 'non-tradable']
+        if indicator_idxs:
+            for indicator_idx in indicator_idxs:
+                self.indassets.append(self.datas[indicator_idx])
+                self.indassetsclose.append(self.datas[indicator_idx].close)
 
         MinPeriodSetter(period=self.params.lookback_period_long)  # Set the minimum period
 
@@ -54,6 +101,8 @@ class StandaloneStrat(bt.Strategy):
 
     def start(self):
         self.broker.set_fundmode(fundmode=True)  # Activate the fund mode, default has 100 shares
+        self.broker.set_checksubmit(checksubmit=False) # Do not check if there is enough margin or cash before executing the order
+        self.broker.set_shortcash(True)
         self.broker.set_cash(self.params.initial_cash)  # Set initial cash of the account
 
         # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
@@ -119,13 +168,43 @@ class StandaloneStrat(bt.Strategy):
 The child classes below are specific to one strategy.
 """
 
+class customweights(StandaloneStrat):
+    strategy_name = "Custom weights"
+
+    def prenext(self):
+        self.weights = self.params.assetweights
+
+    def next(self):
+        if len(self) % self.params.reb_days == 0:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 class sixtyforty(StandaloneStrat):
     strategy_name = "60-40 Portfolio"
 
-    def next(self):
-        self.weights = [0, 0, 0.6, 0.20, 0.20]
+    def prenext(self):
+        assetclass_allocation = {
+            "gold": 0,
+            "commodity": 0,
+            "equity": 0.6,
+            "bond_lt": 0.2,
+            "bond_it": 0.2
+        }
 
+        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+
+        assetclass_cnt = {}
+        for key in assetclass_allocation:
+            count = sum(map(lambda x: x == key, tradable_shareclass))
+            assetclass_cnt[key] = count
+
+        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+        self.weights = [float(x) / y for x, y in zip(a, b)]
+
+
+    def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
@@ -134,9 +213,28 @@ class sixtyforty(StandaloneStrat):
 class onlystocks(StandaloneStrat):
     strategy_name = "Only Stocks Portfolio"
 
-    def next(self):
-        self.weights = [0, 0, 1, 0, 0]
+    def prenext(self):
+        assetclass_allocation = {
+            "gold": 0,
+            "commodity": 0,
+            "equity": 1,
+            "bond_lt": 0,
+            "bond_it": 0
+        }
 
+        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+
+        assetclass_cnt = {}
+        for key in assetclass_allocation:
+            count = sum(map(lambda x: x == key, tradable_shareclass))
+            assetclass_cnt[key] = count
+
+        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+        self.weights = [float(x) / y for x, y in zip(a, b)]
+
+    def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
@@ -145,12 +243,28 @@ class onlystocks(StandaloneStrat):
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
-    #def __init__(self, **kwargs):
-    #    self.__dict__.update(kwargs)
-        
-    def next(self):
-        self.weights = [0.12, 0.13, 0.20, 0.15, 0.40]
+    def prenext(self):
+        assetclass_allocation = {
+            "gold": 0.12,
+            "commodity": 0.13,
+            "equity": 0.2,
+            "bond_lt": 0.15,
+            "bond_it": 0.4
+        }
 
+        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+
+        assetclass_cnt = {}
+        for key in assetclass_allocation:
+            count = sum(map(lambda x: x == key, tradable_shareclass))
+            assetclass_cnt[key] = count
+
+        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+        self.weights = [float(x) / y for x, y in zip(a, b)]
+
+    def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
@@ -159,15 +273,75 @@ class vanillariskparity(StandaloneStrat):
 class uniform(StandaloneStrat):
     strategy_name = "Uniform Portfolio"
 
+    def prenext(self):
+        assetclass_allocation = {
+            "gold": 0.2,
+            "commodity": 0.2,
+            "equity": 0.2,
+            "bond_lt": 0.2,
+            "bond_it": 0.2
+        }
+
+        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+
+        assetclass_cnt = {}
+        for key in assetclass_allocation:
+            count = sum(map(lambda x: x == key, tradable_shareclass))
+            assetclass_cnt[key] = count
+
+        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+        self.weights = [float(x) / y for x, y in zip(a, b)]
+
     def next(self):
-        self.weights = [1 / self.params.n_assets] * self.params.n_assets
+        if len(self) % self.params.reb_days == 0:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+
+class rotationstrat(StandaloneStrat):
+    strategy_name = "Asset rotation strategy"
+
+    def next(self):
+        assetclass_allocation = {
+            "gold": 0,
+            "commodity": 0,
+            "equity": 0,
+            "bond_lt": 0,
+            "bond_it": 0
+        }
+
+        strat = {
+            1: "gold",
+            2: "bond_lt",
+            3: "equity"
+        }
+
+        which_max = self.indassetsclose.index(max(self.indassetsclose))
+
+        winningAsset = strat.get(which_max)
+
+        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+
+        for key in assetclass_allocation:
+            if key == winningAsset:
+                assetclass_allocation[key] = 1
+
+        assetclass_cnt = {}
+        for key in assetclass_allocation:
+            count = sum(map(lambda x: x == key, tradable_shareclass))
+            assetclass_cnt[key] = count
+
+        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+        self.weights = [float(x) / y for x, y in zip(a, b)]
 
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
-                
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 class riskparity(StandaloneStrat):
@@ -178,6 +352,12 @@ class riskparity(StandaloneStrat):
 
         if len(self) % self.params.reb_days == 0:
             logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
+
+            # Check if logrets for all assets exist
+            logrets_len = [len(i) for i in logrets]
+            if not(len(set(logrets_len)) <= 1):
+                return
+
             if self.params.corrmethod == 'pearson':
                 corr = np.corrcoef(logrets)
             elif self.params.corrmethod == 'spearman':
@@ -196,6 +376,38 @@ class riskparity(StandaloneStrat):
                                                                           self.broker.get_cash(),
                                                                           self.broker.get_fundvalue()))
 
+# Risk parity portfolio. The implementation is based on the Python library riskparity portfolio
+class riskparity_pylib(StandaloneStrat):
+    strategy_name = "Risk Parity (PythonLib)"
+
+    def next(self):
+        target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
+
+        if len(self) % self.params.reb_days == 0:
+            logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
+
+            # Check if logrets for all assets exist
+            logrets_len = [len(i) for i in logrets]
+            if not(len(set(logrets_len)) <= 1):
+                return
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            self.weights = rp.RiskParityPortfolio(covariance=cov, budget=target_risk).weights
+
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+
+            self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
+                                                                          self.broker.get_cash(),
+                                                                          self.broker.get_fundvalue()))
 
 # Optimal tangent portfolio according to the Modern Portfolio theory by Markowitz. The implementation is based on:
 # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/
@@ -204,5 +416,3 @@ class meanvarStrat(StandaloneStrat):
 
     def next(self):
         print("Work in progress")
-
-

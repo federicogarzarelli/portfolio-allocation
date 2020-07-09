@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
+import pandas_datareader.data as web
+
 
 
 
@@ -239,3 +241,16 @@ def dir_exists(foldername):
     """ Return True if folder exists, else False
     """
     return os.path.isdir(foldername)
+
+"""
+load indicators for the rotational strategy
+"""
+def load_economic_curves(start, end):
+    list_fundamental = ['T10YIE','DFII20','T10Y2Y']
+    df_fundamental = web.DataReader(list_fundamental,"fred", start=start, end=end)
+    df_fundamental = df_fundamental.dropna()
+    df_fundamental['T10YIE_T10Y2Y'] = df_fundamental['T10YIE'] - df_fundamental['T10Y2Y']
+    df_fundamental = df_fundamental.drop(['T10YIE'], axis=1)
+    df_fundamental['Max'] = df_fundamental.idxmax(axis=1)
+    df_fundamental.index.name = 'Date'
+    return df_fundamental

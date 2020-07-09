@@ -7,20 +7,21 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 from utils import timestamp2str, get_now, dir_exists
 import numpy as np
-
+from strategies import *
 
 class PerformanceReport:
     """ Report with performance stats for given backtest run
     """
 
     def __init__(self, stratbt, infilename,
-                 outputdir, user, memo):
+                 outputdir, user, memo, system):
         self.stratbt = stratbt  # works for only 1 strategy
         self.infilename = infilename
         self.outputdir = outputdir
         self.user = user
         self.memo = memo
         self.check_and_assign_defaults()
+        self.system = system
 
     def check_and_assign_defaults(self):
         """ Check initialization parameters or assign defaults
@@ -32,15 +33,17 @@ class PerformanceReport:
             print(msg.format(self.outputdir))
             sys.exit(0)
         if not self.user:
-            self.user = 'Happy Canary'
+            self.user = 'Fabio & Federico'
         if not self.memo:
-            self.memo = 'No comments'
+            self.memo = 'Testing'
+
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
         """
         st = self.stratbt
-        dt = st.data._dataname['open'].index
+        dt = self.get_date_index()
+
         #trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
         #rpl = trade_analysis.pnl.net.total
         #total_return = rpl / self.get_startcash()
@@ -50,7 +53,7 @@ class PerformanceReport:
         bt_period_days = bt_period.days
         drawdown = st.analyzers.myDrawDown.get_analysis()
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
-        sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
+        #sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
         returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
         endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]
@@ -69,9 +72,9 @@ class PerformanceReport:
                #'result_lost_trades': trade_analysis.lost.pnl.total,
                #'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
                #'rpl_per_trade': rpl / trades_closed,
-               'total_return': tot_return,
+               'total_return': 100*tot_return,
                'annual_return': returns['rnorm100'],
-               'annual_return_asset': ((1 + returns['rtot'])**(365.25 / bt_period_days) - 1),
+               'annual_return_asset': 100*((1 + tot_return)**(365.25 / bt_period_days) - 1),
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
                # trades
@@ -85,8 +88,8 @@ class PerformanceReport:
                #  performance
                'vwr': vwr,
                'sharpe_ratio': sharpe_ratio,
-               'sqn_score': sqn_score,
-               'sqn_human': self._sqn2rating(sqn_score)
+               #'sqn_score': sqn_score,
+               #'sqn_human': self._sqn2rating(sqn_score)
                }
         return kpi
 
@@ -94,15 +97,23 @@ class PerformanceReport:
         """ Return series containing equity curve
         """
         st = self.stratbt
-        dt = st.data._dataname['open'].index
-        value = st.observers.broker.lines[1].array[:len(dt)]
-        curve = pd.Series(data=value, index=dt)
+        #dt = st.data._dataname['open'].index
+        value = st.observers.broker.lines[1].array
+        vv = np.asarray(value)
+        vv = vv[~np.isnan(vv)]
+
+        dt = self.get_date_index()
+
+        #curve = pd.Series(data=value, index=dt)
+        curve = pd.Series(data=vv, index=dt)
         return 100 * curve / curve.iloc[0]
 
+    """ Converts sqn_score score to human readable rating
+            See: http://www.vantharp.com/tharp-concepts/sqn.asp
+            """
+    """
     def _sqn2rating(self, sqn_score):
-        """ Converts sqn_score score to human readable rating
-        See: http://www.vantharp.com/tharp-concepts/sqn.asp
-        """
+        
         if sqn_score < 1.6:
             return "Poor"
         elif sqn_score < 1.9:
@@ -117,6 +128,8 @@ class PerformanceReport:
             return "Superb"
         else:
             return "Holy Grail"
+    """
+
 
     def __str__(self):
         msg = ("*** PnL: ***\n"
@@ -142,8 +155,8 @@ class PerformanceReport:
                "*** Performance ***\n"
                "Variability Weighted Return: {vwr:4.2f}\n"
                "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
-               "SQN score             : {sqn_score:4.2f}\n"
-               "SQN human             : {sqn_human:s}"
+               #"SQN score             : {sqn_score:4.2f}\n"
+               #"SQN human             : {sqn_human:s}"
                )
         kpis = self.get_performance_stats()
         # see: https://stackoverflow.com/questions/24170519/
@@ -155,14 +168,14 @@ class PerformanceReport:
         """ Plots equity curve to png file
         """
         curve = self.get_equity_curve()
-        buynhold = self.get_buynhold_curve()
+        #buynhold = self.get_buynhold_curve()
         xrnge = [curve.index[0], curve.index[-1]]
         dotted = pd.Series(data=[100, 100], index=xrnge)
         fig, ax = plt.subplots(1, 1)
         ax.set_ylabel('Net Asset Value (start=100)')
         ax.set_title('Equity curve')
         _ = curve.plot(kind='line', ax=ax)
-        _ = buynhold.plot(kind='line', ax=ax, color='grey')
+        #_ = buynhold.plot(kind='line', ax=ax, color='grey')
         _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
         return fig
 
@@ -221,9 +234,14 @@ class PerformanceReport:
         template = env.get_template("templates/template.html")
         header = self.get_header_data()
         kpis = self.get_performance_stats()
-        graphics = {'url_equity_curve': 'file://' + eq_curve,
-                    'url_return_curve': 'file://' + rt_curve
-                    }
+        if self.system == 'windows':
+            graphics = {'url_equity_curve': 'file:\\' + eq_curve,
+                        'url_return_curve': 'file:\\' + rt_curve
+                        }
+        else:
+            graphics = {'url_equity_curve': 'file://' + eq_curve,
+                        'url_return_curve': 'file://' + rt_curve
+                        }
         all_numbers = {**header, **kpis, **graphics}
         html_out = template.render(all_numbers)
         return html_out
@@ -243,16 +261,34 @@ class PerformanceReport:
     def get_strategy_params(self):
         return self.stratbt.cerebro.strats[0][0][-1]
 
+    def get_date_index(self):
+        st = self.stratbt
+        # Get dates from the observer
+        year = st.observers.getdate.lines[0].array
+        month = st.observers.getdate.lines[1].array
+        day = st.observers.getdate.lines[2].array
+
+        # Put all together and drop na
+        df = pd.DataFrame(data = list(zip(day.tolist(), month.tolist(), year.tolist())),
+                          columns=["day", "month", "year"])
+        df = df.dropna()
+
+        # Transform into DatetimeIndex
+        df = pd.to_datetime(df[["day", "month", "year"]])
+        df.index = df
+        return df.index
+
     def get_start_date(self):
         """ Return first datafeed datetime
         """
-        dt = self.stratbt.data._dataname['open'].index
+
+        dt = self.get_date_index()
         return timestamp2str(dt[0])
 
     def get_end_date(self):
         """ Return first datafeed datetime
         """
-        dt = self.stratbt.data._dataname['open'].index
+        dt = self.get_date_index()
         return timestamp2str(dt[-1])
 
     def get_header_data(self):
@@ -269,25 +305,31 @@ class PerformanceReport:
                   }
         return header
 
+    """ Return data series
+    """
+    """
     def get_series(self, column='close'):
-        """ Return data series
-        """
         return self.stratbt.data._dataname[column]
 
+    # Returns Buy & Hold equity curve starting at 100
     def get_buynhold_curve(self):
-        """ Returns Buy & Hold equity curve starting at 100
-        """
+        
         s = self.get_series(column='open')
         return 100 * s / s[0]
 
+"""
     def get_startcash(self):
         return self.stratbt.broker.startingcash
-
 
 class Cerebro(bt.Cerebro):
     def __init__(self, **kwds):
         super().__init__(**kwds)
         self.add_report_analyzers()
+        self.add_report_observers()
+
+    def add_report_observers(self):
+        self.addobserver(GetDate)
+
 
     def add_report_analyzers(self, riskfree=0.01):
             """ Adds performance stats, required for report
@@ -322,9 +364,10 @@ class Cerebro(bt.Cerebro):
         return self.runstrats[0][0]
 
     def report(self, outputdir,
-               infilename=None, user=None, memo=None):
+               infilename=None, user=None, memo=None, system=None):
         bt = self.get_strategy_backtest()
         rpt =PerformanceReport(bt, infilename=infilename,
                                outputdir=outputdir, user=user,
-                               memo=memo)
+                               memo=memo,
+                               system=system)
         rpt.generate_pdf_report()
