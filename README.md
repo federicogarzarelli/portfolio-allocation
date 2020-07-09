@@ -98,7 +98,7 @@ python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,g
 - [X] Create a small function to emulate leverage
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
-- [ ] Bucketing by asset classes and put into place the strategy for the weights of each bucket
+- [X] Bucketing by asset classes and put into place the strategy for the weights of each bucket
 - [X] Implement asset rotation strategy
 - [ ] Integrate  asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong
