@@ -32,10 +32,10 @@ python main.py [--historic | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST
 ```
                
 
-DESCRIPTION
+## DESCRIPTION
 Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. 
 
-OPTIONS
+## OPTIONS
 * `--historic`             use historical asset data ('GLD', 'COM', 'SP500', 'LTB', 'ITB'), already downloaded manually. Alternative is --shares
 * `--shares`               use downloaded asset data of the tickers specified in comma separated list (e.g. "SPY,TLT,GLD"). Alternative is --historic.
 * `--shareclass`           class of each share specified after --shares (e.g. "equity,bond_lt,gold"). Possibilities are "equity, bond_lt, bond_it, gold, commodity", where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when --shares is chosen__
@@ -52,7 +52,7 @@ OPTIONS
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.
 * `--leverage`             leverage to consider. Leverage is applied both with historical (--historic) and automatic (--shares). data Default is 1. 
 
-EXAMPLES
+## EXAMPLES
 1. Historical data, uniform strategy
 
 ```bash
