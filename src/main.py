@@ -70,18 +70,11 @@ if __name__=='__main__':
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"] # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
 
-            for column in ['open','high', 'low']:
-            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].rename(columns={"High":"high", "Low":"low","Open":"open", "Adj Close":"close"})
-            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].drop(columns=[0,"Close"])
-
             for column in ['open', 'high', 'low']:
                 assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
                 
             assets_dic[shares_list[i]]['volume'] = 0
 
-            
-            #print(assets_dic[shares_list[0]])
-            #break
             data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
 
         shareclass = args.shareclass.split(',')

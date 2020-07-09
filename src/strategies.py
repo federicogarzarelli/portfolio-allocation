@@ -178,6 +178,9 @@ class customweights(StandaloneStrat):
     def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 class sixtyforty(StandaloneStrat):
@@ -207,6 +210,9 @@ class sixtyforty(StandaloneStrat):
 
     def next(self):
         if len(self) % self.params.reb_days == 0:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
@@ -238,6 +244,9 @@ class onlystocks(StandaloneStrat):
     def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
@@ -268,6 +277,9 @@ class vanillariskparity(StandaloneStrat):
     def next(self):
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
@@ -297,6 +309,9 @@ class uniform(StandaloneStrat):
 
     def next(self):
         if len(self) % self.params.reb_days == 0:
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
@@ -340,6 +355,9 @@ class rotationstrat(StandaloneStrat):
 
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
@@ -370,6 +388,9 @@ class riskparity(StandaloneStrat):
             cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
             self.weights = target_risk_contribution(target_risk, cov)
+
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
 
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
@@ -405,7 +426,11 @@ class riskparity_pylib(StandaloneStrat):
             self.weights = rp.RiskParityPortfolio(covariance=cov, budget=target_risk).weights
 
             for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
+
 
             self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
                                                                           self.broker.get_cash(),
