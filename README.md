@@ -68,13 +68,13 @@ python main.py --historic --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100
  3. Automatically downloaded data, custom weights
 
 ```bash
-python main.py --shares "SPY,QQQ,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 4. Automatically downloaded data, 60-40 strategy
 
 ```bash
-python main.py --shares "SPY,QQQ,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 # Dataset explanation
