@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')
     parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')
     parser.add_argument('--report_type', type=str, default='OneStrategyPDF', required=False,help='if create_report is True, specify the type of report between OneStrategyPDF, StrategiesComparison')
-    parser.add_argument('--strategy', type=str, default='uniform', required=False,help='if report_type = OneStrategyPDF, specify the strategy')
+    parser.add_argument('--strategy', type=str, required=False, help='if report_type = OneStrategyPDF, specify the strategy')
     parser.add_argument('--startdate', type=str, default='2017-01-01', required=True,help='starting date of the simulation')
     parser.add_argument('--enddate', type=str, default=now, required=True,help='end date of the simulation')
     parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
@@ -101,7 +101,7 @@ if __name__=='__main__':
     # Add the strategy
     n_assets = len([x for x in shareclass if x != 'non-tradable'])
     # if you provide the weights, use them
-    if args.weights != '':
+    if args.weights != '' or args.strategy is None:
         weights_list = args.weights.split(',')
         weights_listt = [float(i) for i in weights_list]
 
@@ -122,4 +122,9 @@ if __name__=='__main__':
         
     if args.create_report:
         cerebro.report('reports/', system=args.system)
-        os.rename('reports/report.pdf', 'reports/%s_%s_%s.pdf' %(args.report_name, eval(args.strategy).strategy_name, startdate.isoformat().replace(':', '')))
+        if args.strategy is None:
+            strat_name = "StratNotSpecified"
+        else:
+            strat_name = eval(args.strategy).strategy_name
+
+        os.rename('reports/report.pdf', 'reports/%s_%s_%s.pdf' %(args.report_name, strat_name, startdate.isoformat().replace(':', '')))

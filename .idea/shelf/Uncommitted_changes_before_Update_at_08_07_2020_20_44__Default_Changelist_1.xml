@@ -1,0 +1,24 @@
+<changelist name="Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1" date="1594233927365" recycled="true" deleted="true">
+  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1/shelved.patch" />
+  <option name="DESCRIPTION" value="Uncommitted changes before Update at 08/07/2020 20:44 [Default Changelist]" />
+  <binary>
+    <option name="BEFORE_PATH" value="src/testReport/report.pdf" />
+    <option name="AFTER_PATH" value="src/testReport/report.pdf" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1/report.pdf" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/testReport/Test_gspc.xlsx" />
+    <option name="AFTER_PATH" value="src/testReport/Test_gspc.xlsx" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1/Test_gspc.xlsx" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/templates/return_curve.png" />
+    <option name="AFTER_PATH" value="src/templates/return_curve.png" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1/return_curve.png" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/templates/equity_curve.png" />
+    <option name="AFTER_PATH" value="src/templates/equity_curve.png" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_08_07_2020_20_44_[Default_Changelist]1/equity_curve.png" />
+  </binary>
+</changelist>

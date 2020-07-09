@@ -1,0 +1,459 @@
+Index: src/templates/template.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><!DOCTYPE html>\r\n<html>\r\n<head>\r\n<style>\r\nbody {font-size: 70%;}\r\n\r\ntable {\r\n    table-layout: fixed;\r\n    width: 190px;\r\n    border-collapse: collapse;\r\n    border: 1px solid black;\r\n    margin: 5px;\r\n}\r\n\r\nth, td {\r\n    text-align: left;\r\n    padding: 1px;\r\n}\r\n\r\ntr {\r\n    background-color: #e6ffff;\r\n    color: 'black';\r\n}\r\n\r\nth {\r\n    background-color: #003366;\r\n    color:  #ffffff;\r\n}\r\n\r\n</style>\r\n</head>\r\n\r\n<body>\r\n\r\n<!-- ----------------------- header block ------------------- -->\r\n\r\n<h2><center>Canaries Backtesting Report</center></h2>\r\n\r\n<table style=\"float: left\">\r\n <col style=\"width:50%\">\r\n <col style=\"width:50%\">  \r\n  <tr>\r\n    <th colspan=\"2\" style=\"center\"><center>Strategy</center></th>\r\n  </tr>\r\n  <tr>\r\n    <td><b>name</b></td>\r\n    <td>{{strategy_name}}</td>\r\n  </tr>  \r\n\r\n{% for k, v in params.items() %}\r\n    <tr>\r\n    <td><b>{{k}}</b></td>\r\n    <td>{{v}}</td>\r\n  </tr>\r\n{% endfor %}\r\n\r\n</table>\r\n\r\n<table style=\"float: left\">\r\n <col style=\"width:33%\">\r\n <col style=\"width:67%\">\r\n  <tr>\r\n    <th colspan=\"2\"><center>Datafeed</center></th>\r\n  </tr>\r\n  <tr>\r\n    <td><b>file</b></td>\r\n    <td>{{file_name}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>start</b></td>\r\n    <td>{{start_date}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>end</b></td>\r\n    <td>{{end_date}}</td>\r\n  </tr>\r\n\r\n{% for i in range(params|length-2) %}\r\n    <tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n{% endfor %}\r\n</table>\r\n\r\n\r\n<table style=\"float: left\" width=\"100%\">\r\n  <col style=\"width:33%\">\r\n  <col style=\"width:67%\">  \r\n  <tr>\r\n    <th colspan=\"2\"><center>User</center></th>\r\n  </tr>\r\n  <tr>\r\n    <td><b>name</b></td>\r\n    <td>{{name_user}}</td>\r\n  </tr>\r\n   <tr>\r\n    <td><b>test at</b></td>\r\n    <td>{{processing_date}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>memo</b></td>\r\n    <td>{{memo_field}}</td>\r\n  </tr>\r\n{% for i in range(params|length-2) %}\r\n    <tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n{% endfor %}\r\n\r\n\r\n</table>\r\n\r\n\r\n\r\n<!-- -------------------- equity & return curve --------------- -->\r\n\r\n<p>\r\n<img src= \"{{url_equity_curve }}\" alt=\"Equity Curve\" style=\"width:650px;height:250px;\" class=center>\r\n</p>\r\n<p>\r\n<img src= \"{{url_return_curve }}\" alt=\"Return Curve\" style=\"width:650px;height:250px;\" class=center>\r\n</p>\r\n<!--\r\n<img src=\"/home/pieter/projects/btccxt/equity_curve.png\" alt=\"Equity Curve\" style=\"width:80px;height:30px;\" class=center> -->\r\n\r\n\r\n<!-- ------------------- performace statistics ----------------------------- -->\r\n<br>\r\n\r\n<h2><center>Strategy performance</center></h2>\r\n\r\n<!-- PnL table -->\r\n\r\n<table style=\"float: left\" width=\"100%\">\r\n  <col style=\"width:67%\">\r\n  <col style=\"width:33%\">  \r\n <caption><b><center>PnL</center></b></caption>   \r\n  <tr>\r\n    <td><b>start capital</b></td>\r\n    <td>{{start_cash|round|int if start_cash != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>end capital</b></td>\r\n    <td>{{end_value|round(2, 'floor') if end_value != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n  <tr>\r\n    <td><b>total return (assets)</b></td>\r\n    <td>{{total_return|round(2, 'floor') if total_return != None else 'N/A'}}%</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>annual return (assets)</b></td>\r\n    <td>{{annual_return_asset|round(2, 'floor') if total_return != None else 'N/A'}}%</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>annual return (fund)</b></td>\r\n    <td>{{annual_return|round(2, 'floor') if annual_return != None else 'N/A'}}%</td>\r\n  </tr>\r\n  <tr>\r\n  <tr>\r\n    <td><b>max. $ drawdown</b></td>\r\n    <td>{{max_money_drawdown|round(2, 'floor') if max_money_drawdown != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>max. % drawdown</b></td>\r\n    <td>{{max_pct_drawdown|round(2, 'floor') if max_pct_drawdown != None else 'N/A'}}%</td>\r\n  </tr>\r\n<tr>\r\n  </table>\r\n\r\n<!-- KPI table -->\r\n\r\n\r\n<table style=\"float: left\" width=\"100%\">\r\n  <col style=\"width:67%\">\r\n  <col style=\"width:33%\">  \r\n <caption><b><center>KPI's</center></b></caption>\r\n  <tr>\r\n    <td><b>Variability Weighted Return</b></td>\r\n    <td>{{vwr|round(2, 'floor') if vwr != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>sharpe ratio</b></td>\r\n    <td>{{sharpe_ratio|round(2, 'floor') if sharpe_ratio != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>SQN score</b></td>\r\n    <td>{{sqn_score|round(2, 'floor') if sqn_score != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>SQN human<b></td>\r\n    <td>{{sqn_human if sqn_human != None else 'N/A'}}</td>\r\n  </tr>\r\n  <tr>\r\n<tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n<tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n<tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n  <tr>\r\n    <td><b>&nbsp;</b></td>\r\n    <td>&nbsp;</td>\r\n  </tr>\r\n\r\n  </table>\r\n\r\n</font>\r\n</body>\r\n</html>\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/templates/template.html	(revision 09c3c7d180bf68478de6f6f6fe09ffb42e72ff41)
++++ src/templates/template.html	(date 1594232971682)
+@@ -173,7 +173,7 @@
+ <!-- KPI table -->
+ 
+ 
+-<table style="float: left" width="100%">
++<table style="float: right" width="100%">
+   <col style="width:67%">
+   <col style="width:33%">  
+  <caption><b><center>KPI's</center></b></caption>
+@@ -186,23 +186,7 @@
+     <td>{{sharpe_ratio|round(2, 'floor') if sharpe_ratio != None else 'N/A'}}</td>
+   </tr>
+   <tr>
+-    <td><b>SQN score</b></td>
+-    <td>{{sqn_score|round(2, 'floor') if sqn_score != None else 'N/A'}}</td>
+-  </tr>
+   <tr>
+-    <td><b>SQN human<b></td>
+-    <td>{{sqn_human if sqn_human != None else 'N/A'}}</td>
+-  </tr>
+-  <tr>
+-<tr>
+-    <td><b>&nbsp;</b></td>
+-    <td>&nbsp;</td>
+-  </tr>
+-  <tr>
+-    <td><b>&nbsp;</b></td>
+-    <td>&nbsp;</td>
+-  </tr>
+-<tr>
+     <td><b>&nbsp;</b></td>
+     <td>&nbsp;</td>
+   </tr>
+@@ -210,7 +194,7 @@
+     <td><b>&nbsp;</b></td>
+     <td>&nbsp;</td>
+   </tr>
+-<tr>
++  <tr>
+     <td><b>&nbsp;</b></td>
+     <td>&nbsp;</td>
+   </tr>
+@@ -219,6 +203,7 @@
+     <td>&nbsp;</td>
+   </tr>
+ 
++
+   </table>
+ 
+ </font>
+Index: src/main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\r\nfrom utils import *\r\nfrom strategies import *\r\nimport datetime\r\nimport argparse\r\nimport backtrader as bt\r\nimport riskparityportfolio as rp\r\nfrom report import Cerebro\r\n\r\n\r\ndef parse_args():\r\n    now = datetime.datetime.now().strftime(\"%Y_%m_%d\")# string to be used after\r\n    parser = argparse.ArgumentParser(description='main class to run strategies')\r\n    parser.add_argument('--historic', action='store_true', default=False, required=False,help='would you like to use the historical manual data')\r\n    parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,help='string corresponding to list of shares if not using historic')\r\n    parser.add_argument('--weights', type=str, default='', required=False,help='string corresponding to list of weights. if no values, risk parity weights are taken')\r\n    parser.add_argument('--initial_cash', type=int, default=100000, required=False,help='initial_cash to start with')\r\n    parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')\r\n    parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')\r\n    parser.add_argument('--startdate', type=str, default='2017-01-01', required=True,help='starting date of the simulation')\r\n    parser.add_argument('--enddate', type=str, default=now, required=True,help='end date of the simulation')\r\n    parser.add_argument('--system', type=str, default='microsoft', help='operating system, to deal with different paths')\r\n    parser.add_argument('--leverage', type=int, default=1, help='leverage to consider')\r\n    \r\n    return parser.parse_args()\r\n\r\n\r\n\r\nif __name__=='__main__':\r\n\r\n    args = parse_args()\r\n\r\n    startdate = datetime.datetime.strptime(args.startdate,\"%Y-%m-%d\")\r\n    enddate = datetime.datetime.strptime(args.enddate,\"%Y-%m-%d\")\r\n    \r\n    data = []\r\n    if args.historic:\r\n        \r\n        assetLabels = ['GLD','COM', 'SP500', 'LTB', 'ITB']\r\n\r\n        params = (('alloc_gld', 0.12),\r\n                  ('alloc_com',0.13),\r\n                  ('alloc_spy',0.25),\r\n                  ('alloc_ltb',0.15),\r\n                  ('alloc_itb',0.45))\r\n        \r\n        for assetLabel in assetLabels:\r\n            df = import_process_hist(assetLabel, args)\r\n            for column in ['open','high', 'low', 'close']:\r\n                df[column]=add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)\r\n\r\n            for column in ['open','high', 'low']:\r\n                df[column] = df['close']\r\n                \r\n            df['volume'] = 0\r\n                \r\n            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate,timeframe=bt.TimeFrame.Days))\r\n        \r\n    else:\r\n        shares_list = args.shares.split(',')\r\n\r\n        # download the datas\r\n        assets_dic = {}\r\n        for i in range(len(shares_list)):\r\n            assets_dic[shares_list[i]] = web.DataReader(shares_list[i],\"yahoo\",startdate, enddate)[\"Adj Close\"] # might not always work\r\n            assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame(\"close\")\r\n            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].rename(columns={\"High\":\"high\", \"Low\":\"low\",\"Open\":\"open\", \"Adj Close\":\"close\"})\r\n            #assets_dic[shares_list[i]] = assets_dic[shares_list[i]].drop(columns=[0,\"Close\"])\r\n\r\n            for column in ['open','high', 'low']:\r\n                assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']\r\n                \r\n            assets_dic[shares_list[i]]['volume'] = 0\r\n\r\n            \r\n            #print(assets_dic[shares_list[0]])\r\n            #break\r\n            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]],fromdate=startdate, todate=enddate,timeframe=bt.TimeFrame.Days))\r\n        \r\n        # if you provide the weights, use them\r\n        if args.weights != '':\r\n            weights_list = args.weights.split(',')\r\n            weights_listt = [int(i) for i in weights_list]\r\n              \r\n        # otherwise, calculate the risk parity weights\r\n        else:\r\n            cov = covariances(shares=shares_list, start=startdate,end=enddate)\r\n            target = np.array([1/len(shares_list)]*len(shares_list))\r\n            port = rp.RiskParityPortfolio(covariance=cov, budget=target)\r\n            port.design()\r\n            weights_list = port.weights\r\n\r\n            \r\n        # allocate the weights to the right spots\r\n        params = ()\r\n        for i in range(len(shares_list)):\r\n            params += (('alloc_%s' %shares_list[i],weights_list[i]),)\r\n\r\n\r\n\r\n    cerebro = Cerebro()\r\n    cerebro.broker.set_cash(args.initial_cash)\r\n\r\n    for dt in data:\r\n        cerebro.adddata(dt)\r\n\r\n    cerebro.addstrategy(uniform, n_assets=len(data))\r\n    cerebro.run()\r\n    cerebro.plot(volume=False)\r\n        \r\n    if args.create_report:\r\n        cerebro.report('reports/')\r\n        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main.py	(revision 09c3c7d180bf68478de6f6f6fe09ffb42e72ff41)
++++ src/main.py	(date 1594230439876)
+@@ -15,17 +15,18 @@
+     parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,help='string corresponding to list of shares if not using historic')
+     parser.add_argument('--weights', type=str, default='', required=False,help='string corresponding to list of weights. if no values, risk parity weights are taken')
+     parser.add_argument('--initial_cash', type=int, default=100000, required=False,help='initial_cash to start with')
++    parser.add_argument('--monthly_cash', type=float, default=10000.00, required=False,help='monthly cash invested')
+     parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')
+     parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')
++    parser.add_argument('--report_type', type=str, default='OneStrategyPDF', required=False,help='if create_report is True, specify the type of report between OneStrategyPDF, StrategiesComparison')
++    parser.add_argument('--strategy', type=str, default='uniform', required=False,help='if report_type = OneStrategyPDF, specify the strategy')
+     parser.add_argument('--startdate', type=str, default='2017-01-01', required=True,help='starting date of the simulation')
+     parser.add_argument('--enddate', type=str, default=now, required=True,help='end date of the simulation')
+-    parser.add_argument('--system', type=str, default='microsoft', help='operating system, to deal with different paths')
++    parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
+     parser.add_argument('--leverage', type=int, default=1, help='leverage to consider')
+     
+     return parser.parse_args()
+ 
+-
+-
+ if __name__=='__main__':
+ 
+     args = parse_args()
+@@ -36,7 +37,7 @@
+     data = []
+     if args.historic:
+         
+-        assetLabels = ['GLD','COM', 'SP500', 'LTB', 'ITB']
++        assetLabels = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']
+ 
+         params = (('alloc_gld', 0.12),
+                   ('alloc_com',0.13),
+@@ -104,10 +105,10 @@
+     for dt in data:
+         cerebro.adddata(dt)
+ 
+-    cerebro.addstrategy(uniform, n_assets=len(data))
++    cerebro.addstrategy(uniform, n_assets=len(data)) # OK for now but to be changed if we include non-tradeable data for the rotation strategy
+     cerebro.run()
+     cerebro.plot(volume=False)
+         
+     if args.create_report:
+-        cerebro.report('reports/')
+-        os.rename('reports/report.pdf', 'reports/%s_%s.pdf' %(args.report_name, startdate))
++        cerebro.report('reports/', system=args.system)
++        os.rename('reports/report.pdf', 'reports/%s_%s_%s.pdf' %(args.report_name, uniform.strategy_name, startdate.isoformat().replace(':', '')))
+Index: src/report.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import backtrader as bt\r\nimport sys\r\nimport matplotlib.pyplot as plt\r\nimport os\r\nimport pandas as pd\r\nfrom jinja2 import Environment, FileSystemLoader\r\nfrom weasyprint import HTML\r\nfrom utils import timestamp2str, get_now, dir_exists\r\nimport numpy as np\r\n\r\n\r\nclass PerformanceReport:\r\n    \"\"\" Report with performance stats for given backtest run\r\n    \"\"\"\r\n\r\n    def __init__(self, stratbt, infilename,\r\n                 outputdir, user, memo):\r\n        self.stratbt = stratbt  # works for only 1 strategy\r\n        self.infilename = infilename\r\n        self.outputdir = outputdir\r\n        self.user = user\r\n        self.memo = memo\r\n        self.check_and_assign_defaults()\r\n\r\n    def check_and_assign_defaults(self):\r\n        \"\"\" Check initialization parameters or assign defaults\r\n        \"\"\"\r\n        if not self.infilename:\r\n            self.infilename = 'Not given'\r\n        if not dir_exists(self.outputdir):\r\n            msg = \"*** ERROR: outputdir {} does not exist.\"\r\n            print(msg.format(self.outputdir))\r\n            sys.exit(0)\r\n        if not self.user:\r\n            self.user = 'Happy Canary'\r\n        if not self.memo:\r\n            self.memo = 'No comments'\r\n\r\n    def get_performance_stats(self):\r\n        \"\"\" Return dict with performance stats for given strategy withing backtest\r\n        \"\"\"\r\n        st = self.stratbt\r\n        dt = st.data._dataname['open'].index\r\n        #trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()\r\n        #rpl = trade_analysis.pnl.net.total\r\n        #total_return = rpl / self.get_startcash()\r\n        #total_number_trades = trade_analysis.total.total\r\n        #trades_closed = trade_analysis.total.closed\r\n        bt_period = dt[-1] - dt[0]\r\n        bt_period_days = bt_period.days\r\n        drawdown = st.analyzers.myDrawDown.get_analysis()\r\n        sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']\r\n        sqn_score = st.analyzers.mySqn.get_analysis()['sqn']\r\n        returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode\r\n        annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode\r\n        endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]\r\n        vwr = st.analyzers.myVWR.get_analysis()['vwr']\r\n\r\n        tot_return = 1\r\n        for key, value in annualreturns.items():\r\n            tot_return = tot_return * (1 + value)\r\n\r\n\r\n        kpi = {# PnL\r\n               'start_cash': self.get_startcash(),\r\n               'end_value': endValue,\r\n               #'rpl': rpl,\r\n               #'result_won_trades': trade_analysis.won.pnl.total,\r\n               #'result_lost_trades': trade_analysis.lost.pnl.total,\r\n               #'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),\r\n               #'rpl_per_trade': rpl / trades_closed,\r\n               'total_return': tot_return,\r\n               'annual_return': returns['rnorm100'],\r\n               'annual_return_asset': ((1 + returns['rtot'])**(365.25 / bt_period_days) - 1),\r\n               'max_money_drawdown': drawdown['max']['moneydown'],\r\n               'max_pct_drawdown': drawdown['max']['drawdown'],\r\n               # trades\r\n               #'total_number_trades': total_number_trades,\r\n#               'pct_winning': 100 * trade_analysis.won.total / trades_closed,\r\n#               'pct_losing': 100 * trade_analysis.lost.total / trades_closed,\r\n#               'avg_money_winning': trade_analysis.won.pnl.average,\r\n#               'avg_money_losing':  trade_analysis.lost.pnl.average,\r\n#               'best_winning_trade': trade_analysis.won.pnl.max,\r\n#               'worst_losing_trade': trade_analysis.lost.pnl.max,\r\n               #  performance\r\n               'vwr': vwr,\r\n               'sharpe_ratio': sharpe_ratio,\r\n               'sqn_score': sqn_score,\r\n               'sqn_human': self._sqn2rating(sqn_score)\r\n               }\r\n        return kpi\r\n\r\n    def get_equity_curve(self):\r\n        \"\"\" Return series containing equity curve\r\n        \"\"\"\r\n        st = self.stratbt\r\n        dt = st.data._dataname['open'].index\r\n        value = st.observers.broker.lines[1].array[:len(dt)]\r\n        curve = pd.Series(data=value, index=dt)\r\n        return 100 * curve / curve.iloc[0]\r\n\r\n    def _sqn2rating(self, sqn_score):\r\n        \"\"\" Converts sqn_score score to human readable rating\r\n        See: http://www.vantharp.com/tharp-concepts/sqn.asp\r\n        \"\"\"\r\n        if sqn_score < 1.6:\r\n            return \"Poor\"\r\n        elif sqn_score < 1.9:\r\n            return \"Below average\"\r\n        elif sqn_score < 2.4:\r\n            return \"Average\"\r\n        elif sqn_score < 2.9:\r\n            return \"Good\"\r\n        elif sqn_score < 5.0:\r\n            return \"Excellent\"\r\n        elif sqn_score < 6.9:\r\n            return \"Superb\"\r\n        else:\r\n            return \"Holy Grail\"\r\n\r\n    def __str__(self):\r\n        msg = (\"*** PnL: ***\\n\"\r\n               \"Start capital         : {start_cash:4.2f}\\n\"\r\n               #\"Total net profit      : {rpl:4.2f}\\n\"\r\n               \"End capital           : {end_value:4.2f}\\n\"\r\n               #\"Result winning trades : {result_won_trades:4.2f}\\n\"\r\n               #\"Result lost trades    : {result_lost_trades:4.2f}\\n\"\r\n               #\"Profit factor         : {profit_factor:4.2f}\\n\"\r\n               \"Total return          : {total_return:4.2f}%\\n\"\r\n               \"Annual return (asset) : {annual_return_asset:4.2f}%\\n\"\r\n               \"Annual return (fund)  : {annual_return:4.2f}%\\n\"\r\n               \"Max. money drawdown   : {max_money_drawdown:4.2f}\\n\"\r\n               \"Max. percent drawdown : {max_pct_drawdown:4.2f}%\\n\\n\"\r\n               #\"*** Trades ***\\n\"\r\n               #\"Number of trades      : {total_number_trades:d}\\n\"\r\n               #\"    %winning          : {pct_winning:4.2f}%\\n\"\r\n               #\"    %losing           : {pct_losing:4.2f}%\\n\"\r\n               #\"    avg money winning : {avg_money_winning:4.2f}\\n\"\r\n               #\"    avg money losing  : {avg_money_losing:4.2f}\\n\"\r\n               #\"    best winning trade: {best_winning_trade:4.2f}\\n\"\r\n               #\"    worst losing trade: {worst_losing_trade:4.2f}\\n\\n\"\r\n               \"*** Performance ***\\n\"\r\n               \"Variability Weighted Return: {vwr:4.2f}\\n\"\r\n               \"Sharpe ratio          : {sharpe_ratio:4.2f}\\n\"\r\n               \"SQN score             : {sqn_score:4.2f}\\n\"\r\n               \"SQN human             : {sqn_human:s}\"\r\n               )\r\n        kpis = self.get_performance_stats()\r\n        # see: https://stackoverflow.com/questions/24170519/\r\n        # python-# typeerror-non-empty-format-string-passed-to-object-format\r\n        kpis = {k: -999 if v is None else v for k, v in kpis.items()}\r\n        return msg.format(**kpis)\r\n\r\n    def plot_equity_curve(self, fname='equity_curve.png'):\r\n        \"\"\" Plots equity curve to png file\r\n        \"\"\"\r\n        curve = self.get_equity_curve()\r\n        buynhold = self.get_buynhold_curve()\r\n        xrnge = [curve.index[0], curve.index[-1]]\r\n        dotted = pd.Series(data=[100, 100], index=xrnge)\r\n        fig, ax = plt.subplots(1, 1)\r\n        ax.set_ylabel('Net Asset Value (start=100)')\r\n        ax.set_title('Equity curve')\r\n        _ = curve.plot(kind='line', ax=ax)\r\n        _ = buynhold.plot(kind='line', ax=ax, color='grey')\r\n        _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')\r\n        return fig\r\n\r\n    def _get_periodicity(self):\r\n        \"\"\" Maps length backtesting interval to appropriate periodiciy for return plot\r\n        \"\"\"\r\n        curve = self.get_equity_curve()\r\n        startdate = curve.index[0]\r\n        enddate = curve.index[-1]\r\n        time_interval = enddate - startdate\r\n        time_interval_days = time_interval.days\r\n        if time_interval_days > 5 * 365.25:\r\n            periodicity = ('Yearly', 'Y')\r\n        elif time_interval_days > 365.25:\r\n            periodicity = ('Monthly', 'M')\r\n        elif time_interval_days > 50:\r\n            periodicity = ('Weekly', '168H')\r\n        elif time_interval_days > 5:\r\n            periodicity = ('Daily', '24H')\r\n        elif time_interval_days > 0.5:\r\n            periodicity = ('Hourly', 'H')\r\n        elif time_interval_days > 0.05:\r\n            periodicity = ('Per 15 Min', '15M')\r\n        else: periodicity = ('Per minute', '1M')\r\n        return periodicity\r\n\r\n    def plot_return_curve(self, fname='return_curve.png'):\r\n        \"\"\" Plots return curve to png file\r\n        \"\"\"\r\n        curve = self.get_equity_curve()\r\n        period = self._get_periodicity()\r\n        values = curve.resample(period[1]).ohlc()['close']\r\n        # returns = 100 * values.diff().shift(-1) / values\r\n        returns = 100 * values.diff() / values\r\n        returns.index = returns.index.date\r\n        is_positive = returns > 0\r\n        fig, ax = plt.subplots(1, 1)\r\n        ax.set_title(\"{} returns\".format(period[0]))\r\n        ax.set_xlabel(\"date\")\r\n        ax.set_ylabel(\"return (%)\")\r\n        _ = returns.plot.bar(color=is_positive.map({True: 'green', False: 'red'}), ax=ax)\r\n        return fig\r\n\r\n    def generate_html(self):\r\n        \"\"\" Returns parsed HTML text string for report\r\n        \"\"\"\r\n        basedir = os.path.abspath(os.path.dirname(__file__))\r\n        images = os.path.join(basedir, 'templates')\r\n        eq_curve = os.path.join(images, 'equity_curve.png')\r\n        rt_curve = os.path.join(images, 'return_curve.png')\r\n        fig_equity = self.plot_equity_curve()\r\n        fig_equity.savefig(eq_curve)\r\n        fig_return = self.plot_return_curve()\r\n        fig_return.savefig(rt_curve)\r\n        env = Environment(loader=FileSystemLoader('.'))\r\n        template = env.get_template(\"templates/template.html\")\r\n        header = self.get_header_data()\r\n        kpis = self.get_performance_stats()\r\n        graphics = {'url_equity_curve': 'file://' + eq_curve,\r\n                    'url_return_curve': 'file://' + rt_curve\r\n                    }\r\n        all_numbers = {**header, **kpis, **graphics}\r\n        html_out = template.render(all_numbers)\r\n        return html_out\r\n\r\n    def generate_pdf_report(self):\r\n        \"\"\" Returns PDF report with backtest results\r\n        \"\"\"\r\n        html = self.generate_html()\r\n        outfile = os.path.join(self.outputdir, 'report.pdf')\r\n        HTML(string=html).write_pdf(outfile)\r\n        msg = \"See {} for report with backtest results.\"\r\n        print(msg.format(outfile))\r\n\r\n    def get_strategy_name(self):\r\n        return self.stratbt.__class__.__name__\r\n\r\n    def get_strategy_params(self):\r\n        return self.stratbt.cerebro.strats[0][0][-1]\r\n\r\n    def get_start_date(self):\r\n        \"\"\" Return first datafeed datetime\r\n        \"\"\"\r\n        dt = self.stratbt.data._dataname['open'].index\r\n        return timestamp2str(dt[0])\r\n\r\n    def get_end_date(self):\r\n        \"\"\" Return first datafeed datetime\r\n        \"\"\"\r\n        dt = self.stratbt.data._dataname['open'].index\r\n        return timestamp2str(dt[-1])\r\n\r\n    def get_header_data(self):\r\n        \"\"\" Return dict with data for report header\r\n        \"\"\"\r\n        header = {'strategy_name': self.get_strategy_name(),\r\n                  'params': self.get_strategy_params(),\r\n                  'file_name': self.infilename,\r\n                  'start_date': self.get_start_date(),\r\n                  'end_date': self.get_end_date(),\r\n                  'name_user': self.user,\r\n                  'processing_date': get_now(),\r\n                  'memo_field': self.memo\r\n                  }\r\n        return header\r\n\r\n    def get_series(self, column='close'):\r\n        \"\"\" Return data series\r\n        \"\"\"\r\n        return self.stratbt.data._dataname[column]\r\n\r\n    def get_buynhold_curve(self):\r\n        \"\"\" Returns Buy & Hold equity curve starting at 100\r\n        \"\"\"\r\n        s = self.get_series(column='open')\r\n        return 100 * s / s[0]\r\n\r\n    def get_startcash(self):\r\n        return self.stratbt.broker.startingcash\r\n\r\n\r\nclass Cerebro(bt.Cerebro):\r\n    def __init__(self, **kwds):\r\n        super().__init__(**kwds)\r\n        self.add_report_analyzers()\r\n\r\n    def add_report_analyzers(self, riskfree=0.01):\r\n            \"\"\" Adds performance stats, required for report\r\n            \"\"\"\r\n            self.addanalyzer(bt.analyzers.SharpeRatio,\r\n                             _name=\"mySharpe\",\r\n                             riskfreerate=riskfree,\r\n                             timeframe=bt.TimeFrame.Days,\r\n                             convertrate=True,\r\n                             factor=252,\r\n                             annualize=True,\r\n                             fund=True)\r\n            self.addanalyzer(bt.analyzers.DrawDown, fund=True,\r\n                             _name=\"myDrawDown\")\r\n            self.addanalyzer(bt.analyzers.AnnualReturn,\r\n                             _name=\"myAnnualReturn\")\r\n            #self.addanalyzer(bt.analyzers.TradeAnalyzer,\r\n            #                 _name=\"myTradeAnalysis\")\r\n            self.addanalyzer(bt.analyzers.Returns, fund=True,\r\n                             _name=\"myReturns\")\r\n            self.addanalyzer(bt.analyzers.SQN,\r\n                             _name=\"mySqn\")\r\n            self.addanalyzer(bt.analyzers.VWR,\r\n                             timeframe=bt.TimeFrame.Days,\r\n                             tau=2,\r\n                             sdev_max=0.2,\r\n                             fund=True,\r\n                             _name=\"myVWR\")\r\n\r\n\r\n    def get_strategy_backtest(self):\r\n        return self.runstrats[0][0]\r\n\r\n    def report(self, outputdir,\r\n               infilename=None, user=None, memo=None):\r\n        bt = self.get_strategy_backtest()\r\n        rpt =PerformanceReport(bt, infilename=infilename,\r\n                               outputdir=outputdir, user=user,\r\n                               memo=memo)\r\n        rpt.generate_pdf_report()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/report.py	(revision 09c3c7d180bf68478de6f6f6fe09ffb42e72ff41)
++++ src/report.py	(date 1594232913877)
+@@ -7,20 +7,21 @@
+ from weasyprint import HTML
+ from utils import timestamp2str, get_now, dir_exists
+ import numpy as np
+-
++from strategies import *
+ 
+ class PerformanceReport:
+     """ Report with performance stats for given backtest run
+     """
+ 
+     def __init__(self, stratbt, infilename,
+-                 outputdir, user, memo):
++                 outputdir, user, memo, system):
+         self.stratbt = stratbt  # works for only 1 strategy
+         self.infilename = infilename
+         self.outputdir = outputdir
+         self.user = user
+         self.memo = memo
+         self.check_and_assign_defaults()
++        self.system = system
+ 
+     def check_and_assign_defaults(self):
+         """ Check initialization parameters or assign defaults
+@@ -32,15 +33,17 @@
+             print(msg.format(self.outputdir))
+             sys.exit(0)
+         if not self.user:
+-            self.user = 'Happy Canary'
++            self.user = 'Fabio & Federico'
+         if not self.memo:
+-            self.memo = 'No comments'
++            self.memo = 'Testing'
++
+ 
+     def get_performance_stats(self):
+         """ Return dict with performance stats for given strategy withing backtest
+         """
+         st = self.stratbt
+-        dt = st.data._dataname['open'].index
++        dt = self.get_date_index()
++
+         #trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
+         #rpl = trade_analysis.pnl.net.total
+         #total_return = rpl / self.get_startcash()
+@@ -50,7 +53,7 @@
+         bt_period_days = bt_period.days
+         drawdown = st.analyzers.myDrawDown.get_analysis()
+         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
+-        sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
++        #sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
+         returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
+         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
+         endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]
+@@ -69,9 +72,9 @@
+                #'result_lost_trades': trade_analysis.lost.pnl.total,
+                #'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
+                #'rpl_per_trade': rpl / trades_closed,
+-               'total_return': tot_return,
++               'total_return': 100*tot_return,
+                'annual_return': returns['rnorm100'],
+-               'annual_return_asset': ((1 + returns['rtot'])**(365.25 / bt_period_days) - 1),
++               'annual_return_asset': 100*((1 + tot_return)**(365.25 / bt_period_days) - 1),
+                'max_money_drawdown': drawdown['max']['moneydown'],
+                'max_pct_drawdown': drawdown['max']['drawdown'],
+                # trades
+@@ -85,8 +88,8 @@
+                #  performance
+                'vwr': vwr,
+                'sharpe_ratio': sharpe_ratio,
+-               'sqn_score': sqn_score,
+-               'sqn_human': self._sqn2rating(sqn_score)
++               #'sqn_score': sqn_score,
++               #'sqn_human': self._sqn2rating(sqn_score)
+                }
+         return kpi
+ 
+@@ -94,15 +97,23 @@
+         """ Return series containing equity curve
+         """
+         st = self.stratbt
+-        dt = st.data._dataname['open'].index
+-        value = st.observers.broker.lines[1].array[:len(dt)]
+-        curve = pd.Series(data=value, index=dt)
++        #dt = st.data._dataname['open'].index
++        value = st.observers.broker.lines[1].array
++        vv = np.asarray(value)
++        vv = vv[~np.isnan(vv)]
++
++        dt = self.get_date_index()
++
++        #curve = pd.Series(data=value, index=dt)
++        curve = pd.Series(data=vv, index=dt)
+         return 100 * curve / curve.iloc[0]
+ 
+-    def _sqn2rating(self, sqn_score):
+-        """ Converts sqn_score score to human readable rating
+-        See: http://www.vantharp.com/tharp-concepts/sqn.asp
+-        """
++    """ Converts sqn_score score to human readable rating
++            See: http://www.vantharp.com/tharp-concepts/sqn.asp
++            """
++    """
++    def _sqn2rating(self, sqn_score):
++        
+         if sqn_score < 1.6:
+             return "Poor"
+         elif sqn_score < 1.9:
+@@ -117,6 +128,8 @@
+             return "Superb"
+         else:
+             return "Holy Grail"
++    """
++
+ 
+     def __str__(self):
+         msg = ("*** PnL: ***\n"
+@@ -142,8 +155,8 @@
+                "*** Performance ***\n"
+                "Variability Weighted Return: {vwr:4.2f}\n"
+                "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
+-               "SQN score             : {sqn_score:4.2f}\n"
+-               "SQN human             : {sqn_human:s}"
++               #"SQN score             : {sqn_score:4.2f}\n"
++               #"SQN human             : {sqn_human:s}"
+                )
+         kpis = self.get_performance_stats()
+         # see: https://stackoverflow.com/questions/24170519/
+@@ -155,14 +168,14 @@
+         """ Plots equity curve to png file
+         """
+         curve = self.get_equity_curve()
+-        buynhold = self.get_buynhold_curve()
++        #buynhold = self.get_buynhold_curve()
+         xrnge = [curve.index[0], curve.index[-1]]
+         dotted = pd.Series(data=[100, 100], index=xrnge)
+         fig, ax = plt.subplots(1, 1)
+         ax.set_ylabel('Net Asset Value (start=100)')
+         ax.set_title('Equity curve')
+         _ = curve.plot(kind='line', ax=ax)
+-        _ = buynhold.plot(kind='line', ax=ax, color='grey')
++        #_ = buynhold.plot(kind='line', ax=ax, color='grey')
+         _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+         return fig
+ 
+@@ -221,9 +234,14 @@
+         template = env.get_template("templates/template.html")
+         header = self.get_header_data()
+         kpis = self.get_performance_stats()
+-        graphics = {'url_equity_curve': 'file://' + eq_curve,
+-                    'url_return_curve': 'file://' + rt_curve
+-                    }
++        if self.system == 'windows':
++            graphics = {'url_equity_curve': 'file:\\' + eq_curve,
++                        'url_return_curve': 'file:\\' + rt_curve
++                        }
++        else:
++            graphics = {'url_equity_curve': 'file://' + eq_curve,
++                        'url_return_curve': 'file://' + rt_curve
++                        }
+         all_numbers = {**header, **kpis, **graphics}
+         html_out = template.render(all_numbers)
+         return html_out
+@@ -243,16 +261,34 @@
+     def get_strategy_params(self):
+         return self.stratbt.cerebro.strats[0][0][-1]
+ 
++    def get_date_index(self):
++        st = self.stratbt
++        # Get dates from the observer
++        year = st.observers.getdate.lines[0].array
++        month = st.observers.getdate.lines[1].array
++        day = st.observers.getdate.lines[2].array
++
++        # Put all together and drop na
++        df = pd.DataFrame(data = list(zip(day.tolist(), month.tolist(), year.tolist())),
++                          columns=["day", "month", "year"])
++        df = df.dropna()
++
++        # Transform into DatetimeIndex
++        df = pd.to_datetime(df[["day", "month", "year"]])
++        df.index = df
++        return df.index
++
+     def get_start_date(self):
+         """ Return first datafeed datetime
+         """
+-        dt = self.stratbt.data._dataname['open'].index
++
++        dt = self.get_date_index()
+         return timestamp2str(dt[0])
+ 
+     def get_end_date(self):
+         """ Return first datafeed datetime
+         """
+-        dt = self.stratbt.data._dataname['open'].index
++        dt = self.get_date_index()
+         return timestamp2str(dt[-1])
+ 
+     def get_header_data(self):
+@@ -269,25 +305,31 @@
+                   }
+         return header
+ 
++    """ Return data series
++    """
++    """
+     def get_series(self, column='close'):
+-        """ Return data series
+-        """
+         return self.stratbt.data._dataname[column]
+ 
++    # Returns Buy & Hold equity curve starting at 100
+     def get_buynhold_curve(self):
+-        """ Returns Buy & Hold equity curve starting at 100
+-        """
++        
+         s = self.get_series(column='open')
+         return 100 * s / s[0]
+ 
++"""
+     def get_startcash(self):
+         return self.stratbt.broker.startingcash
+ 
+-
+ class Cerebro(bt.Cerebro):
+     def __init__(self, **kwds):
+         super().__init__(**kwds)
+         self.add_report_analyzers()
++        self.add_report_observers()
++
++    def add_report_observers(self):
++        self.addobserver(GetDate)
++
+ 
+     def add_report_analyzers(self, riskfree=0.01):
+             """ Adds performance stats, required for report
+@@ -322,9 +364,10 @@
+         return self.runstrats[0][0]
+ 
+     def report(self, outputdir,
+-               infilename=None, user=None, memo=None):
++               infilename=None, user=None, memo=None, system=None):
+         bt = self.get_strategy_backtest()
+         rpt =PerformanceReport(bt, infilename=infilename,
+                                outputdir=outputdir, user=user,
+-                               memo=memo)
++                               memo=memo,
++                               system=system)
+         rpt.generate_pdf_report()
+Index: src/strategies.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># -*- coding: utf-8 -*-\r\nimport matplotlib\r\nfrom math import *\r\nimport pandas as pd\r\nimport pandas_datareader.data as web\r\nimport datetime\r\nfrom scipy import stats, optimize, interpolate\r\nimport backtrader as bt\r\nimport numpy as np\r\nimport matplotlib.pyplot as plt\r\nfrom risk_budgeting import target_risk_contribution\r\nimport os\r\n\r\n\"\"\"\r\nCustom indicator to set the minimum period. \r\n\"\"\"\r\nclass MinPeriodSetter(bt.Indicator):\r\n    lines = ('dummyline',)\r\n\r\n    params = (('period', 180),)\r\n\r\n    def __init__(self):\r\n        self.addminperiod(self.params.period)\r\n\r\n# Create a subclass of bt.Strategy to define the indicators and logic.\r\nclass StandaloneStrat(bt.Strategy):\r\n    # parameters which are configurable for the strategy\r\n    params = (\r\n        ('reb_days', 20),  # every month, we rebalance the portfolio\r\n        ('lookback_period_short', 60),  # period to calculate the variance\r\n        ('lookback_period_long', 180),  # period to calculate the correlation\r\n        ('initial_cash', 100000),  # initial amount of cash to be invested\r\n        ('monthly_cash', 10000),  # amount of cash to buy invested every month\r\n        ('n_assets', 5),  # number of assets\r\n        ('printlog', True),\r\n        ('corrmethod', 'pearson'),  # 'spearman' # method for the calculation of the correlation matrix\r\n    )\r\n\r\n    def __init__(self):\r\n        self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here\r\n        self.assetclose = []  # Keep a reference to the close price\r\n        for asset in range(0, self.params.n_assets):\r\n            self.assets.append(self.datas[asset])\r\n            self.assetclose.append(self.datas[asset].close)\r\n\r\n        MinPeriodSetter(period=self.params.lookback_period_long)  # Set the minimum period\r\n\r\n        # To keep track of pending orders and buy price/commission\r\n        self.order = None\r\n        self.buyprice = None\r\n        self.buycomm = None\r\n\r\n        self.weights = [0] * self.params.n_assets\r\n\r\n    def start(self):\r\n        self.broker.set_fundmode(fundmode=True)  # Activate the fund mode, default has 100 shares\r\n        self.broker.set_cash(self.params.initial_cash)  # Set initial cash of the account\r\n\r\n        # Add a timer which will be called on the 20st trading day of the month, when salaries are paid\r\n        self.add_timer(\r\n            bt.timer.SESSION_END,\r\n            monthdays=[20],  # called on the 20th day of the month\r\n            monthcarry=True  # called on another day if 20th day is vacation/weekend)\r\n        )\r\n\r\n    def notify_timer(self, timer, when, *args, **kwargs):\r\n        # Add the monthly cash to the broker\r\n        self.broker.add_cash(self.params.monthly_cash)  # Add monthly cash on the 20th day\r\n        self.log('MONTHLY CASH ADDED')\r\n\r\n    def log(self, txt, dt=None):\r\n        ''' Logging function for this strategy txt is the statement and dt can be used to specify a specific datetime'''\r\n        if self.params.printlog:\r\n            dt = dt or self.datas[0].datetime.date(0)\r\n            print('%s, %s' % (dt.isoformat(), txt))\r\n\r\n    def notify_order(self, order):\r\n        if order.status in [order.Submitted, order.Accepted]:\r\n            # Buy/Sell order submitted/accepted to/by broker - Nothing to do\r\n            return\r\n\r\n        # Check if an order has been completed\r\n        # Attention: broker could reject order if not enough cash\r\n        if order.status in [order.Completed]:\r\n            if order.isbuy():\r\n                self.log(\r\n                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %\r\n                    (order.executed.price,\r\n                     order.executed.value,\r\n                     order.executed.comm))\r\n                self.buyprice = order.executed.price\r\n                self.buycomm = order.executed.comm\r\n            elif order.issell():\r\n                self.log(\r\n                    'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %\r\n                    (order.executed.price,\r\n                     order.executed.value,\r\n                     order.executed.comm))\r\n\r\n            self.bar_executed = len(self)\r\n\r\n        elif order.status in [order.Canceled, order.Margin, order.Rejected]:\r\n            self.log('Order Canceled/Margin/Rejected')\r\n\r\n        # Write down: no pending order\r\n        self.order = None\r\n\r\n    def notify_trade(self, trade):\r\n        if not trade.isclosed:\r\n            return\r\n        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %\r\n                 (trade.pnl, trade.pnlcomm))\r\n\r\n    def get_weights(self):\r\n        return self.weights\r\n\r\n\r\n\"\"\"\r\nThe child classes below are specific to one strategy.\r\n\"\"\"\r\n\r\n\r\nclass sixtyforty(StandaloneStrat):\r\n    strategy_name = \"60-40 Portfolio\"\r\n\r\n    def next(self):\r\n        self.weights = [0, 0, 0.6, 0.20, 0.20]\r\n\r\n        if len(self) % self.params.reb_days == 0:\r\n            for asset in range(0, self.params.n_assets):\r\n                self.order_target_percent(self.assets[asset], target=self.weights[asset])\r\n\r\n\r\nclass onlystocks(StandaloneStrat):\r\n    strategy_name = \"Only Stocks Portfolio\"\r\n\r\n    def next(self):\r\n        self.weights = [0, 0, 1, 0, 0]\r\n\r\n        if len(self) % self.params.reb_days == 0:\r\n            for asset in range(0, self.params.n_assets):\r\n                self.order_target_percent(self.assets[asset], target=self.weights[asset])\r\n\r\n\r\nclass vanillariskparity(StandaloneStrat):\r\n    strategy_name = \"Vanilla Risk Parity Portfolio\"\r\n\r\n    #def __init__(self, **kwargs):\r\n    #    self.__dict__.update(kwargs)\r\n        \r\n    def next(self):\r\n        self.weights = [0.12, 0.13, 0.20, 0.15, 0.40]\r\n\r\n        if len(self) % self.params.reb_days == 0:\r\n            for asset in range(0, self.params.n_assets):\r\n                self.order_target_percent(self.assets[asset], target=self.weights[asset])\r\n\r\n\r\nclass uniform(StandaloneStrat):\r\n    strategy_name = \"Uniform Portfolio\"\r\n\r\n    def next(self):\r\n        self.weights = [1 / self.params.n_assets] * self.params.n_assets\r\n\r\n        if len(self) % self.params.reb_days == 0:\r\n            for asset in range(0, self.params.n_assets):\r\n                self.order_target_percent(self.assets[asset], target=self.weights[asset])\r\n\r\n\r\n                \r\n# Risk parity portfolio. The implementation is based on:\r\n# https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /\r\nclass riskparity(StandaloneStrat):\r\n    strategy_name = \"Risk Parity\"\r\n\r\n    def next(self):\r\n        target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity\r\n\r\n        if len(self) % self.params.reb_days == 0:\r\n            logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]\r\n            if self.params.corrmethod == 'pearson':\r\n                corr = np.corrcoef(logrets)\r\n            elif self.params.corrmethod == 'spearman':\r\n                corr, p, = stats.spearmanr(logrets, axis=1)\r\n\r\n            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator\r\n            stddev_matrix = np.diag(stddev)\r\n            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix\r\n\r\n            self.weights = target_risk_contribution(target_risk, cov)\r\n\r\n            for asset in range(0, self.params.n_assets):\r\n                self.order_target_percent(self.assets[asset], target=self.weights[asset])\r\n\r\n            self.log(\"Shares %.2f, Current cash %.2f, Fund value %.2f\" % (self.broker.get_fundshares(),\r\n                                                                          self.broker.get_cash(),\r\n                                                                          self.broker.get_fundvalue()))\r\n\r\n\r\n# Optimal tangent portfolio according to the Modern Portfolio theory by Markowitz. The implementation is based on:\r\n# https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/\r\nclass meanvarStrat(StandaloneStrat):\r\n    strategy_name = \"Tangent Portfolio\"\r\n\r\n    def next(self):\r\n        print(\"Work in progress\")\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/strategies.py	(revision 09c3c7d180bf68478de6f6f6fe09ffb42e72ff41)
++++ src/strategies.py	(date 1594223532002)
+@@ -11,9 +11,43 @@
+ from risk_budgeting import target_risk_contribution
+ import os
+ 
++"""
++Custom observer to save the weights 
++"""
++
++
++class WeightsObserver(bt.observer.Observer):
++    params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
++    lines = tuple(['asset_' + str(i) for i in range(0, params[0][1])])
++
++    plotinfo = dict(plot=True, subplot=True, plotlinelabels=True)
++
++    def next(self):
++        for asset in range(0, self.params.n_assets):
++            self.lines[asset][0] = self._owner.weights[asset]
++
++
++"""
++Custom observer to get dates 
++"""
++
++
++class GetDate(bt.observer.Observer):
++    lines = ('year', 'month', 'day',)
++
++    plotinfo = dict(plot=False, subplot=False)
++
++    def next(self):
++        self.lines.year[0] = self._owner.datas[0].datetime.date(0).year
++        self.lines.month[0] = self._owner.datas[0].datetime.date(0).month
++        self.lines.day[0] = self._owner.datas[0].datetime.date(0).day
++
++
+ """
+ Custom indicator to set the minimum period. 
+ """
++
++
+ class MinPeriodSetter(bt.Indicator):
+     lines = ('dummyline',)
+ 
+@@ -22,6 +56,7 @@
+     def __init__(self):
+         self.addminperiod(self.params.period)
+ 
++
+ # Create a subclass of bt.Strategy to define the indicators and logic.
+ class StandaloneStrat(bt.Strategy):
+     # parameters which are configurable for the strategy
+@@ -145,9 +180,9 @@
+ class vanillariskparity(StandaloneStrat):
+     strategy_name = "Vanilla Risk Parity Portfolio"
+ 
+-    #def __init__(self, **kwargs):
++    # def __init__(self, **kwargs):
+     #    self.__dict__.update(kwargs)
+-        
++
+     def next(self):
+         self.weights = [0.12, 0.13, 0.20, 0.15, 0.40]
+ 
+@@ -167,7 +202,6 @@
+                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
+ 
+ 
+-                
+ # Risk parity portfolio. The implementation is based on:
+ # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
+ class riskparity(StandaloneStrat):
+@@ -204,5 +238,3 @@
+ 
+     def next(self):
+         print("Work in progress")
+-
+-
