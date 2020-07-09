@@ -32,10 +32,10 @@ python main.py [--historic | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST
 ```
                
 
-DESCRIPTION
+## DESCRIPTION
 Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. 
 
-OPTIONS
+## OPTIONS
 * `--historic`             use historical asset data ('GLD', 'COM', 'SP500', 'LTB', 'ITB'), already downloaded manually. Alternative is --shares
 * `--shares`               use downloaded asset data of the tickers specified in comma separated list (e.g. "SPY,TLT,GLD"). Alternative is --historic.
 * `--shareclass`           class of each share specified after --shares (e.g. "equity,bond_lt,gold"). Possibilities are "equity, bond_lt, bond_it, gold, commodity", where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when --shares is chosen__
@@ -50,31 +50,31 @@ OPTIONS
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
 * `--enddate`              end date of the simulation.  If not specified backtrader will take the latest possible date. (To test)
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.
-* `--leverage`             leverage to consider. Leverage is applied both with historical (--historical) and automatic (--shares). data Default is 1. 
+* `--leverage`             leverage to consider. Leverage is applied both with historical (--historic) and automatic (--shares). data Default is 1. 
 
-EXAMPLES
+## EXAMPLES
 1. Historical data, uniform strategy
 
 ```bash
-python main.py --historical --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 2. Historical data, custom weights
 
 ```bash
-python main.py --historical --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
  3. Automatically downloaded data, custom weights
 
 ```bash
-python main.py --shares "SPY,QQQ,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 4. Automatically downloaded data, 60-40 strategy
 
 ```bash
-python main.py --shares "SPY,QQQ,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 # Dataset explanation
