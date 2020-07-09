@@ -363,15 +363,110 @@ class rotationstrat(StandaloneStrat):
 
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
+# Here the risk parity is run only at portfolio level
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
-
 
     def next(self):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
             logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
+
+            # Check if logrets for all assets exist
+            logrets_len = [len(i) for i in logrets]
+            if not (len(set(logrets_len)) <= 1):
+                return
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            self.weights = target_risk_contribution(target_risk, cov)
+
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=0.0)
+
+            for asset in range(0, self.params.n_assets):
+                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+
+            self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
+                                                                          self.broker.get_cash(),
+                                                                          self.broker.get_fundvalue()))
+
+# Risk parity portfolio. The implementation is based on:
+# https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
+# Here the risk parity is run first at asset class level and then at portfolio level. To be used when more than an asset
+# is present in each category
+class riskparity_nested(StandaloneStrat):
+    strategy_name = "Risk Parity (Nested)"
+
+    def next(self):
+        assetclass_allocation = {
+            "gold": 0,
+            "commodity": 0,
+            "equity": 0,
+            "bond_lt": 0,
+            "bond_it": 0
+        }
+
+        if len(self) % self.params.reb_days == 0:
+
+            shareclass_prices = []
+            shareclass_cnt = []
+            assetWeights = []
+            # First run risk parity at asset class level
+            for key in assetclass_allocation:
+                # Get the assets whose asset class is "key"
+                count = sum(map(lambda x: x == key, self.params.shareclass))
+                shareclass_cnt.append(count)
+                if count > 1:
+                    thisAssetClass_target_risk = [1 / count] * count # Same risk for each assetclass = risk parity
+
+                    # calculate the logreturns
+                    thisAssetClass_idx = [i for i, e in enumerate(self.params.shareclass) if e == key]
+                    thisAssetClassClose = [self.assetclose[i] for i in thisAssetClass_idx]
+                    logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in thisAssetClassClose]
+
+                    # Check if logrets for all assets exist
+                    logrets_len = [len(i) for i in logrets]
+                    if not (len(set(logrets_len)) <= 1):
+                        return
+
+                    if self.params.corrmethod == 'pearson':
+                        corr = np.corrcoef(logrets)
+                    elif self.params.corrmethod == 'spearman':
+                        corr, p, = stats.spearmanr(logrets, axis=1)
+
+                    stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+                    stddev_matrix = np.diag(stddev)
+                    cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+                    # Calculate the asset class weights
+                    thisAssetClassWeights = target_risk_contribution(thisAssetClass_target_risk, cov)
+                    assetWeights.append(thisAssetClassWeights)
+
+                    # Calculate the synthetic asset class price
+                    prod = 0
+                    for i in range(0, count):
+                        prod = np.add(prod, np.multiply(thisAssetClassWeights[i], thisAssetClassClose[i].array))
+
+                    shareclass_prices.append(prod)
+
+                if count == 1:
+                    thisAssetClass_idx = [i for i, e in enumerate(self.params.shareclass) if e == key]
+                    thisAssetClassClose = [self.assetclose[i] for i in thisAssetClass_idx]
+                    shareclass_prices.append(thisAssetClassClose[0].array)
+                    assetWeights.append(np.asarray([1]))
+
+            # Now re-run risk parity at portfolio level, using the synthetic assets
+            target_risk = [1 / np.count_nonzero(shareclass_cnt)] * np.count_nonzero(shareclass_cnt)  # Same risk for each assetclass = risk parit
+            logrets = [np.diff(np.log(x)) for x in shareclass_prices]
 
             # Check if logrets for all assets exist
             logrets_len = [len(i) for i in logrets]
@@ -387,8 +482,29 @@ class riskparity(StandaloneStrat):
             stddev_matrix = np.diag(stddev)
             cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
-            self.weights = target_risk_contribution(target_risk, cov)
+            assetClass_weights = target_risk_contribution(target_risk, cov)
 
+            # Now cascade down the weights at asset level
+            keys = pd.DataFrame()
+            keys["keys"]=list(assetclass_allocation.keys())
+            keys["cnt"]=shareclass_cnt
+            keys = keys[keys.cnt > 0]
+            keys_lst = keys['keys'].tolist()
+
+            weights = pd.DataFrame(columns=["sort", "weights"])
+            for i in range(0, len(assetClass_weights)):
+                thisAssetClass_idx = [k for k, e in enumerate(self.params.shareclass) if e == keys_lst[i]]
+                for j in range(0, len(assetWeights[i])):
+                    to_append=[thisAssetClass_idx[j], assetClass_weights[i] * assetWeights[i][j]]
+                    a_series = pd.Series(to_append, index=weights.columns)
+                    weights = weights.append(a_series, ignore_index=True)
+
+            # and rearrange the weights
+            weights_lst = weights.sort_values("sort")["weights"].to_list()
+
+            self.weights = weights_lst
+
+            # Finally send the orders
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=0.0)
 

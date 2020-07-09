@@ -5,7 +5,15 @@
 body {font-size: 70%;}
 
 table {
-    table-layout: fixed;
+    table-layout: auto;
+    width: 250px;
+    border-collapse: collapse;
+    border: 1px solid black;
+    margin: 5px;
+}
+
+table_small {
+    table-layout: auto;
     width: 190px;
     border-collapse: collapse;
     border: 1px solid black;
@@ -26,6 +34,8 @@ th {
     background-color: #003366;
     color:  #ffffff;
 }
+
+</style>
 
 </style>
 </head>
@@ -117,16 +127,16 @@ th {
 <!-- -------------------- equity & return curve --------------- -->
 
 <p>
-<img src= "{{url_equity_curve }}" alt="Equity Curve" style="width:650px;height:250px;" class=center>
+<img src= "{{url_equity_curve }}" alt="Equity Curve" style="width:650px;height:500px;" class=center>
 </p>
 <p>
-<img src= "{{url_return_curve }}" alt="Return Curve" style="width:650px;height:250px;" class=center>
+<img src= "{{url_return_curve }}" alt="Return Curve" style="width:650px;height:500px;" class=center>
 </p>
 <!--
 <img src="/home/pieter/projects/btccxt/equity_curve.png" alt="Equity Curve" style="width:80px;height:30px;" class=center> -->
 
 
-<!-- ------------------- performace statistics ----------------------------- -->
+<!-- ------------------- performance statistics ----------------------------- -->
 <br>
 
 <h2><center>Strategy performance</center></h2>
@@ -143,7 +153,7 @@ th {
   </tr>
   <tr>
     <td><b>end capital</b></td>
-    <td>{{end_value|round(2, 'floor') if end_value != None else 'N/A'}}</td>
+    <td>{{end_value|round|int if end_value != None else 'N/A'}}</td>
   </tr>
   <tr>
   <tr>
@@ -179,10 +189,10 @@ th {
  <caption><b><center>KPI's</center></b></caption>
   <tr>
     <td><b>Variability Weighted Return</b></td>
-    <td>{{vwr|round(2, 'floor') if vwr != None else 'N/A'}}</td>
+    <td>{{vwr|round(2, 'floor') if vwr != None else 'N/A'}}%</td>
   </tr>
   <tr>
-    <td><b>sharpe ratio</b></td>
+    <td><b>Sharpe Ratio</b></td>
     <td>{{sharpe_ratio|round(2, 'floor') if sharpe_ratio != None else 'N/A'}}</td>
   </tr>
   <tr>
@@ -205,6 +215,32 @@ th {
 
 
   </table>
+
+<!-- ------------------- weights ----------------------------- -->
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+<section>
+
+    <h2><center>Asset weights</center></h2>
+
+    <!-- Weights table -->
+    {{ weights_table | safe }}
+
+</section>
+
+
 
 </font>
 </body>

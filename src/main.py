@@ -41,6 +41,7 @@ if __name__=='__main__':
     cerebro.broker.set_checksubmit(checksubmit=False)  # Do not check if there is enough margin or cash before executing the order
     cerebro.broker.set_shortcash(True) # Can short the cash
 
+
     # Add the data
     data = []
     if args.historic:
@@ -116,6 +117,7 @@ if __name__=='__main__':
                             monthly_cash=args.monthly_cash,
                             shareclass=shareclass)
 
+    cerebro.addobserver(WeightsObserver, n_assets=n_assets)
     # Run and create report
     cerebro.run()
     cerebro.plot(volume=False)

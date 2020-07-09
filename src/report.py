@@ -9,6 +9,8 @@ from utils import timestamp2str, get_now, dir_exists
 import numpy as np
 from strategies import *
 
+
+
 class PerformanceReport:
     """ Report with performance stats for given backtest run
     """
@@ -62,7 +64,7 @@ class PerformanceReport:
         tot_return = 1
         for key, value in annualreturns.items():
             tot_return = tot_return * (1 + value)
-
+        tot_return = tot_return - 1
 
         kpi = {# PnL
                'start_cash': self.get_startcash(),
@@ -242,9 +244,32 @@ class PerformanceReport:
             graphics = {'url_equity_curve': 'file://' + eq_curve,
                         'url_return_curve': 'file://' + rt_curve
                         }
-        all_numbers = {**header, **kpis, **graphics}
+
+        # weights
+        #pd.set_option('display.max_colwidth', -1)
+        weights = self.get_weights().tail(30)
+        formatter = {}
+        for i in weights.columns:
+            formatter[i] = '{:,.1%}'.format
+        weights = weights.to_html(formatters=formatter, classes=["table table-hover"],index=True,escape=False,col_space='200px')
+        weights = {'weights_table':weights}
+        all_numbers = {**header, **kpis, **graphics, **weights}
         html_out = template.render(all_numbers)
         return html_out
+
+    def get_weights(self):
+        st = self.stratbt
+        n_assets = self.get_strategy_params().get('n_assets')
+
+        # Asset weights
+        size_weights = 100  # get weights for the last 60 days
+        idx = self.get_date_index()[len(self.get_date_index()) - size_weights:len(self.get_date_index())]
+        weight_df = pd.DataFrame(index=idx)
+
+        for i in range(0, n_assets):
+            weight_df['asset_' + str(i)] = st.observers.weightsobserver.lines[i].get(size=size_weights)
+
+        return weight_df
 
     def generate_pdf_report(self):
         """ Returns PDF report with backtest results
