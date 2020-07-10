@@ -8,7 +8,7 @@ from weasyprint import HTML
 from utils import timestamp2str, get_now, dir_exists
 import numpy as np
 from strategies import *
-
+import pyfolio as pf
 
 
 class PerformanceReport:
@@ -346,6 +346,22 @@ class PerformanceReport:
     def get_startcash(self):
         return self.stratbt.broker.startingcash
 
+    def get_pyfolio(self):
+        st = self.stratbt
+        pyfoliozer  = st.analyzers.getbyname('myPyFolio')
+        returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
+        """
+         pf.create_simple_tear_sheet(
+            returns,
+            positions=positions,
+            transactions=transactions)       
+        """
+        pf.create_returns_tear_sheet(
+            returns,
+            positions=positions,
+            transactions=transactions)
+
+
 class Cerebro(bt.Cerebro):
     def __init__(self, **kwds):
         super().__init__(**kwds)
@@ -383,6 +399,9 @@ class Cerebro(bt.Cerebro):
                              sdev_max=0.2,
                              fund=True,
                              _name="myVWR")
+            self.addanalyzer(bt.analyzers.PyFolio,
+                             _name="myPyFolio")
+
 
 
     def get_strategy_backtest(self):
@@ -396,3 +415,4 @@ class Cerebro(bt.Cerebro):
                                memo=memo,
                                system=system)
         rpt.generate_pdf_report()
+        rpt.get_pyfolio()

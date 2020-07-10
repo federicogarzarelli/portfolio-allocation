@@ -1,1 +1,12 @@
-python.exe main.py --shares "SPY,TLT,GLD" --weights "35,35,30" --strategy vanillariskparity --initial_cash 100000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python.exe main.py  --shares "UPRO,TQQQ,UGLD,TYD,TMF,UTSL" \
+--shareclass "equity,equity,gold,bond_it,bond_lt,commodity" \
+--strategy riskparity_nested
+--initial_cash 100000 \
+--monthly_cash 0 \
+--create_report \
+--report_name MyCurrentPortfolio \
+--report_type OneStrategyPDF \
+--startdate "2019-01-01" \
+--enddate "2020-06-30" \
+--system windows \
+--leverage 1
