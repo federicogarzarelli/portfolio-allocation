@@ -395,19 +395,20 @@ class riskparity(StandaloneStrat):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
-            logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
-
-            # Check if logrets for all assets exist
-            logrets_len = [len(i) for i in logrets]
-            if not (len(set(logrets_len)) <= 1):
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
                 return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
 
             if self.params.corrmethod == 'pearson':
                 corr = np.corrcoef(logrets)
             elif self.params.corrmethod == 'spearman':
                 corr, p, = stats.spearmanr(logrets, axis=1)
 
-            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
             stddev_matrix = np.diag(stddev)
             cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
@@ -455,20 +456,21 @@ class riskparity_nested(StandaloneStrat):
 
                     # calculate the logreturns
                     thisAssetClass_idx = [i for i, e in enumerate(self.params.shareclass) if e == key]
-                    thisAssetClassClose = [self.assetclose[i] for i in thisAssetClass_idx]
-                    logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in thisAssetClassClose]
+                    thisAssetClassClose = [self.assetclose[i].get(size=self.params.lookback_period_long) for i in thisAssetClass_idx]
 
-                    # Check if logrets for all assets exist
-                    logrets_len = [len(i) for i in logrets]
-                    if not (len(set(logrets_len)) <= 1):
+                    # Check if asset prices is equal to the lookback period for all assets exist
+                    thisAssetClassClose_len = [len(i) for i in thisAssetClassClose]
+                    if not all(elem == self.params.lookback_period_long for elem in thisAssetClassClose_len):
                         return
+
+                    logrets = [np.diff(np.log(x)) for x in thisAssetClassClose]
 
                     if self.params.corrmethod == 'pearson':
                         corr = np.corrcoef(logrets)
                     elif self.params.corrmethod == 'spearman':
                         corr, p, = stats.spearmanr(logrets, axis=1)
 
-                    stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+                    stddev = np.array([np.std(x[len(x)-self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
                     stddev_matrix = np.diag(stddev)
                     cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
@@ -479,31 +481,31 @@ class riskparity_nested(StandaloneStrat):
                     # Calculate the synthetic asset class price
                     prod = 0
                     for i in range(0, count):
-                        prod = np.add(prod, np.multiply(thisAssetClassWeights[i], thisAssetClassClose[i].array))
+                        prod = np.add(prod, np.multiply(thisAssetClassWeights[i], thisAssetClassClose[i]))
 
                     shareclass_prices.append(prod)
 
                 if count == 1:
                     thisAssetClass_idx = [i for i, e in enumerate(self.params.shareclass) if e == key]
-                    thisAssetClassClose = [self.assetclose[i] for i in thisAssetClass_idx]
-                    shareclass_prices.append(thisAssetClassClose[0].array)
+                    thisAssetClassClose = [self.assetclose[i].get(size=self.params.lookback_period_long) for i in thisAssetClass_idx]
+                    shareclass_prices.append(thisAssetClassClose[0])
                     assetWeights.append(np.asarray([1]))
+
+            # Check if asset prices is equal to the lookback period for all assets exist
+            shareclass_prices_len = [len(i) for i in shareclass_prices]
+            if not all(elem == self.params.lookback_period_long for elem in shareclass_prices_len):
+                return
 
             # Now re-run risk parity at portfolio level, using the synthetic assets
             target_risk = [1 / np.count_nonzero(shareclass_cnt)] * np.count_nonzero(shareclass_cnt)  # Same risk for each assetclass = risk parit
             logrets = [np.diff(np.log(x)) for x in shareclass_prices]
-
-            # Check if logrets for all assets exist
-            logrets_len = [len(i) for i in logrets]
-            if not(len(set(logrets_len)) <= 1):
-                return
 
             if self.params.corrmethod == 'pearson':
                 corr = np.corrcoef(logrets)
             elif self.params.corrmethod == 'spearman':
                 corr, p, = stats.spearmanr(logrets, axis=1)
 
-            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+            stddev = np.array([np.std(x[len(x)-self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
             stddev_matrix = np.diag(stddev)
             cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
@@ -549,19 +551,20 @@ class riskparity_pylib(StandaloneStrat):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
-            logrets = [np.diff(np.log(x.get(size=self.params.lookback_period_long))) for x in self.assetclose]
-
-            # Check if logrets for all assets exist
-            logrets_len = [len(i) for i in logrets]
-            if not(len(set(logrets_len)) <= 1):
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
                 return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
 
             if self.params.corrmethod == 'pearson':
                 corr = np.corrcoef(logrets)
             elif self.params.corrmethod == 'spearman':
                 corr, p, = stats.spearmanr(logrets, axis=1)
 
-            stddev = np.array([np.std(x) for x in logrets])  # standard dev indicator
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
             stddev_matrix = np.diag(stddev)
             cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
 
