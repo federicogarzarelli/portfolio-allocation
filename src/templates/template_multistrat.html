@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {font-size: 70%;}
+
+table {
+    table-layout: auto;
+    width: 250px;
+    border-collapse: collapse;
+    border: 1px solid black;
+    margin: 5px;
+}
+
+table_small {
+    table-layout: auto;
+    width: 190px;
+    border-collapse: collapse;
+    border: 1px solid black;
+    margin: 5px;
+}
+
+th, td {
+    text-align: left;
+    padding: 1px;
+}
+
+tr {
+    background-color: #e6ffff;
+    color: 'black';
+}
+
+th {
+    background-color: #003366;
+    color:  #ffffff;
+}
+
+</style>
+
+</style>
+</head>
+
+<body>
+
+<!-- ----------------------- header block ------------------- -->
+
+<h2><center>Multiple Strategies Report</center></h2>
+
+<table style="float: left">
+ <col style="width:50%">
+ <col style="width:50%">  
+  <tr>
+    <th colspan="2" style="center"><center>Strategy</center></th>
+  </tr>
+  <tr>
+    <td><b>name</b></td>
+    <td>{{strategy_names}}</td>
+  </tr>  
+
+</table>
+
+<table style="float: left">
+ <col style="width:33%">
+ <col style="width:67%">
+  <tr>
+    <th colspan="2"><center>Datafeed</center></th>
+  </tr>
+  <tr>
+    <td><b>file</b></td>
+    <td>{{file_name}}</td>
+  </tr>
+  <tr>
+    <td><b>start</b></td>
+    <td>{{start_date}}</td>
+  </tr>
+  <tr>
+    <td><b>end</b></td>
+    <td>{{end_date}}</td>
+  </tr>
+
+{% for i in range(params|length-2) %}
+    <tr>
+    <td><b>&nbsp;</b></td>
+    <td>&nbsp;</td>
+  </tr>
+{% endfor %}
+</table>
+
+
+<table style="float: left" width="100%">
+  <col style="width:33%">
+  <col style="width:67%">  
+  <tr>
+    <th colspan="2"><center>User</center></th>
+  </tr>
+  <tr>
+    <td><b>name</b></td>
+    <td>{{name_user}}</td>
+  </tr>
+   <tr>
+    <td><b>test at</b></td>
+    <td>{{processing_date}}</td>
+  </tr>
+  <tr>
+    <td><b>memo</b></td>
+    <td>{{memo_field}}</td>
+  </tr>
+{% for i in range(params|length-2) %}
+    <tr>
+    <td><b>&nbsp;</b></td>
+    <td>&nbsp;</td>
+  </tr>
+{% endfor %}
+
+
+</table>
+
+
+
+<!-- -------------------- equity & return curve --------------- -->
+
+<p>
+<img src= "{{url_equity_curve_multistrat}}" alt="Equity Curve" style="width:650px;height:500px;" class=center>
+</p>
+
+<!--
+<p>
+<img src= "{{url_return_curve }}" alt="Return Curve" style="width:650px;height:500px;" class=center>
+</p> -->
+
+
+<!-- ------------------- performance statistics ----------------------------- -->
+<br>
+<br>
+<br>
+<br>
+
+<!-- Performance table -->
+<section>
+
+    <h2><center>Performance</center></h2>
+
+    <!-- Weights table -->
+    {{ performance_table | safe }}
+
+</section>
+
+<!-- weights table -->
+
+<section>
+
+    <h2><center>Weights</center></h2>
+
+    <!-- Weights table -->
+    {{ weights_table | safe }}
+
+</section>
+
+
+</font>
+</body>
+</html>

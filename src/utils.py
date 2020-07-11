@@ -76,53 +76,26 @@ def print_section_divider(strategy_name):
     print("###")
     print("##############################################################################")
 
-def print_header(historic,
-                shares,
-                shareclass,
-                weights,
-                indicators,
-                initial_cash,
-                monthly_cash,
-                create_report,
-                report_name,
-                report_type,
-                strategy,
-                startdate,
-                enddate,
-                system,
-                leverage):
+def print_header(args):
     print('##############################################################################')
     print('##############################################################################')
     print('### Backtest starting')
     print('###  Parameters:')
-    print('###    --historic' + ' ' + str(historic))
-    print('###    --shares' + ' ' + str(shares))
-    print('###    --shareclass' + ' ' + str(shareclass))
-    print('###    --weights' + ' ' + str(weights))
-    print('###    --indicators' + ' ' + str(indicators))
-    print('###    --initial_cash' + ' ' + str(initial_cash))
-    print('###    --monthly_cash' + ' ' + str(monthly_cash))
-    print('###    --create_report' + ' ' + str(create_report))
-    print('###    --report_name' + ' ' + str(report_name))
-    print('###    --report_type' + ' ' + str(report_type))
-    print('###    --strategy' + ' ' + str(strategy))
-    print('###    --startdate' + ' ' + str(startdate))
-    print('###    --enddate' + ' ' + str(enddate))
-    print('###    --system' + ' ' + str(system))
-    print('###    --leverage' + ' ' + str(leverage))
+    print('###    --historic' + ' ' + str(vars(args)['historic']))
+    print('###    --shares' + ' ' + str(vars(args)['shares']))
+    print('###    --shareclass' + ' ' + str(vars(args)['shareclass']))
+    print('###    --weights' + ' ' + str(vars(args)['weights']))
+    print('###    --indicators' + ' ' + str(vars(args)['indicators']))
+    print('###    --initial_cash' + ' ' + str(vars(args)['initial_cash']))
+    print('###    --monthly_cash' + ' ' + str(vars(args)['monthly_cash']))
+    print('###    --create_report' + ' ' + str(vars(args)['create_report']))
+    print('###    --report_name' + ' ' + str(vars(args)['report_name']))
+    print('###    --strategy' + ' ' + str(vars(args)['strategy']))
+    print('###    --startdate' + ' ' + str(vars(args)['startdate']))
+    print('###    --enddate' + ' ' + str(vars(args)['enddate']))
+    print('###    --system' + ' ' + str(vars(args)['system']))
+    print('###    --leverage' + ' ' + str(vars(args)['leverage']))
     print('##############################################################################')
-
-"""
-Multistrategy report
-"""
-def aggregated_report(startdate, prices, returns, perf_data, weight):
-    # Output into CSV for now, later create a PDF from a HTML
-    prices.to_csv(r'reports/Prices_MultiStrategy_'+startdate+'.csv')
-    returns.to_csv(r'reports/Returns_MultiStrategy_' + startdate + '.csv')
-    perf_data.to_csv(r'reports/Performance_MultiStrategy_' + startdate + '.csv')
-    weight.to_csv(r'reports/Weights_MultiStrategy_' + startdate + '.csv')
-
-
 
 def reportbacktest(datas, strategy, initial_cash, **kwargs):
     cerebro = bt.Cerebro()
@@ -276,8 +249,7 @@ def timestamp2str(ts):
     """ Converts Timestamp object to str containing date and time
     """
     date = ts.date().strftime("%Y-%m-%d")
-    time = ts.time().strftime("%H:%M:%S")
-    return ' '.join([date, time])
+    return date
 
 
 def get_now():

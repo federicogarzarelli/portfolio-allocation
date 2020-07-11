@@ -5,7 +5,7 @@ import datetime
 import argparse
 import backtrader as bt
 from report import Cerebro
-
+from report_aggregator import ReportAggregator
 
 def parse_args():
     now = datetime.datetime.now().strftime("%Y_%m_%d")# string to be used after
@@ -19,8 +19,7 @@ def parse_args():
     parser.add_argument('--monthly_cash', type=float, default=10000, required=False,help='monthly cash invested')
     parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')
     parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')
-    parser.add_argument('--report_type', type=str, default='OneStrategyPDF', required=False,help='if create_report is True, specify the type of report between OneStrategyPDF, StrategiesComparison')
-    parser.add_argument('--strategy', type=str, required=False, help='if report_type = OneStrategyPDF, specify the strategy')
+    parser.add_argument('--strategy', type=str, required=False, help='Specify the strategies for which a backtest is run')
     parser.add_argument('--startdate', type=str, default='2017-01-01', required=True,help='starting date of the simulation')
     parser.add_argument('--enddate', type=str, default=now, required=True,help='end date of the simulation')
     parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
@@ -145,21 +144,7 @@ def runOneStrat(strategy=None):
 
 if __name__=='__main__':
     args = parse_args()
-    print_header(args.historic,
-                args.shares,
-                args.shareclass,
-                args.weights,
-                args.indicators,
-                args.initial_cash,
-                args.monthly_cash,
-                args.create_report,
-                args.report_name,
-                args.report_type,
-                args.strategy,
-                args.startdate,
-                args.enddate,
-                args.system,
-                args.leverage)
+    print_header(args)
     if args.strategy is None:
         print_section_divider(args.strategy)
         runOneStrat()
@@ -170,6 +155,7 @@ if __name__=='__main__':
 
             runOneStrat()
         elif len(strategy_list) > 1:
+
             prices = pd.DataFrame()
             returns = pd.DataFrame()
             perf_data = pd.DataFrame()
@@ -197,4 +183,11 @@ if __name__=='__main__':
                     weight = ThisStrat_weight
                 else:
                     weight[strat] = ThisStrat_weight
-            aggregated_report(args.startdate, prices, returns, perf_data, weight)
+
+            outfilename = "Aggregated_Report.pdf"
+            outputdir = 'reports/'
+            user = "Fabio & Federico"
+            memo = "Testing - Report comparing different strategies"
+
+            ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, prices, returns, perf_data, weight)
+            ReportAggregator.report()
