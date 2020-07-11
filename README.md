@@ -26,14 +26,14 @@ or run the bash script **install_reports.sh**
 ```bash
 python main.py [--historic | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
                [--initial_cash CASH] [--monthly_cash CASH] 
-               [--create_report [--report_name NAME --report_type REPORTYPE]] 
+               [--create_report [--report_name NAME]] 
                [--startdate DATE] [--enddate DATE]
                [--system SYSTEM] [--leverage LEV]
 ```
                
 
 ## DESCRIPTION
-Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. 
+Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. It is recommended to run the code in a jupyter notebook to obtain the pyfolio reports in the right format. A jupyter notebook is created for this purpose in 'src/apply_jupyter.ipynb'.
 
 ## OPTIONS
 * `--historic`             use historical asset data ('GLD', 'COM', 'SP500', 'LTB', 'ITB'), already downloaded manually. Alternative is --shares
@@ -46,7 +46,6 @@ Running main.py with the options below a backtest is performed on the assets spe
 * `--monthly_cash`         monthly cash invested. Default is 10000.
 * `--create_report`        creates a report if true
 * `--report_name`          report name. __This argument should be specified ony when --create_report is chosen__ 
-* `--report_type`          __NOT USED - WORK IN PROGRESS__ Type of report. For now only a report that analyses one strategy at a time is possible. When another report e.g. for comparing different strategies will be implemented, one can choose which report to run by specifying this argument. Default is OneStrategyPDF. __This argument should be specified ony when --create_report is chosen__
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
 * `--enddate`              end date of the simulation.  If not specified backtrader will take the latest possible date. (To test)
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.
@@ -56,25 +55,29 @@ Running main.py with the options below a backtest is performed on the assets spe
 1. Historical data, uniform strategy
 
 ```bash
-python main.py --historic --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 2. Historical data, custom weights
 
 ```bash
-python main.py --historic --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
  3. Automatically downloaded data, custom weights
 
 ```bash
-python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 4. Automatically downloaded data, 60-40 strategy
 
 ```bash
-python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --report_type OneStrategyPDF --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+```
+5. Multiple strategies backtest
+```bash
+python main.py --shares "UPRO,UGLD,TYD,TMF,UTSL" --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --monthly_cash 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
 ```
 
 # Dataset explanation
@@ -93,9 +96,10 @@ python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,g
 # Todo List
 - [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
-- [ ] Integrate  asset rotation strategy with risk parity (comparison with RP)
+- [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
-- [ ] Report: add max time in drawdown, VaR. Check money drawdown that is probably wrong
+- [ ] Check money drawdown in report that is probably wrong
+- [X] ~~Report: add max time in drawdown, VaR.~~ Added Pyfolio report. Added multistrategy report. 
 - [X] Create simple vanilla risk parity strategy
 - [X] Add the function to automatically calculate the different weights
 - [X] Make the format of the data csv files homogeneous among the different sources
