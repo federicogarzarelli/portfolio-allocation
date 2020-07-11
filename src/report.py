@@ -350,6 +350,10 @@ class PerformanceReport:
         st = self.stratbt
         pyfoliozer  = st.analyzers.getbyname('myPyFolio')
         returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
+        return returns, positions, transactions, gross_lev
+
+    def generate_pyfolio_report(self):
+        returns, positions, transactions, gross_lev = self.get_pyfolio()
         """
          pf.create_simple_tear_sheet(
             returns,
@@ -360,6 +364,36 @@ class PerformanceReport:
             returns,
             positions=positions,
             transactions=transactions)
+
+    def get_aggregated_data(self):
+        kpis = self.get_performance_stats()
+        kpis_df = pd.DataFrame.from_dict(kpis, orient='index')
+        kpis_df.loc['total_return'] = kpis_df.loc['total_return']/100
+        kpis_df.loc['annual_return'] = kpis_df.loc['annual_return'] / 100
+        kpis_df.loc['annual_return_asset'] = kpis_df.loc['annual_return_asset'] / 100
+        kpis_df.loc['max_pct_drawdown'] = kpis_df.loc['max_pct_drawdown'] / 100
+        kpis_df.loc['vwr'] = kpis_df.loc['vwr'] / 100
+
+        returns, positions, transactions, gross_lev = self.get_pyfolio()
+        perf_stats_all = pf.timeseries.perf_stats(returns=returns, factor_returns=None, positions=None, transactions=None,
+                                   turnover_denom="AGB")
+        all_stats = pd.concat([kpis_df, perf_stats_all], keys=['backtrader', 'pyfolio'])
+        all_stats.columns = [self.get_strategy_name()]
+        return all_stats
+
+    def output_all_data(self):
+        prices = self.get_equity_curve()
+        prices.index = prices.index.date
+        returns = prices.diff() / prices
+
+        prices = pd.DataFrame(data=prices, columns=[self.get_strategy_name()])
+        returns = pd.DataFrame(data=returns, columns=[self.get_strategy_name()])
+        returns = returns.dropna()
+
+        perf_data = self.get_aggregated_data()
+        weight = self.get_weights().tail(1).T
+        weight.columns = [self.get_strategy_name()]
+        return prices, returns, perf_data, weight
 
 
 class Cerebro(bt.Cerebro):
@@ -408,11 +442,17 @@ class Cerebro(bt.Cerebro):
         return self.runstrats[0][0]
 
     def report(self, outputdir,
-               infilename=None, user=None, memo=None, system=None):
+               infilename=None, user=None, memo=None, system=None, report_type=None):
         bt = self.get_strategy_backtest()
-        rpt =PerformanceReport(bt, infilename=infilename,
-                               outputdir=outputdir, user=user,
-                               memo=memo,
-                               system=system)
+        rpt = PerformanceReport(bt, infilename=infilename,
+                                outputdir=outputdir, user=user,
+                                memo=memo,
+                                system=system)
         rpt.generate_pdf_report()
-        rpt.get_pyfolio()
+        rpt.generate_pyfolio_report()
+
+        prices, returns, perf_data, weight = rpt.output_all_data()
+        return prices, returns, perf_data, weight
+
+
+

@@ -11,7 +11,25 @@ import matplotlib.pyplot as plt
 from risk_budgeting import target_risk_contribution
 import os
 import riskparityportfolio as rp
+from backtrader.utils.py3 import range
 
+
+class StFetcher(object):
+    _STRATS = []
+
+    @classmethod
+    def register(cls, target):
+        cls._STRATS.append(target)
+
+    @classmethod
+    def COUNT(cls):
+        return range(len(cls._STRATS))
+
+    def __new__(cls, *args, **kwargs):
+        idx = kwargs.pop('idx')
+
+        obj = cls._STRATS[idx](*args, **kwargs)
+        return obj
 
 """
 Custom observer to save the weights 
@@ -183,6 +201,7 @@ class customweights(StandaloneStrat):
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
+@StFetcher.register
 class sixtyforty(StandaloneStrat):
     strategy_name = "60-40 Portfolio"
 
@@ -217,6 +236,7 @@ class sixtyforty(StandaloneStrat):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
+@StFetcher.register
 class onlystocks(StandaloneStrat):
     strategy_name = "Only Stocks Portfolio"
 
@@ -250,6 +270,7 @@ class onlystocks(StandaloneStrat):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
+#@StFetcher.register
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
@@ -283,6 +304,7 @@ class vanillariskparity(StandaloneStrat):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
+#@StFetcher.register
 class uniform(StandaloneStrat):
     strategy_name = "Uniform Portfolio"
 
@@ -315,6 +337,7 @@ class uniform(StandaloneStrat):
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
+#@StFetcher.register
 class rotationstrat(StandaloneStrat):
     strategy_name = "Asset rotation strategy"
 
@@ -364,6 +387,7 @@ class rotationstrat(StandaloneStrat):
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 # Here the risk parity is run only at portfolio level
+#@StFetcher.register
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
@@ -403,6 +427,7 @@ class riskparity(StandaloneStrat):
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 # Here the risk parity is run first at asset class level and then at portfolio level. To be used when more than an asset
 # is present in each category
+#@StFetcher.register
 class riskparity_nested(StandaloneStrat):
     strategy_name = "Risk Parity (Nested)"
 
@@ -516,6 +541,7 @@ class riskparity_nested(StandaloneStrat):
                                                                           self.broker.get_fundvalue()))
 
 # Risk parity portfolio. The implementation is based on the Python library riskparity portfolio
+#@StFetcher.register
 class riskparity_pylib(StandaloneStrat):
     strategy_name = "Risk Parity (PythonLib)"
 
@@ -560,3 +586,4 @@ class meanvarStrat(StandaloneStrat):
 
     def next(self):
         print("Work in progress")
+

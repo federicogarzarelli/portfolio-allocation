@@ -28,9 +28,11 @@ def parse_args():
     
     return parser.parse_args()
 
-if __name__=='__main__':
+def runOneStrat(strategy=None):
 
     args = parse_args()
+    if strategy is None:
+        strategy = args.strategy
 
     startdate = datetime.datetime.strptime(args.startdate,"%Y-%m-%d")
     enddate = datetime.datetime.strptime(args.enddate,"%Y-%m-%d")
@@ -99,10 +101,11 @@ if __name__=='__main__':
     for dt in data:
         cerebro.adddata(dt)
 
-    # Add the strategy
     n_assets = len([x for x in shareclass if x != 'non-tradable'])
+    cerebro.addobserver(WeightsObserver, n_assets=n_assets)
+
     # if you provide the weights, use them
-    if args.weights != '' or args.strategy is None:
+    if args.weights != '' or strategy is None:
         weights_list = args.weights.split(',')
         weights_listt = [float(i) for i in weights_list]
 
@@ -113,20 +116,85 @@ if __name__=='__main__':
                             )
     # otherwise, rely on the weights of a strategy
     else:
-        cerebro.addstrategy(eval(args.strategy), n_assets=n_assets,
-                            monthly_cash=args.monthly_cash,
-                            shareclass=shareclass)
+        """
+        NOT WORKING. IT WOULD BE A BETTER SOLUTION.
+        cerebro.optstrategy(StFetcher, idx=StFetcher.COUNT())
+        results = cerebro.run()
+        print(results)
+        """
+        strategy.split(',')
+        cerebro.addstrategy(eval(strategy), n_assets=n_assets,
+                    monthly_cash=args.monthly_cash,
+                    shareclass=shareclass)
+        # Run backtest
+        cerebro.run()
+        cerebro.plot(volume=False)
 
-    cerebro.addobserver(WeightsObserver, n_assets=n_assets)
-    # Run and create report
-    cerebro.run()
-    cerebro.plot(volume=False)
-        
-    if args.create_report:
-        cerebro.report('reports/', system=args.system)
-        if args.strategy is None:
-            strat_name = "StratNotSpecified"
-        else:
-            strat_name = eval(args.strategy).strategy_name
+        # Create report
+        if args.create_report:
+            prices, returns, perf_data, weight = cerebro.report('reports/', system=args.system)
+            if strategy is None:
+                strat_name = "StratNotSpecified"
+            else:
+                strat_name = eval(strategy).strategy_name
 
-        os.rename('reports/report.pdf', 'reports/%s_%s_%s.pdf' %(args.report_name, strat_name, startdate.isoformat().replace(':', '')))
+            os.rename('reports/report.pdf',
+                      'reports/%s_%s_%s.pdf' % (
+                      args.report_name, strat_name, startdate.isoformat().replace(':', '')))
+            return prices, returns, perf_data, weight
+
+if __name__=='__main__':
+    args = parse_args()
+    print_header(args.historic,
+                args.shares,
+                args.shareclass,
+                args.weights,
+                args.indicators,
+                args.initial_cash,
+                args.monthly_cash,
+                args.create_report,
+                args.report_name,
+                args.report_type,
+                args.strategy,
+                args.startdate,
+                args.enddate,
+                args.system,
+                args.leverage)
+    if args.strategy is None:
+        print_section_divider(args.strategy)
+        runOneStrat()
+    else:
+        strategy_list = args.strategy.split(',')
+        if len(strategy_list) == 1:
+            print_section_divider(args.strategy)
+
+            runOneStrat()
+        elif len(strategy_list) > 1:
+            prices = pd.DataFrame()
+            returns = pd.DataFrame()
+            perf_data = pd.DataFrame()
+            weight = pd.DataFrame()
+            for strat in strategy_list:
+                print_section_divider(strat)
+
+                ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_weight = runOneStrat(strat)
+                if prices.empty:
+                    prices = ThisStrat_prices
+                else:
+                    prices[strat] = ThisStrat_prices
+
+                if returns.empty:
+                    returns = ThisStrat_returns
+                else:
+                    returns[strat] = ThisStrat_returns
+
+                if perf_data.empty:
+                    perf_data = ThisStrat_perf_data
+                else:
+                    perf_data[strat] = ThisStrat_perf_data
+
+                if weight.empty:
+                    weight = ThisStrat_weight
+                else:
+                    weight[strat] = ThisStrat_weight
+            aggregated_report(args.startdate, prices, returns, perf_data, weight)

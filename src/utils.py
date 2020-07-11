@@ -12,12 +12,10 @@ from scipy.optimize import minimize
 import pandas_datareader.data as web
 
 
-
-
 def backtest(datas, strategy, plot=False, **kwargs):
     # initialize cerebro
     cerebro = bt.Cerebro()
-    
+
     # add the data
     for data in datas:
         cerebro.adddata(data)
@@ -39,7 +37,7 @@ def backtest(datas, strategy, plot=False, **kwargs):
 
     res = cerebro.run()
 
-    if plot: # plot results if asked
+    if plot:  # plot results if asked
         figure = cerebro.plot(volume=False, iplot=False)[0][0]
         figure.savefig('Strategy %s.png' % strategy.strategy_name)
 
@@ -51,14 +49,14 @@ def backtest(datas, strategy, plot=False, **kwargs):
                )
 
     # Asset weights
-    size_weights = 60 # get weights for the last 60 days
+    size_weights = 60  # get weights for the last 60 days
     weight_df = pd.DataFrame()
 
     weight_df['Year'] = pd.Series(res[0].observers[3].year.get(size=size_weights))
     weight_df['Month'] = pd.Series(res[0].observers[3].month.get(size=size_weights))
     weight_df['Day'] = pd.Series(res[0].observers[3].day.get(size=size_weights))
     for i in range(0, n_assets):
-        weight_df['asset_'+str(i)] = res[0].observers[2].lines[i].get(size=size_weights)
+        weight_df['asset_' + str(i)] = res[0].observers[2].lines[i].get(size=size_weights)
 
     """    
     weights = [res[0].observers[3].year.get(size=size_weights),
@@ -68,6 +66,62 @@ def backtest(datas, strategy, plot=False, **kwargs):
     """
     return metrics, weight_df
 
+"""
+Prints a section divider with the strategy name
+"""
+def print_section_divider(strategy_name):
+    print("##############################################################################")
+    print("###")
+    print("### Backtest strategy: " + strategy_name)
+    print("###")
+    print("##############################################################################")
+
+def print_header(historic,
+                shares,
+                shareclass,
+                weights,
+                indicators,
+                initial_cash,
+                monthly_cash,
+                create_report,
+                report_name,
+                report_type,
+                strategy,
+                startdate,
+                enddate,
+                system,
+                leverage):
+    print('##############################################################################')
+    print('##############################################################################')
+    print('### Backtest starting')
+    print('###  Parameters:')
+    print('###    --historic' + ' ' + str(historic))
+    print('###    --shares' + ' ' + str(shares))
+    print('###    --shareclass' + ' ' + str(shareclass))
+    print('###    --weights' + ' ' + str(weights))
+    print('###    --indicators' + ' ' + str(indicators))
+    print('###    --initial_cash' + ' ' + str(initial_cash))
+    print('###    --monthly_cash' + ' ' + str(monthly_cash))
+    print('###    --create_report' + ' ' + str(create_report))
+    print('###    --report_name' + ' ' + str(report_name))
+    print('###    --report_type' + ' ' + str(report_type))
+    print('###    --strategy' + ' ' + str(strategy))
+    print('###    --startdate' + ' ' + str(startdate))
+    print('###    --enddate' + ' ' + str(enddate))
+    print('###    --system' + ' ' + str(system))
+    print('###    --leverage' + ' ' + str(leverage))
+    print('##############################################################################')
+
+"""
+Multistrategy report
+"""
+def aggregated_report(startdate, prices, returns, perf_data, weight):
+    # Output into CSV for now, later create a PDF from a HTML
+    prices.to_csv(r'reports/Prices_MultiStrategy_'+startdate+'.csv')
+    returns.to_csv(r'reports/Returns_MultiStrategy_' + startdate + '.csv')
+    perf_data.to_csv(r'reports/Performance_MultiStrategy_' + startdate + '.csv')
+    weight.to_csv(r'reports/Weights_MultiStrategy_' + startdate + '.csv')
+
 
 
 def reportbacktest(datas, strategy, initial_cash, **kwargs):
@@ -76,7 +130,7 @@ def reportbacktest(datas, strategy, initial_cash, **kwargs):
 
     for data in datas:
         cerebro.adddata(data)
-    
+
     cerebro.addstrategy(strategy, **kwargs)
 
     cerebro.run()
@@ -84,26 +138,25 @@ def reportbacktest(datas, strategy, initial_cash, **kwargs):
     cerebro.report('reports')
 
 
-
 def import_process_hist(dataLabel, args):
     wd = os.path.dirname(os.getcwd())
 
     mapping_path_linux = {
-        'GLD':wd+'/modified_data/clean_gld.csv',
-        'SP500':wd+'/modified_data/clean_gspc.csv',
-        'COM':wd+'/modified_data/clean_spgscitr.csv',
-        'LTB':wd+'/modified_data/clean_tyx.csv',
-        'ITB':wd+'/modified_data/clean_fvx.csv',
-        'TIP':wd+'/modified_data/clean_dfii10.csv'
+        'GLD': wd + '/modified_data/clean_gld.csv',
+        'SP500': wd + '/modified_data/clean_gspc.csv',
+        'COM': wd + '/modified_data/clean_spgscitr.csv',
+        'LTB': wd + '/modified_data/clean_tyx.csv',
+        'ITB': wd + '/modified_data/clean_fvx.csv',
+        'TIP': wd + '/modified_data/clean_dfii10.csv'
     }
 
     mapping_path_windows = {
-        'GLD':wd+'\modified_data\clean_gld.csv',
-        'SP500':wd+'\modified_data\clean_gspc.csv',
-        'COM':wd+'\modified_data\clean_spgscitr.csv',
-        'LTB':wd+'\modified_data\clean_tyx.csv',
-        'ITB':wd+'\modified_data\clean_fvx.csv',
-        'TIP':wd+'\modified_data\clean_dfii10.csv'
+        'GLD': wd + '\modified_data\clean_gld.csv',
+        'SP500': wd + '\modified_data\clean_gspc.csv',
+        'COM': wd + '\modified_data\clean_spgscitr.csv',
+        'LTB': wd + '\modified_data\clean_tyx.csv',
+        'ITB': wd + '\modified_data\clean_fvx.csv',
+        'TIP': wd + '\modified_data\clean_dfii10.csv'
     }
 
     if args.system == 'linux':
@@ -111,10 +164,10 @@ def import_process_hist(dataLabel, args):
     else:
         datapath = (mapping_path_windows[dataLabel])
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    
+
     return df
 
-        
+
 def add_leverage(proxy, leverage=1, expense_ratio=0.0):
     """
     Simulates a leverage ETF given its proxy, leverage, and expense ratio.
@@ -125,15 +178,14 @@ def add_leverage(proxy, leverage=1, expense_ratio=0.0):
     initial_value = proxy.iloc[0]
     pct_change = proxy.pct_change(1)
     pct_change = (pct_change - expense_ratio / 252) * leverage
-    new_price = initial_value * (1+pct_change).cumprod()
+    new_price = initial_value * (1 + pct_change).cumprod()
     new_price[0] = initial_value
     return new_price
 
 
-
 class WeightsObserver(bt.observer.Observer):
-    params = (('n_assets', 100),) # set conservatively to 100 as the dynamic assignment does not work
-    lines = tuple(['asset_'+str(i) for i in range(0, params[0][1])])
+    params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
+    lines = tuple(['asset_' + str(i) for i in range(0, params[0][1])])
 
     plotinfo = dict(plot=True, subplot=True, plotlinelabels=True)
 
@@ -142,9 +194,8 @@ class WeightsObserver(bt.observer.Observer):
             self.lines[asset][0] = self._owner.weights[asset]
 
 
-            
 class GetDate(bt.observer.Observer):
-    lines = ('year','month', 'day',)
+    lines = ('year', 'month', 'day',)
 
     plotinfo = dict(plot=False, subplot=False)
 
@@ -152,7 +203,6 @@ class GetDate(bt.observer.Observer):
         self.lines.year[0] = self._owner.datas[0].datetime.date(0).year
         self.lines.month[0] = self._owner.datas[0].datetime.date(0).month
         self.lines.day[0] = self._owner.datas[0].datetime.date(0).day
-
 
 
 def calculate_portfolio_var(w, cov):
@@ -170,18 +220,20 @@ def risk_contribution(w, cov):
     RC = np.multiply(MRC, w.T) / calculate_portfolio_var(w, cov)
     return RC
 
+
 def target_risk_contribution(target_risk, cov):
     """
     Returns the weights of the portfolio such that the contributions to portfolio risk are as close as possiblem
     to the target_risk, given the covariance matrix
     """
     n = cov.shape[0]
-    init_guess = np.repeat(1/n, n)
-    bounds = ((0.0,1.0),)*n
+    init_guess = np.repeat(1 / n, n)
+    bounds = ((0.0, 1.0),) * n
     # construct the constants
-    weights_sum_to_1 = {'type':'eq',
+    weights_sum_to_1 = {'type': 'eq',
                         'fun': lambda w: np.sum(w) - 1
                         }
+
     def msd_risk(w, target_risk, cov):
         """
         Returns the Mean Squared Difference in risk contributions between weights and target_risk
@@ -191,16 +243,15 @@ def target_risk_contribution(target_risk, cov):
 
     w = minimize(msd_risk, init_guess,
                  args=(target_risk, cov), method='SLSQP',
-                 options = {'disp' : False},
-                 constraints = weights_sum_to_1,
-                 bounds = bounds)
+                 options={'disp': False},
+                 constraints=weights_sum_to_1,
+                 bounds=bounds)
     return w.x
 
 
-
-def covariances(shares=['GLD','TLT','SPY'],
-                start = datetime.datetime(2020,1,1),
-                end = datetime.datetime(2020,6,1)):
+def covariances(shares=['GLD', 'TLT', 'SPY'],
+                start=datetime.datetime(2020, 1, 1),
+                end=datetime.datetime(2020, 6, 1)):
     '''
     function that provides the covariance matrix of a certain number of shares
     
@@ -214,13 +265,11 @@ def covariances(shares=['GLD','TLT','SPY'],
                                           end).loc[:, 'Adj Close']
                            for t in shares],
                           index=shares).T.asfreq('B').ffill()
-    
+
     covariances = 52.0 * \
                   prices.asfreq('W-FRI').pct_change().iloc[1:, :].cov().values
 
     return covariances
-
-
 
 
 def timestamp2str(ts):
@@ -242,12 +291,15 @@ def dir_exists(foldername):
     """
     return os.path.isdir(foldername)
 
+
 """
 load indicators for the rotational strategy
 """
+
+
 def load_economic_curves(start, end):
-    list_fundamental = ['T10YIE','DFII20','T10Y2Y']
-    df_fundamental = web.DataReader(list_fundamental,"fred", start=start, end=end)
+    list_fundamental = ['T10YIE', 'DFII20', 'T10Y2Y']
+    df_fundamental = web.DataReader(list_fundamental, "fred", start=start, end=end)
     df_fundamental = df_fundamental.dropna()
     df_fundamental['T10YIE_T10Y2Y'] = df_fundamental['T10YIE'] - df_fundamental['T10Y2Y']
     df_fundamental = df_fundamental.drop(['T10YIE'], axis=1)
@@ -256,10 +308,9 @@ def load_economic_curves(start, end):
     return df_fundamental
 
 
-
 def strat_dictionary(stratname):
     assert stratname in ['sixtyforty', 'onlystocks',
-                         'vanillariskparity','uniform','riskparity', 'meanvar'], "unknown strategy"
+                         'vanillariskparity', 'uniform', 'riskparity', 'meanvar'], "unknown strategy"
 
     if stratname == 'sixtyforty':
         return sixtyforty
