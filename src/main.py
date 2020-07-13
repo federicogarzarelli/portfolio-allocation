@@ -8,40 +8,47 @@ from report import Cerebro
 from report_aggregator import ReportAggregator
 
 def parse_args():
-    now = datetime.datetime.now().strftime("%Y_%m_%d")# string to be used after
+    now = datetime.datetime.now().strftime("%Y_%m_%d")  # string to be used after
     parser = argparse.ArgumentParser(description='main class to run strategies')
-    parser.add_argument('--historic', action='store_true', default=False, required=False,help='would you like to use the historical manual data')
-    parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,help='string corresponding to list of shares if not using historic')
-    parser.add_argument('--shareclass', type=str, default='equity,bond', required=False,help='string corresponding to list of asset classes, in not using historic (needed for static strategies)')
-    parser.add_argument('--weights', type=str, default='', required=False,help='string corresponding to list of weights. if no values, risk parity weights are taken')
-    parser.add_argument('--indicators', action='store_true', default=False, required=False,help='include indicators for rotational strategy, if true')
-    parser.add_argument('--initial_cash', type=int, default=100000, required=False,help='initial_cash to start with')
-    parser.add_argument('--monthly_cash', type=float, default=10000, required=False,help='monthly cash invested')
-    parser.add_argument('--create_report', action='store_true', default=False, required=False,help='creates a report if true')
-    parser.add_argument('--report_name', type=str, default=now, required=False,help='if create_report is True, it is better to have a specific name')
-    parser.add_argument('--strategy', type=str, required=False, help='Specify the strategies for which a backtest is run')
-    parser.add_argument('--startdate', type=str, default='2017-01-01', required=True,help='starting date of the simulation')
-    parser.add_argument('--enddate', type=str, default=now, required=True,help='end date of the simulation')
+    parser.add_argument('--historic', action='store_true', default=False, required=False,
+                        help='would you like to use the historical manual data')
+    parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,
+                        help='string corresponding to list of shares if not using historic')
+    parser.add_argument('--shareclass', type=str, default='equity,bond', required=False,
+                        help='string corresponding to list of asset classes, in not using historic (needed for static strategies)')
+    parser.add_argument('--weights', type=str, default='', required=False,
+                        help='string corresponding to list of weights. if no values, risk parity weights are taken')
+    parser.add_argument('--indicators', action='store_true', default=False, required=False,
+                        help='include indicators for rotational strategy, if true')
+    parser.add_argument('--initial_cash', type=int, default=100000, required=False, help='initial_cash to start with')
+    parser.add_argument('--monthly_cash', type=float, default=10000, required=False, help='monthly cash invested')
+    parser.add_argument('--create_report', action='store_true', default=False, required=False,
+                        help='creates a report if true')
+    parser.add_argument('--report_name', type=str, default='Testf_Report', required=False,
+                        help='if create_report is True, it is better to have a specific name')
+    parser.add_argument('--strategy', type=str, required=False,
+                        help='Specify the strategies for which a backtest is run')
+    parser.add_argument('--startdate', type=str, default='2017-01-01', required=False,
+                        help='starting date of the simulation')
+    parser.add_argument('--enddate', type=str, default=now, required=False, help='end date of the simulation')
     parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
     parser.add_argument('--leverage', type=int, default=1, help='leverage to consider')
-    
+
     return parser.parse_args()
 
 def runOneStrat(strategy=None):
-
     args = parse_args()
     if strategy is None:
         strategy = args.strategy
 
-    startdate = datetime.datetime.strptime(args.startdate,"%Y-%m-%d")
-    enddate = datetime.datetime.strptime(args.enddate,"%Y-%m-%d")
+    startdate = datetime.datetime.strptime(args.startdate, "%Y-%m-%d")
+    enddate = datetime.datetime.strptime(args.enddate, "%Y-%m-%d")
 
     # Initialize the engine
     cerebro = Cerebro()
     cerebro.broker.set_cash(args.initial_cash)
-    cerebro.broker.set_checksubmit(checksubmit=False)  # Do not check if there is enough margin or cash before executing the order
-    cerebro.broker.set_shortcash(True) # Can short the cash
-
+    # cerebro.broker.set_checksubmit(checksubmit=False)  # Do not check if there is enough margin or cash before executing the order
+    # cerebro.broker.set_shortcash(True) # Can short the cash
 
     # Add the data
     data = []
@@ -56,9 +63,9 @@ def runOneStrat(strategy=None):
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
-                
+
             df['volume'] = 0
-                
+
             data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
 
         shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
@@ -91,7 +98,7 @@ def runOneStrat(strategy=None):
                 df[column] = df[indicatorLabel]
 
             df['volume'] = 0
-            df = df[['open', 'high', 'low', 'close','volume']]
+            df = df[['open', 'high', 'low', 'close', 'volume']]
             data.append(
                 bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
 
@@ -144,6 +151,11 @@ def runOneStrat(strategy=None):
 
 if __name__=='__main__':
     args = parse_args()
+
+    # Clear the output folder
+    outputdir = 'reports/'
+    delete_in_dir(outputdir)
+
     print_header(args)
     if args.strategy is None:
         print_section_divider(args.strategy)
@@ -185,7 +197,6 @@ if __name__=='__main__':
                     weight[strat] = ThisStrat_weight
 
             outfilename = "Aggregated_Report.pdf"
-            outputdir = 'reports/'
             user = "Fabio & Federico"
             memo = "Testing - Report comparing different strategies"
 

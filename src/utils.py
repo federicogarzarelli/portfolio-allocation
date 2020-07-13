@@ -66,9 +66,28 @@ def backtest(datas, strategy, plot=False, **kwargs):
     """
     return metrics, weight_df
 
+
+"""
+Deletes all files in a directory
+"""
+
+
+def delete_in_dir(mydir, *args, **kwargs):
+    file_extension = kwargs.get('file_extension', None)
+    if file_extension is None:
+        filelist = [f for f in os.listdir(mydir)]
+    else:
+        filelist = [f for f in os.listdir(mydir) if f.endswith(file_extension)]
+
+    for f in filelist:
+        os.remove(os.path.join(mydir, f))
+
+
 """
 Prints a section divider with the strategy name
 """
+
+
 def print_section_divider(strategy_name):
     print("##############################################################################")
     print("###")

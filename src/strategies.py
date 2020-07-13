@@ -121,20 +121,20 @@ class StandaloneStrat(bt.Strategy):
         self.weights = [0] * self.params.n_assets
 
     def start(self):
-        self.broker.set_fundmode(fundmode=True)  # Activate the fund mode, default has 100 shares
+        self.broker.set_fundmode(fundmode=True, fundstartval=100.00)  # Activate the fund mode, default has 100 shares
         self.broker.set_cash(self.params.initial_cash)  # Set initial cash of the account
 
         # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
         self.add_timer(
             bt.timer.SESSION_END,
-            monthdays=[20],  # called on the 20th day of the month
+            monthdays=[1],  # called on the 20th day of the month
             monthcarry=True  # called on another day if 20th day is vacation/weekend)
         )
 
     def notify_timer(self, timer, when, *args, **kwargs):
         # Add the monthly cash to the broker
         self.broker.add_cash(self.params.monthly_cash)  # Add monthly cash on the 20th day
-        self.log('MONTHLY CASH ADDED')
+        self.log('MONTHLY CASH ADDED: new cash amount is %.f' % self.broker.get_cash())
 
     def log(self, txt, dt=None):
         ''' Logging function for this strategy txt is the statement and dt can be used to specify a specific datetime'''
@@ -330,6 +330,10 @@ class uniform(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next(self):
+        print(self.datas[0].datetime.date(0), self.datas[1].datetime.date(0),
+              self.datas[2].datetime.date(0), self.datas[3].datetime.date(0),
+              self.datas[4].datetime.date(0))
+
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=0.0)
