@@ -15,11 +15,9 @@ class PerformanceReport:
     """ Report with performance stats for given backtest run
     """
 
-    def __init__(self, stratbt, infilename,
-                 outputdir, user, memo, system):
+    def __init__(self, stratbt, outfile, user, memo, system):
         self.stratbt = stratbt  # works for only 1 strategy
-        self.infilename = infilename
-        self.outputdir = outputdir
+        self.outfile = outfile
         self.user = user
         self.memo = memo
         self.check_and_assign_defaults()
@@ -28,12 +26,6 @@ class PerformanceReport:
     def check_and_assign_defaults(self):
         """ Check initialization parameters or assign defaults
         """
-        if not self.infilename:
-            self.infilename = 'Not given'
-        if not dir_exists(self.outputdir):
-            msg = "*** ERROR: outputdir {} does not exist."
-            print(msg.format(self.outputdir))
-            sys.exit(0)
         if not self.user:
             self.user = 'Fabio & Federico'
         if not self.memo:
@@ -46,16 +38,10 @@ class PerformanceReport:
         st = self.stratbt
         dt = self.get_date_index()
 
-        #trade_analysis = st.analyzers.myTradeAnalysis.get_analysis()
-        #rpl = trade_analysis.pnl.net.total
-        #total_return = rpl / self.get_startcash()
-        #total_number_trades = trade_analysis.total.total
-        #trades_closed = trade_analysis.total.closed
         bt_period = dt[-1] - dt[0]
         bt_period_days = bt_period.days
         drawdown = st.analyzers.myDrawDown.get_analysis()
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
-        #sqn_score = st.analyzers.mySqn.get_analysis()['sqn']
         returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
         endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]
@@ -69,29 +55,14 @@ class PerformanceReport:
         kpi = {# PnL
                'start_cash': self.get_startcash(),
                'end_value': endValue,
-               #'rpl': rpl,
-               #'result_won_trades': trade_analysis.won.pnl.total,
-               #'result_lost_trades': trade_analysis.lost.pnl.total,
-               #'profit_factor': (-1 * trade_analysis.won.pnl.total / trade_analysis.lost.pnl.total),
-               #'rpl_per_trade': rpl / trades_closed,
                'total_return': 100*tot_return,
                'annual_return': returns['rnorm100'],
                'annual_return_asset': 100*((1 + tot_return)**(365.25 / bt_period_days) - 1),
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
-               # trades
-               #'total_number_trades': total_number_trades,
-#               'pct_winning': 100 * trade_analysis.won.total / trades_closed,
-#               'pct_losing': 100 * trade_analysis.lost.total / trades_closed,
-#               'avg_money_winning': trade_analysis.won.pnl.average,
-#               'avg_money_losing':  trade_analysis.lost.pnl.average,
-#               'best_winning_trade': trade_analysis.won.pnl.max,
-#               'worst_losing_trade': trade_analysis.lost.pnl.max,
                #  performance
                'vwr': vwr,
                'sharpe_ratio': sharpe_ratio,
-               #'sqn_score': sqn_score,
-               #'sqn_human': self._sqn2rating(sqn_score)
                }
         return kpi
 
@@ -99,66 +70,27 @@ class PerformanceReport:
         """ Return series containing equity curve
         """
         st = self.stratbt
-        #dt = st.data._dataname['open'].index
         value = st.observers.broker.lines[1].array
         vv = np.asarray(value)
         vv = vv[~np.isnan(vv)]
 
         dt = self.get_date_index()
 
-        #curve = pd.Series(data=value, index=dt)
         curve = pd.Series(data=vv, index=dt)
         return 100 * curve / curve.iloc[0]
-
-    """ Converts sqn_score score to human readable rating
-            See: http://www.vantharp.com/tharp-concepts/sqn.asp
-            """
-    """
-    def _sqn2rating(self, sqn_score):
-        
-        if sqn_score < 1.6:
-            return "Poor"
-        elif sqn_score < 1.9:
-            return "Below average"
-        elif sqn_score < 2.4:
-            return "Average"
-        elif sqn_score < 2.9:
-            return "Good"
-        elif sqn_score < 5.0:
-            return "Excellent"
-        elif sqn_score < 6.9:
-            return "Superb"
-        else:
-            return "Holy Grail"
-    """
-
 
     def __str__(self):
         msg = ("*** PnL: ***\n"
                "Start capital         : {start_cash:4.2f}\n"
-               #"Total net profit      : {rpl:4.2f}\n"
                "End capital           : {end_value:4.2f}\n"
-               #"Result winning trades : {result_won_trades:4.2f}\n"
-               #"Result lost trades    : {result_lost_trades:4.2f}\n"
-               #"Profit factor         : {profit_factor:4.2f}\n"
                "Total return          : {total_return:4.2f}%\n"
                "Annual return (asset) : {annual_return_asset:4.2f}%\n"
                "Annual return (fund)  : {annual_return:4.2f}%\n"
                "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
                "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
-               #"*** Trades ***\n"
-               #"Number of trades      : {total_number_trades:d}\n"
-               #"    %winning          : {pct_winning:4.2f}%\n"
-               #"    %losing           : {pct_losing:4.2f}%\n"
-               #"    avg money winning : {avg_money_winning:4.2f}\n"
-               #"    avg money losing  : {avg_money_losing:4.2f}\n"
-               #"    best winning trade: {best_winning_trade:4.2f}\n"
-               #"    worst losing trade: {worst_losing_trade:4.2f}\n\n"
                "*** Performance ***\n"
                "Variability Weighted Return: {vwr:4.2f}\n"
                "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
-               #"SQN score             : {sqn_score:4.2f}\n"
-               #"SQN human             : {sqn_human:s}"
                )
         kpis = self.get_performance_stats()
         # see: https://stackoverflow.com/questions/24170519/
@@ -170,14 +102,12 @@ class PerformanceReport:
         """ Plots equity curve to png file
         """
         curve = self.get_equity_curve()
-        #buynhold = self.get_buynhold_curve()
         xrnge = [curve.index[0], curve.index[-1]]
         dotted = pd.Series(data=[100, 100], index=xrnge)
         fig, ax = plt.subplots(1, 1)
         ax.set_ylabel('Net Asset Value (start=100)')
         ax.set_title('Equity curve')
         _ = curve.plot(kind='line', ax=ax)
-        #_ = buynhold.plot(kind='line', ax=ax, color='grey')
         _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
         return fig
 
@@ -210,8 +140,7 @@ class PerformanceReport:
         curve = self.get_equity_curve()
         period = self._get_periodicity()
         values = curve.resample(period[1]).ohlc()['close']
-        # returns = 100 * values.diff().shift(-1) / values
-        returns = 100 * values.diff() / values
+        returns = values.diff() / values
         returns.index = returns.index.date
         is_positive = returns > 0
         fig, ax = plt.subplots(1, 1)
@@ -246,7 +175,6 @@ class PerformanceReport:
                         }
 
         # weights
-        #pd.set_option('display.max_colwidth', -1)
         weights = self.get_weights().tail(30)
         formatter = {}
         for i in weights.columns:
@@ -275,7 +203,7 @@ class PerformanceReport:
         """ Returns PDF report with backtest results
         """
         html = self.generate_html()
-        outfile = os.path.join(self.outputdir, 'report.pdf')
+        outfile = self.outfile + "_" + self.get_strategy_name() + "_" + get_now() + ".pdf"
         HTML(string=html).write_pdf(outfile)
         msg = "See {} for report with backtest results."
         print(msg.format(outfile))
@@ -321,7 +249,6 @@ class PerformanceReport:
         """
         header = {'strategy_name': self.get_strategy_name(),
                   'params': self.get_strategy_params(),
-                  'file_name': self.infilename,
                   'start_date': self.get_start_date(),
                   'end_date': self.get_end_date(),
                   'name_user': self.user,
@@ -330,19 +257,6 @@ class PerformanceReport:
                   }
         return header
 
-    """ Return data series
-    """
-    """
-    def get_series(self, column='close'):
-        return self.stratbt.data._dataname[column]
-
-    # Returns Buy & Hold equity curve starting at 100
-    def get_buynhold_curve(self):
-        
-        s = self.get_series(column='open')
-        return 100 * s / s[0]
-
-"""
     def get_startcash(self):
         return self.stratbt.broker.startingcash
 
@@ -421,8 +335,6 @@ class Cerebro(bt.Cerebro):
                              _name="myDrawDown")
             self.addanalyzer(bt.analyzers.AnnualReturn,
                              _name="myAnnualReturn")
-            #self.addanalyzer(bt.analyzers.TradeAnalyzer,
-            #                 _name="myTradeAnalysis")
             self.addanalyzer(bt.analyzers.Returns, fund=True,
                              _name="myReturns")
             self.addanalyzer(bt.analyzers.SQN,
@@ -441,13 +353,9 @@ class Cerebro(bt.Cerebro):
     def get_strategy_backtest(self):
         return self.runstrats[0][0]
 
-    def report(self, outputdir,
-               infilename=None, user=None, memo=None, system=None, report_type=None):
+    def report(self, outfile, user=None, memo=None, system=None, report_type=None):
         bt = self.get_strategy_backtest()
-        rpt = PerformanceReport(bt, infilename=infilename,
-                                outputdir=outputdir, user=user,
-                                memo=memo,
-                                system=system)
+        rpt = PerformanceReport(bt, outfile=outfile, user=user, memo=memo, system=system)
         rpt.generate_pdf_report()
         rpt.generate_pyfolio_report()
 

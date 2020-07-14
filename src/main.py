@@ -138,22 +138,17 @@ def runOneStrat(strategy=None):
 
         # Create report
         if args.create_report:
-            prices, returns, perf_data, weight = cerebro.report('reports/', system=args.system)
-            if strategy is None:
-                strat_name = "StratNotSpecified"
-            else:
-                strat_name = eval(strategy).strategy_name
+            outputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
+            outfile = os.path.join(outputdir, args.report_name)
 
-            os.rename('reports/report.pdf',
-                      'reports/%s_%s_%s.pdf' % (
-                      args.report_name, strat_name, startdate.isoformat().replace(':', '')))
+            prices, returns, perf_data, weight = cerebro.report(outfile, system=args.system)
             return prices, returns, perf_data, weight
 
 if __name__=='__main__':
     args = parse_args()
 
     # Clear the output folder
-    outputdir = 'reports/'
+    outputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
     delete_in_dir(outputdir)
 
     print_header(args)

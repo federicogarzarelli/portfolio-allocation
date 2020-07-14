@@ -126,8 +126,8 @@ class StandaloneStrat(bt.Strategy):
 
         # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
         self.add_timer(
-            bt.timer.SESSION_END,
-            monthdays=[1],  # called on the 20th day of the month
+            bt.timer.SESSION_START,
+            monthdays=[20],  # called on the 20th day of the month
             monthcarry=True  # called on another day if 20th day is vacation/weekend)
         )
 
@@ -236,7 +236,7 @@ class sixtyforty(StandaloneStrat):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
 
-@StFetcher.register
+#@StFetcher.register
 class onlystocks(StandaloneStrat):
     strategy_name = "Only Stocks Portfolio"
 
@@ -310,30 +310,36 @@ class uniform(StandaloneStrat):
 
     def prenext(self):
         assetclass_allocation = {
-            "gold": 0.2,
-            "commodity": 0.2,
-            "equity": 0.2,
-            "bond_lt": 0.2,
-            "bond_it": 0.2
+            "gold": 0,
+            "commodity": 0,
+            "equity": 0,
+            "bond_lt": 0,
+            "bond_it": 0
         }
+
+
 
         tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
 
         assetclass_cnt = {}
+        assetclass_flag = {}
         for key in assetclass_allocation:
             count = sum(map(lambda x: x == key, tradable_shareclass))
             assetclass_cnt[key] = count
+            if count > 0:
+                assetclass_flag[key] = 1
+            else:
+                assetclass_flag[key] = 0
 
-        a = list(map(assetclass_allocation.get, tradable_shareclass))
+        num_assetclasses = sum(assetclass_flag.values())
+        assetclass_weight = {k: v / num_assetclasses for k, v in assetclass_flag.items()}
+
+        a = list(map(assetclass_weight.get, tradable_shareclass))
         b = list(map(assetclass_cnt.get, tradable_shareclass))
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next(self):
-        print(self.datas[0].datetime.date(0), self.datas[1].datetime.date(0),
-              self.datas[2].datetime.date(0), self.datas[3].datetime.date(0),
-              self.datas[4].datetime.date(0))
-
         if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=0.0)
