@@ -70,11 +70,10 @@ class PerformanceReport:
         """ Return series containing equity curve
         """
         st = self.stratbt
-        value = st.observers.broker.lines[1].array
+        dt = self.get_date_index()
+        value = st.observers.broker.lines[1].get(size=len(dt))
         vv = np.asarray(value)
         vv = vv[~np.isnan(vv)]
-
-        dt = self.get_date_index()
 
         curve = pd.Series(data=vv, index=dt)
         return 100 * curve / curve.iloc[0]
@@ -229,12 +228,12 @@ class PerformanceReport:
         # Transform into DatetimeIndex
         df = pd.to_datetime(df[["day", "month", "year"]])
         df.index = df
+        df = df[df > st.startdate]
         return df.index
 
     def get_start_date(self):
         """ Return first datafeed datetime
         """
-
         dt = self.get_date_index()
         return timestamp2str(dt[0])
 

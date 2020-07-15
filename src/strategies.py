@@ -97,6 +97,18 @@ class StandaloneStrat(bt.Strategy):
 
 
     def __init__(self):
+        # To keep track of pending orders and buy price/commission
+        self.order = None
+        self.buyprice = None
+        self.buycomm = None
+
+        self.weights = [0] * self.params.n_assets
+
+        self.startdate = None
+
+        self.order = None
+        #self.cheating = self.cerebro.p.cheat_on_open
+
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
         for asset in range(0, self.params.n_assets):
@@ -112,13 +124,6 @@ class StandaloneStrat(bt.Strategy):
                 self.indassetsclose.append(self.datas[indicator_idx].close)
 
         MinPeriodSetter(period=self.params.lookback_period_long)  # Set the minimum period
-
-        # To keep track of pending orders and buy price/commission
-        self.order = None
-        self.buyprice = None
-        self.buycomm = None
-
-        self.weights = [0] * self.params.n_assets
 
     def start(self):
         self.broker.set_fundmode(fundmode=True, fundstartval=100.00)  # Activate the fund mode, default has 100 shares
@@ -152,18 +157,20 @@ class StandaloneStrat(bt.Strategy):
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log(
-                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f new cash amount is %.f' %
                     (order.executed.price,
                      order.executed.value,
-                     order.executed.comm))
+                     order.executed.comm,
+                     self.broker.get_cash()))
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
             elif order.issell():
                 self.log(
-                    'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f new cash amount is %.f' %
                     (order.executed.price,
                      order.executed.value,
-                     order.executed.comm))
+                     order.executed.comm,
+                     self.broker.get_cash()))
 
             self.bar_executed = len(self)
 
@@ -181,6 +188,16 @@ class StandaloneStrat(bt.Strategy):
 
     def get_weights(self):
         return self.weights
+
+    def nextstart(self):
+        year = self.observers.getdate.line0[0]
+        month = self.observers.getdate.line1[0]
+        day = self.observers.getdate.line2[0]
+
+        # Put all together and drop na
+        self.startdate = datetime.datetime(year=int(year), month=int(month), day=int(day))
+
+        super(StandaloneStrat, self).nextstart()
 
 
 """
@@ -201,7 +218,7 @@ class customweights(StandaloneStrat):
             for asset in range(0, self.params.n_assets):
                 self.order_target_percent(self.assets[asset], target=self.weights[asset])
 
-@StFetcher.register
+#@StFetcher.register
 class sixtyforty(StandaloneStrat):
     strategy_name = "60-40 Portfolio"
 
@@ -242,11 +259,11 @@ class onlystocks(StandaloneStrat):
 
     def prenext(self):
         assetclass_allocation = {
-            "gold": 0,
-            "commodity": 0,
-            "equity": 1,
-            "bond_lt": 0,
-            "bond_it": 0
+            "gold": 0.0,
+            "commodity": 0.0,
+            "equity": 1.0,
+            "bond_lt": 0.0,
+            "bond_it": 0.0
         }
 
         tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
@@ -262,12 +279,73 @@ class onlystocks(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next(self):
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
+        self.log("Cash: %.2f" % self.broker.get_cash())
 
+        if len(self) % self.params.reb_days == 0:
+            # Buy at close price
+            old_percents = []
+            portfolio_val = self.broker.get_value() - self.broker.get_cash()
+            if portfolio_val > 0:
+                for asset in range(0, self.params.n_assets):
+                    old_percents.append(self.broker.getposition(self.assets[asset]).size * self.assetclose[asset][0]/portfolio_val)
+            else:
+                old_percents = [0] * self.params.n_assets
+
+            tosell = []
+            tobuy = []
+            for i, opnp in enumerate(zip(old_percents, self.weights)):
+                op, np = opnp
+
+                if np < op:
+                    tosell.append(i)
+                else:
+                    tobuy.append(i)
+
+            for i in tosell:
+                self.order_target_percent(self.datas[i], target=self.weights[i]+0.05)
+
+            for i in tobuy:
+                self.order_target_percent(self.datas[i], target=self.weights[i]-0.05)
+
+            """
             for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+                position = self.broker.getposition(data=self.assets[asset]).size
+                # print(position)
+                self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            """
+
+
+
+
+
+
+    """
+                if position > 0:
+        #print("SELL NEXT")
+        self.order = self.order_target_percent(self.assets[asset], target=0.0, coo=False, coc=True)
+    else:
+        #print("BUY NEXT")
+        self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=False, coc=True)
+    """
+
+
+"""
+    def next_open(self):
+        self.log("Cash: %.2f" % self.broker.get_cash())
+        # Sell at open price
+        #if len(self) % self.params.reb_days == 0 or len(self) % self.params.reb_days +1 == 0:
+        for asset in range(0, self.params.n_assets):
+            position = self.broker.getposition(data=self.assets[asset]).size
+            print(position)
+            if position > 0:
+                #print("SELL next_open")
+                self.order = self.order_target_percent(self.assets[asset], target=0.0, coo=True, coc=False)
+            else:
+                #print("BUY next_open")
+                self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=True, coc=False)
+
+"""
+
 
 
 #@StFetcher.register
