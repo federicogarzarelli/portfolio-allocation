@@ -50,7 +50,7 @@ def runOneStrat(strategy=None):
     #cerebro.broker.set_coo(True)
     #cerebro.broker.set_coc(True)
     cerebro.broker.set_cash(args.initial_cash)
-    cerebro.broker.set_checksubmit(checksubmit=True)  # Do not check if there is enough margin or cash before executing the order
+    cerebro.broker.set_checksubmit(checksubmit=False)  # Do not check if there is enough margin or cash before executing the order
     #cerebro.broker.set_shortcash(True) # Can short the cash
 
     # Add the data

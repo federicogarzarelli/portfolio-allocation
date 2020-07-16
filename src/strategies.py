@@ -99,15 +99,13 @@ class StandaloneStrat(bt.Strategy):
     def __init__(self):
         # To keep track of pending orders and buy price/commission
         self.order = None
+        #self.cheating = self.cerebro.p.cheat_on_open
         self.buyprice = None
         self.buycomm = None
 
         self.weights = [0] * self.params.n_assets
 
         self.startdate = None
-
-        self.order = None
-        #self.cheating = self.cerebro.p.cheat_on_open
 
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
@@ -175,6 +173,8 @@ class StandaloneStrat(bt.Strategy):
             self.bar_executed = len(self)
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log('Order Canceled/Margin/Rejected.')
+            """
             self.log('Order Canceled/Margin/Rejected: resubmitting...')
             if order.params.price * order.params.size > self.broker.get_cash():
                 order.params.size = int(self.broker.get_cash() / order.params.price)
@@ -182,6 +182,7 @@ class StandaloneStrat(bt.Strategy):
                 return
             else:
                 self.log('Order Canceled/Margin/Rejected: order status %f' % order.status)
+            """
 
         # Write down: no pending order
         self.order = None
@@ -205,6 +206,24 @@ class StandaloneStrat(bt.Strategy):
 
         super(StandaloneStrat, self).nextstart()
 
+    def rebalance(self):
+        if len(self) % self.params.reb_days == 0:
+            sold_value = 0
+            # Sell at open price
+            for asset in range(0, self.params.n_assets):
+                position = self.broker.getposition(data=self.assets[asset]).size
+                if position > 0:
+                    self.sell(data=self.datas[asset], exectype=bt.Order.Limit,
+                              price=self.assetclose[asset].get(0)[0], size=position, coo=True)
+                    sold_value = sold_value + (self.assetclose[asset].get(0)[0] * position)
+
+            cash_after_sell = sold_value + self.broker.get_cash()
+            # Buy at open price
+            for asset in range(0, self.params.n_assets):
+                target_size = int(cash_after_sell * self.weights[asset] / self.assetclose[asset].get(0)[0])
+                self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
+                         price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
+
 
 """
 The child classes below are specific to one strategy.
@@ -216,13 +235,8 @@ class customweights(StandaloneStrat):
     def prenext(self):
         self.weights = self.params.assetweights
 
-    def next(self):
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+    def next_open(self):
+        self.rebalance()
 
 #@StFetcher.register
 class sixtyforty(StandaloneStrat):
@@ -249,14 +263,8 @@ class sixtyforty(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
-
-    def next(self):
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+    def next_open(self):
+        self.rebalance()
 
 
 #@StFetcher.register
@@ -265,11 +273,11 @@ class onlystocks(StandaloneStrat):
 
     def prenext(self):
         assetclass_allocation = {
-            "gold": 0.0,
-            "commodity": 0.5,
-            "equity": 0.5,
-            "bond_lt": 0.0,
-            "bond_it": 0.0
+            "gold": 0,
+            "commodity": 0,
+            "equity": 1,
+            "bond_lt": 0,
+            "bond_it": 0
         }
 
         tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
@@ -284,70 +292,8 @@ class onlystocks(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
-    """
-    def next(self):
-        self.log("Cash: %.2f" % self.broker.get_cash())
-
-        if len(self) % self.params.reb_days == 0:
-            # Buy at close price
-            currentWeights = []
-            portfolio_val = self.broker.get_value() - self.broker.get_cash()
-            if portfolio_val > 0:
-                for asset in range(0, self.params.n_assets):
-                    currentWeights.append(self.broker.getposition(self.assets[asset]).size * self.assetclose[asset][0]/portfolio_val)
-            else:
-                currentWeights = [0] * self.params.n_assets
-
-            tosell = []
-            tobuy = []
-            for i, opnp in enumerate(zip(currentWeights, self.weights)):
-                op, np = opnp
-
-                if np < op:
-                    tosell.append(i)
-                else:
-                    tobuy.append(i)
-
-            for i in tosell:
-                self.order = self.order_target_percent(self.datas[i], target=self.weights[i], coo=True)
-
-            for i in tobuy:
-                self.order = self.order_target_percent(self.datas[i], target=self.weights[i], coo=True)
-    """
-    """
-    for asset in range(0, self.params.n_assets):
-        position = self.broker.getposition(data=self.assets[asset]).size
-        # print(position)
-        self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset])
-    """
-
-
-    def next(self):
-        self.log("Cash: %.2f" % self.broker.get_cash())
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                position = self.broker.getposition(data=self.assets[asset]).size
-                if position > 0:
-                # print("SELL NEXT")
-                    self.order = self.order_target_percent(self.assets[asset], target=0.0)
-
-    """
-    else:
-        #print("BUY NEXT")
-        self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=False, coc=True)
-    """
-
     def next_open(self):
-        self.log("Cash: %.2f" % self.broker.get_cash())
-        # Sell at open price
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.buy(exectype=bt.Order.Market, price=self.assetclose[asset].get(0)[0],
-                                 size=int(self.broker.get_cash()*self.weights[asset]/self.assetclose[asset].get(0)[0]))
-                #order = self.broker.submit(order)
-                #self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=True)
-
-
+        self.rebalance()
 
 
 #@StFetcher.register
@@ -375,14 +321,8 @@ class vanillariskparity(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
-    def next(self):
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
-
+    def next_open(self):
+        self.rebalance()
 
 #@StFetcher.register
 class uniform(StandaloneStrat):
@@ -390,14 +330,12 @@ class uniform(StandaloneStrat):
 
     def prenext(self):
         assetclass_allocation = {
-            "gold": 0,
-            "commodity": 0,
-            "equity": 0,
-            "bond_lt": 0,
-            "bond_it": 0
+            "gold": 0.2,
+            "commodity": 0.2,
+            "equity": 0.2,
+            "bond_lt": 0.2,
+            "bond_it": 0.2
         }
-
-
 
         tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
 
@@ -419,19 +357,14 @@ class uniform(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
-    def next(self):
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+    def next_open(self):
+        self.rebalance()
 
 #@StFetcher.register
 class rotationstrat(StandaloneStrat):
     strategy_name = "Asset rotation strategy"
 
-    def next(self):
+    def next_open(self):
         assetclass_allocation = {
             "gold": 0,
             "commodity": 0,
@@ -466,12 +399,7 @@ class rotationstrat(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
-        if len(self) % self.params.reb_days == 0:
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+        self.rebalance()
 
 
 # Risk parity portfolio. The implementation is based on:
@@ -481,7 +409,7 @@ class rotationstrat(StandaloneStrat):
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
-    def next(self):
+    def next_open(self):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
@@ -504,11 +432,7 @@ class riskparity(StandaloneStrat):
 
             self.weights = target_risk_contribution(target_risk, cov)
 
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            self.rebalance()
 
             self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
                                                                           self.broker.get_cash(),
@@ -522,7 +446,7 @@ class riskparity(StandaloneStrat):
 class riskparity_nested(StandaloneStrat):
     strategy_name = "Risk Parity (Nested)"
 
-    def next(self):
+    def next_open(self):
         assetclass_allocation = {
             "gold": 0,
             "commodity": 0,
@@ -621,12 +545,7 @@ class riskparity_nested(StandaloneStrat):
 
             self.weights = weights_lst
 
-            # Finally send the orders
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
+            self.rebalance()
 
             self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
                                                                           self.broker.get_cash(),
@@ -637,7 +556,7 @@ class riskparity_nested(StandaloneStrat):
 class riskparity_pylib(StandaloneStrat):
     strategy_name = "Risk Parity (PythonLib)"
 
-    def next(self):
+    def next_open(self):
         target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
 
         if len(self) % self.params.reb_days == 0:
@@ -660,12 +579,7 @@ class riskparity_pylib(StandaloneStrat):
 
             self.weights = rp.RiskParityPortfolio(covariance=cov, budget=target_risk).weights
 
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=0.0)
-
-            for asset in range(0, self.params.n_assets):
-                self.order_target_percent(self.assets[asset], target=self.weights[asset])
-
+            self.rebalance()
 
             self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
                                                                           self.broker.get_cash(),
