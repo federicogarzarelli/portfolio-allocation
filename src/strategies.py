@@ -175,7 +175,13 @@ class StandaloneStrat(bt.Strategy):
             self.bar_executed = len(self)
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log('Order Canceled/Margin/Rejected')
+            self.log('Order Canceled/Margin/Rejected: resubmitting...')
+            if order.params.price * order.params.size > self.broker.get_cash():
+                order.params.size = int(self.broker.get_cash() / order.params.price)
+                self.broker.submit(order)
+                return
+            else:
+                self.log('Order Canceled/Margin/Rejected: order status %f' % order.status)
 
         # Write down: no pending order
         self.order = None
@@ -260,8 +266,8 @@ class onlystocks(StandaloneStrat):
     def prenext(self):
         assetclass_allocation = {
             "gold": 0.0,
-            "commodity": 0.0,
-            "equity": 1.0,
+            "commodity": 0.5,
+            "equity": 0.5,
             "bond_lt": 0.0,
             "bond_it": 0.0
         }
@@ -278,22 +284,23 @@ class onlystocks(StandaloneStrat):
 
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
+    """
     def next(self):
         self.log("Cash: %.2f" % self.broker.get_cash())
 
         if len(self) % self.params.reb_days == 0:
             # Buy at close price
-            old_percents = []
+            currentWeights = []
             portfolio_val = self.broker.get_value() - self.broker.get_cash()
             if portfolio_val > 0:
                 for asset in range(0, self.params.n_assets):
-                    old_percents.append(self.broker.getposition(self.assets[asset]).size * self.assetclose[asset][0]/portfolio_val)
+                    currentWeights.append(self.broker.getposition(self.assets[asset]).size * self.assetclose[asset][0]/portfolio_val)
             else:
-                old_percents = [0] * self.params.n_assets
+                currentWeights = [0] * self.params.n_assets
 
             tosell = []
             tobuy = []
-            for i, opnp in enumerate(zip(old_percents, self.weights)):
+            for i, opnp in enumerate(zip(currentWeights, self.weights)):
                 op, np = opnp
 
                 if np < op:
@@ -302,49 +309,44 @@ class onlystocks(StandaloneStrat):
                     tobuy.append(i)
 
             for i in tosell:
-                self.order_target_percent(self.datas[i], target=self.weights[i]+0.05)
+                self.order = self.order_target_percent(self.datas[i], target=self.weights[i], coo=True)
 
             for i in tobuy:
-                self.order_target_percent(self.datas[i], target=self.weights[i]-0.05)
+                self.order = self.order_target_percent(self.datas[i], target=self.weights[i], coo=True)
+    """
+    """
+    for asset in range(0, self.params.n_assets):
+        position = self.broker.getposition(data=self.assets[asset]).size
+        # print(position)
+        self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset])
+    """
 
-            """
+
+    def next(self):
+        self.log("Cash: %.2f" % self.broker.get_cash())
+        if len(self) % self.params.reb_days == 0:
             for asset in range(0, self.params.n_assets):
                 position = self.broker.getposition(data=self.assets[asset]).size
-                # print(position)
-                self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset])
-            """
-
-
-
-
-
+                if position > 0:
+                # print("SELL NEXT")
+                    self.order = self.order_target_percent(self.assets[asset], target=0.0)
 
     """
-                if position > 0:
-        #print("SELL NEXT")
-        self.order = self.order_target_percent(self.assets[asset], target=0.0, coo=False, coc=True)
     else:
         #print("BUY NEXT")
         self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=False, coc=True)
     """
 
-
-"""
     def next_open(self):
         self.log("Cash: %.2f" % self.broker.get_cash())
         # Sell at open price
-        #if len(self) % self.params.reb_days == 0 or len(self) % self.params.reb_days +1 == 0:
-        for asset in range(0, self.params.n_assets):
-            position = self.broker.getposition(data=self.assets[asset]).size
-            print(position)
-            if position > 0:
-                #print("SELL next_open")
-                self.order = self.order_target_percent(self.assets[asset], target=0.0, coo=True, coc=False)
-            else:
-                #print("BUY next_open")
-                self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=True, coc=False)
+        if len(self) % self.params.reb_days == 0:
+            for asset in range(0, self.params.n_assets):
+                self.buy(exectype=bt.Order.Market, price=self.assetclose[asset].get(0)[0],
+                                 size=int(self.broker.get_cash()*self.weights[asset]/self.assetclose[asset].get(0)[0]))
+                #order = self.broker.submit(order)
+                #self.order = self.order_target_percent(self.assets[asset], target=self.weights[asset], coo=True)
 
-"""
 
 
 
