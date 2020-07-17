@@ -46,76 +46,69 @@ th {
 
 <h2><center>Multiple Strategies Report</center></h2>
 
-<table style="float: left">
- <col style="width:50%">
- <col style="width:50%">  
-  <tr>
-    <th colspan="2" style="center"><center>Strategy</center></th>
-  </tr>
-  <tr>
-    <td><b>name</b></td>
-    <td>{{strategy_names}}</td>
-  </tr>  
-
+<div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+     <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> Strategy </th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> name </td>
+      <td style="background-color:rgb(255,255,255)"> {{strategy_names}} </td>
+     </tr>
+</tbody>
 </table>
+</div>
 
-<table style="float: left">
- <col style="width:33%">
- <col style="width:67%">
-  <tr>
-    <th colspan="2"><center>Datafeed</center></th>
-  </tr>
-  <tr>
-    <td><b>file</b></td>
-    <td>{{file_name}}</td>
-  </tr>
-  <tr>
-    <td><b>start</b></td>
-    <td>{{start_date}}</td>
-  </tr>
-  <tr>
-    <td><b>end</b></td>
-    <td>{{end_date}}</td>
-  </tr>
 
-{% for i in range(params|length-2) %}
-    <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-{% endfor %}
+<div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+         <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> Datafeed </th>
+     </tr>
+    </thead>
+<tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> start  </td>
+      <td style="background-color:rgb(255,255,255)"> {{start_date}} </td>
+     </tr>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> end  </td>
+      <td style="background-color:rgb(255,255,255)"> {{end_date}} </td>
+     </tr>
+</tbody>
 </table>
+</div>
 
-
-<table style="float: left" width="100%">
-  <col style="width:33%">
-  <col style="width:67%">  
-  <tr>
-    <th colspan="2"><center>User</center></th>
-  </tr>
-  <tr>
-    <td><b>name</b></td>
-    <td>{{name_user}}</td>
-  </tr>
-   <tr>
-    <td><b>test at</b></td>
-    <td>{{processing_date}}</td>
-  </tr>
-  <tr>
-    <td><b>memo</b></td>
-    <td>{{memo_field}}</td>
-  </tr>
-{% for i in range(params|length-2) %}
-    <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-{% endfor %}
-
-
+<div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+         <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> User </th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> name  </td>
+      <td style="background-color:rgb(255,255,255)"> {{name_user}} </td>
+     </tr>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> test at </td>
+      <td style="background-color:rgb(255,255,255)"> {{processing_date}} </td>
+     </tr>
+      <tr style="">
+      <td style="background-color:rgb(255,255,255)"> memo </td>
+      <td style="background-color:rgb(255,255,255)"> {{memo_field}} </td>
+     </tr>
+</tbody>
 </table>
-
-
+</div>
 
 <!-- -------------------- equity & return curve --------------- -->
 
@@ -138,10 +131,27 @@ th {
 <!-- Performance table -->
 <section>
 
-    <h2><center>Performance</center></h2>
+    <h2><left>Performance</left></h2>
 
     <!-- Weights table -->
     {{ performance_table | safe }}
+
+</section>
+
+<h2>Notes on the performance metrics</h2>
+
+<ul>
+  <li>The pyfolio metrics are to be interpreted as net of contributions (not fund-like)</li>
+</ul>
+
+<!-- weights table -->
+
+<section>
+
+    <h2><left>Target weights</left></h2>
+
+    <!-- Weights table -->
+    {{ targetweights_table | safe }}
 
 </section>
 
@@ -149,10 +159,10 @@ th {
 
 <section>
 
-    <h2><center>Weights</center></h2>
+    <h2><left>Effective weights</left></h2>
 
     <!-- Weights table -->
-    {{ weights_table | safe }}
+    {{ effectiveweights_table | safe }}
 
 </section>
 

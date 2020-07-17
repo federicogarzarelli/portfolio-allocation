@@ -8,13 +8,15 @@ from weasyprint import HTML
 from utils import timestamp2str, get_now, dir_exists
 import numpy as np
 from strategies import *
+import pybloqs.block.table_formatters as tf
+from pybloqs import Block
 
 
 class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
     """
 
-    def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, weight):
+    def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, targetweights, effectiveweights):
         self.outfilename = outfilename
         self.outputdir = outputdir
         self.user = user
@@ -24,7 +26,8 @@ class ReportAggregator:
         self.prices = prices
         self.returns = returns 
         self.perf_data = perf_data
-        self.weight = weight
+        self.targetweights = targetweights
+        self.effectiveweights = effectiveweights
 
         self.outfile = os.path.join(self.outputdir, self.outfilename)
 
@@ -37,7 +40,9 @@ class ReportAggregator:
         self.prices.to_csv(self.outputdir+r'Prices_MultiStrategy_' + get_now().replace(':', '') +'.csv')
         self.returns.to_csv(self.outputdir+r'/Returns_MultiStrategy_' + get_now().replace(':', '') +'.csv')
         self.perf_data.to_csv(self.outputdir+r'/Performance_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-        self.weight.to_csv(self.outputdir+r'/Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
+        self.targetweights.to_csv(self.outputdir+r'/Target_Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
+        self.effectiveweights.to_csv(self.outputdir+r'/Effective_Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
+
 
     def check_and_assign_defaults(self):
         """ Check initialization parameters or assign defaults
@@ -75,22 +80,51 @@ class ReportAggregator:
     def get_end_date(self):
         return self.prices.index[-1].strftime("%Y-%m-%d")
 
-    def get_performance_stats(self):
+    def get_performance_stats_html(self):
+        pct_rows=[('backtrader','total_return'),
+                  ('backtrader', 'total_return'),
+                  ('backtrader', 'annual_return'),
+                  ('backtrader', 'annual_return_asset'),
+                  ('backtrader', 'max_pct_drawdown'),
+                  ('backtrader', 'vwr'),
+                  ('pyfolio', 'Annual return'),
+                  ('pyfolio', 'Cumulative returns'),
+                  ('pyfolio', 'Annual volatility'),
+                  ('pyfolio', 'Max drawdown'),
+                  ('pyfolio', 'Daily value at risk')]
+        dec_rows=[('backtrader','start_cash'),
+                  ('backtrader','end_value'),
+                  ('backtrader',  'max_money_drawdown'),
+                  ('backtrader', 'sharpe_ratio'),
+                  ('pyfolio', 'Sharpe ratio'),
+                  ('pyfolio', 'Calmar ratio'),
+                  ('pyfolio', 'Stability'),
+                  ('pyfolio', 'Omega ratio'),
+                  ('pyfolio', 'Sortino ratio'),
+                  ('pyfolio', 'Skew'),
+                  ('pyfolio', 'Kurtosis'),
+                  ('pyfolio', 'Tail ratio')]
 
-        formatter = {}
-        for i in self.perf_data.columns:
-            formatter[i] = '{:,.2f}'.format
-        perf_data = self.perf_data.to_html(formatters=formatter, index=True,escape=False,col_space='200px')
-        perf_data = {'performance_table':perf_data}
+        fmt_pct = tf.FmtPercent(1, rows=pct_rows, apply_to_header_and_index=False)
+        fmt_dec = tf.FmtDecimals(2, rows=dec_rows, apply_to_header_and_index=False)
+        fmt_align = tf.FmtAlignTable("left")
+        fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
+        fmt_multiindex = tf.FmtExpandMultiIndex(operator=tf.OP_NONE)
+
+        perf_data = Block(self.perf_data, formatters=[fmt_multiindex, fmt_pct, fmt_dec, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        perf_data = {'performance_table': perf_data}
         return perf_data
 
-    def get_weights(self):
-        formatter = {}
-        for i in self.weight.columns:
-            formatter[i] = '{:,.1%}'.format
-        weights = self.weight.to_html(formatters=formatter, index=True,escape=False,col_space='200px')
-        weights = {'weights_table':weights}
-        return weights
+    def get_weights_html(self):
+        fmt_pct = tf.FmtPercent(1, apply_to_header_and_index=False)
+        fmt_align = tf.FmtAlignTable("left")
+        fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
+
+        targetweights = Block(self.targetweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        targetweights = {'targetweights_table': targetweights}
+        effectiveweights = Block(self.effectiveweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        effectiveweights = {'effectiveweights_table': effectiveweights}
+        return targetweights, effectiveweights
 
     def generate_html(self):
         """ Returns parsed HTML text string for report
@@ -108,9 +142,9 @@ class ReportAggregator:
         else:
             graphics = {'url_equity_curve_multistrat': 'file://' + eq_curve}
 
-        kpis = self.get_performance_stats()
-        weights = self.get_weights()
-        all_numbers = {**header, **graphics, **kpis, **weights}
+        kpis = self.get_performance_stats_html()
+        targetweights, effectiveweights = self.get_weights_html()
+        all_numbers = {**header, **graphics, **kpis, **targetweights, **effectiveweights}
         html_out = template.render(all_numbers)
         return html_out
 

@@ -32,11 +32,11 @@ class StFetcher(object):
         return obj
 
 """
-Custom observer to save the weights 
+Custom observer to save the target weights 
 """
 
 
-class WeightsObserver(bt.observer.Observer):
+class targetweightsobserver(bt.observer.Observer):
     params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
     lines = tuple(['asset_' + str(i) for i in range(0, params[0][1])])
 
@@ -46,6 +46,20 @@ class WeightsObserver(bt.observer.Observer):
         for asset in range(0, self.params.n_assets):
             self.lines[asset][0] = self._owner.weights[asset]
 
+"""
+Custom observer to save the effective weights 
+"""
+
+class effectiveweightsobserver(bt.observer.Observer):
+    params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
+    lines = tuple(['asset_' + str(i) for i in range(0, params[0][1])])
+
+    plotinfo = dict(plot=True, subplot=True, plotlinelabels=True)
+
+    def next(self):
+        effectiveweights = self._owner.get_effectiveweights()
+        for asset in range(0, self.params.n_assets):
+            self.lines[asset][0] = effectiveweights[asset]
 
 """
 Custom observer to get dates 
@@ -104,6 +118,7 @@ class StandaloneStrat(bt.Strategy):
         self.buycomm = None
 
         self.weights = [0] * self.params.n_assets
+        self.effectiveweights = [0] * self.params.n_assets
 
         self.startdate = None
 
@@ -136,8 +151,10 @@ class StandaloneStrat(bt.Strategy):
 
     def notify_timer(self, timer, when, *args, **kwargs):
         # Add the monthly cash to the broker
-        self.broker.add_cash(self.params.monthly_cash)  # Add monthly cash on the 20th day
-        self.log('MONTHLY CASH ADDED: new cash amount is %.f' % self.broker.get_cash())
+        if self.startdate is not None and self.datas[0].datetime.datetime(0) >= self.startdate:
+            if self.params.monthly_cash > 0:
+                self.broker.add_cash(self.params.monthly_cash)  # Add monthly cash on the 20th day
+                self.log('MONTHLY CASH ADDED: new cash amount is %.f' % (self.broker.get_cash() + self.params.monthly_cash))
 
     def log(self, txt, dt=None):
         ''' Logging function for this strategy txt is the statement and dt can be used to specify a specific datetime'''
@@ -155,46 +172,41 @@ class StandaloneStrat(bt.Strategy):
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log(
-                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f new cash amount is %.f' %
+                    'BUY EXECUTED, Price: %.2f, Size: %.2f, Comm %.2f' %
                     (order.executed.price,
-                     order.executed.value,
-                     order.executed.comm,
-                     self.broker.get_cash()))
+                     order.executed.size,
+                     order.executed.comm))
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
             elif order.issell():
                 self.log(
-                    'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f new cash amount is %.f' %
+                    'SELL EXECUTED, Price: %.2f, Size: %.2f, Comm %.2f' %
                     (order.executed.price,
-                     order.executed.value,
-                     order.executed.comm,
-                     self.broker.get_cash()))
+                     order.executed.size,
+                     order.executed.comm))
 
             self.bar_executed = len(self)
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.log('Order Canceled/Margin/Rejected.')
-            """
-            self.log('Order Canceled/Margin/Rejected: resubmitting...')
-            if order.params.price * order.params.size > self.broker.get_cash():
-                order.params.size = int(self.broker.get_cash() / order.params.price)
-                self.broker.submit(order)
-                return
-            else:
-                self.log('Order Canceled/Margin/Rejected: order status %f' % order.status)
-            """
 
         # Write down: no pending order
         self.order = None
 
-    def notify_trade(self, trade):
-        if not trade.isclosed:
-            return
-        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
-                 (trade.pnl, trade.pnlcomm))
-
     def get_weights(self):
         return self.weights
+
+    def get_effectiveweights(self):
+        PortfolioValue = self.broker.get_value()
+        for asset in range(0, self.params.n_assets):
+            position = self.broker.getposition(data=self.assets[asset]).size
+            if len(self.assetclose[asset].get(0)) == 0:
+                ThisAssetval = 0
+            else:
+                ThisAssetval = self.assetclose[asset].get(0)[0] * position
+            self.effectiveweights[asset] = ThisAssetval / PortfolioValue
+        return self.effectiveweights
+
 
     def nextstart(self):
         year = self.observers.getdate.line0[0]
@@ -204,26 +216,33 @@ class StandaloneStrat(bt.Strategy):
         # Put all together and drop na
         self.startdate = datetime.datetime(year=int(year), month=int(month), day=int(day))
 
+        self.initial_buy()
+
         super(StandaloneStrat, self).nextstart()
 
+    def initial_buy(self):
+        # Buy at open price
+        for asset in range(0, self.params.n_assets):
+            target_size = int(self.broker.get_cash() * self.weights[asset] / self.assetclose[asset].get(0)[0])
+            self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
+                     price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
+
     def rebalance(self):
-        if len(self) % self.params.reb_days == 0:
-            sold_value = 0
-            # Sell at open price
-            for asset in range(0, self.params.n_assets):
-                position = self.broker.getposition(data=self.assets[asset]).size
-                if position > 0:
-                    self.sell(data=self.datas[asset], exectype=bt.Order.Limit,
-                              price=self.assetclose[asset].get(0)[0], size=position, coo=True)
-                    sold_value = sold_value + (self.assetclose[asset].get(0)[0] * position)
+        sold_value = 0
+        # Sell at open price
+        for asset in range(0, self.params.n_assets):
+            position = self.broker.getposition(data=self.assets[asset]).size
+            if position > 0:
+                self.sell(data=self.datas[asset], exectype=bt.Order.Limit,
+                          price=self.assetclose[asset].get(0)[0], size=position, coo=True)
+                sold_value = sold_value + (self.assetclose[asset].get(0)[0] * position)
 
-            cash_after_sell = sold_value + self.broker.get_cash()
-            # Buy at open price
-            for asset in range(0, self.params.n_assets):
-                target_size = int(cash_after_sell * self.weights[asset] / self.assetclose[asset].get(0)[0])
-                self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
-                         price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
-
+        cash_after_sell = sold_value + self.broker.get_cash()
+        # Buy at open price
+        for asset in range(0, self.params.n_assets):
+            target_size = int(cash_after_sell * self.weights[asset] / self.assetclose[asset].get(0)[0])
+            self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
+                     price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
 
 """
 The child classes below are specific to one strategy.
@@ -236,7 +255,14 @@ class customweights(StandaloneStrat):
         self.weights = self.params.assetweights
 
     def next_open(self):
-        self.rebalance()
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 #@StFetcher.register
 class sixtyforty(StandaloneStrat):
@@ -264,7 +290,14 @@ class sixtyforty(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next_open(self):
-        self.rebalance()
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 
 #@StFetcher.register
@@ -293,7 +326,14 @@ class onlystocks(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next_open(self):
-        self.rebalance()
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+                    self.broker.get_cash(),
+                    self.broker.get_value(),
+                    self.broker.get_fundshares(),
+                    self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 
 #@StFetcher.register
@@ -322,7 +362,14 @@ class vanillariskparity(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next_open(self):
-        self.rebalance()
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 #@StFetcher.register
 class uniform(StandaloneStrat):
@@ -358,48 +405,62 @@ class uniform(StandaloneStrat):
         self.weights = [float(x) / y for x, y in zip(a, b)]
 
     def next_open(self):
-        self.rebalance()
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 #@StFetcher.register
 class rotationstrat(StandaloneStrat):
     strategy_name = "Asset rotation strategy"
 
     def next_open(self):
-        assetclass_allocation = {
-            "gold": 0,
-            "commodity": 0,
-            "equity": 0,
-            "bond_lt": 0,
-            "bond_it": 0
-        }
+        if len(self) % self.params.reb_days == 0:
+            assetclass_allocation = {
+                "gold": 0,
+                "commodity": 0,
+                "equity": 0,
+                "bond_lt": 0,
+                "bond_it": 0
+            }
 
-        strat = {
-            1: "gold",
-            2: "bond_lt",
-            3: "equity"
-        }
+            strat = {
+                1: "gold",
+                2: "bond_lt",
+                3: "equity"
+            }
 
-        which_max = self.indassetsclose.index(max(self.indassetsclose))
+            which_max = self.indassetsclose.index(max(self.indassetsclose))
 
-        winningAsset = strat.get(which_max)
+            winningAsset = strat.get(which_max)
 
-        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+            tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
 
-        for key in assetclass_allocation:
-            if key == winningAsset:
-                assetclass_allocation[key] = 1
+            for key in assetclass_allocation:
+                if key == winningAsset:
+                    assetclass_allocation[key] = 1
 
-        assetclass_cnt = {}
-        for key in assetclass_allocation:
-            count = sum(map(lambda x: x == key, tradable_shareclass))
-            assetclass_cnt[key] = count
+            assetclass_cnt = {}
+            for key in assetclass_allocation:
+                count = sum(map(lambda x: x == key, tradable_shareclass))
+                assetclass_cnt[key] = count
 
-        a = list(map(assetclass_allocation.get, tradable_shareclass))
-        b = list(map(assetclass_cnt.get, tradable_shareclass))
+            a = list(map(assetclass_allocation.get, tradable_shareclass))
+            b = list(map(assetclass_cnt.get, tradable_shareclass))
 
-        self.weights = [float(x) / y for x, y in zip(a, b)]
+            self.weights = [float(x) / y for x, y in zip(a, b)]
 
-        self.rebalance()
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
 
 
 # Risk parity portfolio. The implementation is based on:
@@ -410,9 +471,8 @@ class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
     def next_open(self):
-        target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
-
         if len(self) % self.params.reb_days == 0:
+            target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
             thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
             # Check if asset prices is equal to the lookback period for all assets exist
             thisAssetClose_len = [len(i) for i in thisAssetClose]
@@ -432,11 +492,13 @@ class riskparity(StandaloneStrat):
 
             self.weights = target_risk_contribution(target_risk, cov)
 
-            self.rebalance()
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
 
-            self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
-                                                                          self.broker.get_cash(),
-                                                                          self.broker.get_fundvalue()))
+            self.rebalance()
 
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
@@ -545,11 +607,13 @@ class riskparity_nested(StandaloneStrat):
 
             self.weights = weights_lst
 
-            self.rebalance()
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
 
-            self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
-                                                                          self.broker.get_cash(),
-                                                                          self.broker.get_fundvalue()))
+            self.rebalance()
 
 # Risk parity portfolio. The implementation is based on the Python library riskparity portfolio
 #@StFetcher.register
@@ -557,9 +621,8 @@ class riskparity_pylib(StandaloneStrat):
     strategy_name = "Risk Parity (PythonLib)"
 
     def next_open(self):
-        target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
-
         if len(self) % self.params.reb_days == 0:
+            target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
             thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
             # Check if asset prices is equal to the lookback period for all assets exist
             thisAssetClose_len = [len(i) for i in thisAssetClose]
@@ -579,11 +642,13 @@ class riskparity_pylib(StandaloneStrat):
 
             self.weights = rp.RiskParityPortfolio(covariance=cov, budget=target_risk).weights
 
-            self.rebalance()
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
 
-            self.log("Shares %.2f, Current cash %.2f, Fund value %.2f" % (self.broker.get_fundshares(),
-                                                                          self.broker.get_cash(),
-                                                                          self.broker.get_fundvalue()))
+            self.rebalance()
 
 # Optimal tangent portfolio according to the Modern Portfolio theory by Markowitz. The implementation is based on:
 # https://plotly.com/python/v3/ipython-notebooks/markowitz-portfolio-optimization/

@@ -1,0 +1,29 @@
+<changelist name="Uncommitted_changes_before_Update_at_17_07_2020_09_13_[Default_Changelist]" date="1594970093397" recycled="true" deleted="true">
+  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_17_07_2020_09_13_[Default_Changelist]/shelved.patch" />
+  <option name="DESCRIPTION" value="Uncommitted changes before Update at 17/07/2020 09:13 [Default Changelist]" />
+  <binary>
+    <option name="BEFORE_PATH" value="src/.ipynb_checkpoints/apply_jupyter - Copy-checkpoint.ipynb" />
+    <option name="AFTER_PATH" />
+    <option name="SHELVED_PATH" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/apply_jupyter - Copy.ipynb" />
+    <option name="AFTER_PATH" />
+    <option name="SHELVED_PATH" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/templates/equity_curve_multistrat.png" />
+    <option name="AFTER_PATH" value="src/templates/equity_curve_multistrat.png" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_17_07_2020_09_13_[Default_Changelist]/equity_curve_multistrat.png" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/templates/return_curve.png" />
+    <option name="AFTER_PATH" value="src/templates/return_curve.png" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_17_07_2020_09_13_[Default_Changelist]/return_curve.png" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="src/templates/equity_curve.png" />
+    <option name="AFTER_PATH" value="src/templates/equity_curve.png" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_17_07_2020_09_13_[Default_Changelist]/equity_curve.png" />
+  </binary>
+</changelist>

@@ -6,3 +6,4 @@ pandas_datareader==0.7.0
 scipy=1.5.0
 riskparityportfolio
 pyfolio
+pybloqs

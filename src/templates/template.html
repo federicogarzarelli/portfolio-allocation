@@ -44,81 +44,76 @@ th {
 
 <!-- ----------------------- header block ------------------- -->
 
-<h2><center>One-Strategy Backtesting Report</center></h2>
+<h2><left>One-Strategy Backtesting Report</left></h2>
 
-<table style="float: left">
- <col style="width:50%">
- <col style="width:50%">  
-  <tr>
-    <th colspan="2" style="center"><center>Strategy</center></th>
-  </tr>
-  <tr>
-    <td><b>name</b></td>
-    <td>{{strategy_name}}</td>
-  </tr>  
-
-{% for k, v in params.items() %}
-    <tr>
-    <td><b>{{k}}</b></td>
-    <td>{{v}}</td>
-  </tr>
+  <div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+     <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> Strategy </th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> name </td>
+      <td style="background-color:rgb(255,255,255)"> {{strategy_name}} </td>
+     </tr>
+     {% for k, v in params.items() %}
+    <tr style="">
+      <td style="background-color:rgb(255,255,255)"> {{k}} </td>
+      <td style="background-color:rgb(255,255,255)"> {{v}} </td>
+     </tr>
 {% endfor %}
-
+</tbody>
 </table>
+</div>
 
-<table style="float: left">
- <col style="width:33%">
- <col style="width:67%">
-  <tr>
-    <th colspan="2"><center>Datafeed</center></th>
-  </tr>
-  <tr>
-    <td><b>start</b></td>
-    <td>{{start_date}}</td>
-  </tr>
-  <tr>
-    <td><b>end</b></td>
-    <td>{{end_date}}</td>
-  </tr>
-
-{% for i in range(params|length-2) %}
-    <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-{% endfor %}
+<div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+         <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> Datafeed </th>
+     </tr>
+    </thead>
+<tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> start  </td>
+      <td style="background-color:rgb(255,255,255)"> {{start_date}} </td>
+     </tr>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> end  </td>
+      <td style="background-color:rgb(255,255,255)"> {{end_date}} </td>
+     </tr>
+</tbody>
 </table>
+</div>
 
-
-<table style="float: left" width="100%">
-  <col style="width:33%">
-  <col style="width:67%">  
-  <tr>
-    <th colspan="2"><center>User</center></th>
-  </tr>
-  <tr>
-    <td><b>name</b></td>
-    <td>{{name_user}}</td>
-  </tr>
-   <tr>
-    <td><b>test at</b></td>
-    <td>{{processing_date}}</td>
-  </tr>
-  <tr>
-    <td><b>memo</b></td>
-    <td>{{memo_field}}</td>
-  </tr>
-{% for i in range(params|length-2) %}
-    <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-{% endfor %}
-
-
+<div class="pybloqs">
+   <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
+    <thead style="">
+         <tr style="">
+      <th style="background-color:rgb(0,0,0)"> </th>
+      <th style="background-color:rgb(0,0,0)"> User </th>
+     </tr>
+    </thead>
+    <tbody>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> name  </td>
+      <td style="background-color:rgb(255,255,255)"> {{name_user}} </td>
+     </tr>
+     <tr style="">
+      <td style="background-color:rgb(255,255,255)"> test at </td>
+      <td style="background-color:rgb(255,255,255)"> {{processing_date}} </td>
+     </tr>
+      <tr style="">
+      <td style="background-color:rgb(255,255,255)"> memo </td>
+      <td style="background-color:rgb(255,255,255)"> {{memo_field}} </td>
+     </tr>
+</tbody>
 </table>
-
-
+</div>
 
 <!-- -------------------- equity & return curve --------------- -->
 
@@ -134,93 +129,59 @@ th {
 
 <!-- ------------------- performance statistics ----------------------------- -->
 <br>
+<br>
+<br>
+<br>
 
-<h2><center>Strategy performance</center></h2>
+<!-- Performance table -->
+<section>
 
-<!-- PnL table -->
+    <h2><left>Performance</left></h2>
 
-<table style="float: left" width="100%">
-  <col style="width:67%">
-  <col style="width:33%">  
- <caption><b><center>PnL</center></b></caption>   
-  <tr>
-    <td><b>start capital</b></td>
-    <td>{{start_cash|round|int if start_cash != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>end capital</b></td>
-    <td>{{end_value|round|int if end_value != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-  <tr>
-    <td><b>total return (assets)</b></td>
-    <td>{{total_return|round(2, 'floor') if total_return != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-    <td><b>annual return (assets)</b></td>
-    <td>{{annual_return_asset|round(2, 'floor') if total_return != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-    <td><b>annual return (fund)</b></td>
-    <td>{{annual_return|round(2, 'floor') if annual_return != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-  <tr>
-    <td><b>max. $ drawdown</b></td>
-    <td>{{max_money_drawdown|round(2, 'floor') if max_money_drawdown != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-    <td><b>max. % drawdown</b></td>
-    <td>{{max_pct_drawdown|round(2, 'floor') if max_pct_drawdown != None else 'N/A'}}%</td>
-  </tr>
-<tr>
-  </table>
+    <!-- Weights table -->
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
+    {{ performance_table | safe }}
 
-<!-- KPI table -->
+    <h2>Notes on the performance metrics</h2>
+
+    <ul>
+      <li>The pyfolio metrics are to be interpreted as net of contributions (not fund-like)</li>
+    </ul>
 
 
-<table style="float: right" width="100%">
-  <col style="width:67%">
-  <col style="width:33%">  
- <caption><b><center>KPI's</center></b></caption>
-  <tr>
-    <td><b>Variability Weighted Return</b></td>
-    <td>{{vwr|round(2, 'floor') if vwr != None else 'N/A'}}%</td>
-  </tr>
-  <tr>
-    <td><b>Sharpe Ratio</b></td>
-    <td>{{sharpe_ratio|round(2, 'floor') if sharpe_ratio != None else 'N/A'}}</td>
-  </tr>
-  <tr>
-  <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-  <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-  <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
-  <tr>
-    <td><b>&nbsp;</b></td>
-    <td>&nbsp;</td>
-  </tr>
+</section>
 
-
-  </table>
-
-<!-- ------------------- weights ----------------------------- -->
+<!-- ------------------- target weights ----------------------------- -->
 <br>
 
 <section>
 
-    <h2><center>Asset weights</center></h2>
+    <h2><left>Target weights</left></h2>
 
     <!-- Weights table -->
-    {{ weights_table | safe }}
+
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
+    {{ targetweights_table | safe }}
+
+</section>
+
+<!-- ------------------- effective weights ----------------------------- -->
+<br>
+
+<section>
+
+    <h2><left>Effective weights</left></h2>
+
+    <!-- Weights table -->
+
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
+    {{ effectiveweights_table | safe }}
 
 </section>
 

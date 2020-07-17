@@ -9,6 +9,9 @@ from utils import timestamp2str, get_now, dir_exists
 import numpy as np
 from strategies import *
 import pyfolio as pf
+import pybloqs.block.table_formatters as tf
+from pybloqs import Block
+
 
 
 class PerformanceReport:
@@ -44,7 +47,7 @@ class PerformanceReport:
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
         returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
-        endValue = st.observers.broker.lines[1].array[len(dt)-1:len(dt)][0]
+        endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
         vwr = st.analyzers.myVWR.get_analysis()['vwr']
 
         tot_return = 1
@@ -163,7 +166,7 @@ class PerformanceReport:
         env = Environment(loader=FileSystemLoader('.'))
         template = env.get_template("templates/template.html")
         header = self.get_header_data()
-        kpis = self.get_performance_stats()
+        kpis = self.get_aggregated_data_html()
         if self.system == 'windows':
             graphics = {'url_equity_curve': 'file:\\' + eq_curve,
                         'url_return_curve': 'file:\\' + rt_curve
@@ -173,14 +176,22 @@ class PerformanceReport:
                         'url_return_curve': 'file://' + rt_curve
                         }
 
-        # weights
-        weights = self.get_weights().tail(30)
-        formatter = {}
-        for i in weights.columns:
-            formatter[i] = '{:,.1%}'.format
-        weights = weights.to_html(formatters=formatter, classes=["table table-hover"],index=True,escape=False,col_space='200px')
-        weights = {'weights_table':weights}
-        all_numbers = {**header, **kpis, **graphics, **weights}
+        # targetweights
+        targetweights, effectiveweights = self.get_weights() # only last month
+        targetweights = targetweights.tail(30)
+        effectiveweights = effectiveweights.tail(30)
+
+        fmt_pct = tf.FmtPercent(1, apply_to_header_and_index=False)
+        fmt_align = tf.FmtAlignTable("left")
+        fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
+
+        targetweights = Block(targetweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        effectiveweights = Block(effectiveweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+
+        targetweights = {'targetweights_table':targetweights}
+        effectiveweights = {'effectiveweights_table':effectiveweights}
+
+        all_numbers = {**header, **kpis, **graphics, **targetweights, **effectiveweights}
         html_out = template.render(all_numbers)
         return html_out
 
@@ -188,15 +199,16 @@ class PerformanceReport:
         st = self.stratbt
         n_assets = self.get_strategy_params().get('n_assets')
 
-        # Asset weights
-        size_weights = 100  # get weights for the last 60 days
+        # Asset targetweights
+        size_weights = 100  # get targetweights for the last 100 days
         idx = self.get_date_index()[len(self.get_date_index()) - size_weights:len(self.get_date_index())]
-        weight_df = pd.DataFrame(index=idx)
+        targetweights_df = pd.DataFrame(index=idx)
+        effectiveweights_df = pd.DataFrame(index=idx)
 
         for i in range(0, n_assets):
-            weight_df['asset_' + str(i)] = st.observers.weightsobserver.lines[i].get(size=size_weights)
-
-        return weight_df
+            targetweights_df[st.assets[i]._name] = st.observers.targetweightsobserver.lines[i].get(size=size_weights)
+            effectiveweights_df[st.assets[i]._name] = st.observers.effectiveweightsobserver.lines[i].get(size=size_weights)
+        return targetweights_df, effectiveweights_df
 
     def generate_pdf_report(self):
         """ Returns PDF report with backtest results
@@ -261,7 +273,7 @@ class PerformanceReport:
 
     def get_pyfolio(self):
         st = self.stratbt
-        pyfoliozer  = st.analyzers.getbyname('myPyFolio')
+        pyfoliozer = st.analyzers.getbyname('myPyFolio')
         returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
         return returns, positions, transactions, gross_lev
 
@@ -294,6 +306,43 @@ class PerformanceReport:
         all_stats.columns = [self.get_strategy_name()]
         return all_stats
 
+    def get_aggregated_data_html(self):
+        perf_data = self.get_aggregated_data()
+
+        pct_rows=[('backtrader','total_return'),
+                  ('backtrader', 'total_return'),
+                  ('backtrader', 'annual_return'),
+                  ('backtrader', 'annual_return_asset'),
+                  ('backtrader', 'max_pct_drawdown'),
+                  ('backtrader', 'vwr'),
+                  ('pyfolio', 'Annual return'),
+                  ('pyfolio', 'Cumulative returns'),
+                  ('pyfolio', 'Annual volatility'),
+                  ('pyfolio', 'Max drawdown'),
+                  ('pyfolio', 'Daily value at risk')]
+        dec_rows=[('backtrader','start_cash'),
+                  ('backtrader','end_value'),
+                  ('backtrader',  'max_money_drawdown'),
+                  ('backtrader', 'sharpe_ratio'),
+                  ('pyfolio', 'Sharpe ratio'),
+                  ('pyfolio', 'Calmar ratio'),
+                  ('pyfolio', 'Stability'),
+                  ('pyfolio', 'Omega ratio'),
+                  ('pyfolio', 'Sortino ratio'),
+                  ('pyfolio', 'Skew'),
+                  ('pyfolio', 'Kurtosis'),
+                  ('pyfolio', 'Tail ratio')]
+
+        fmt_pct = tf.FmtPercent(1, rows=pct_rows, apply_to_header_and_index=False)
+        fmt_dec = tf.FmtDecimals(2, rows=dec_rows, apply_to_header_and_index=False)
+        fmt_align = tf.FmtAlignTable("left")
+        fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
+        fmt_multiindex = tf.FmtExpandMultiIndex(operator=tf.OP_NONE)
+
+        perf_data = Block(perf_data, formatters=[fmt_multiindex, fmt_pct, fmt_dec, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        perf_data = {'performance_table': perf_data}
+        return perf_data
+
     def output_all_data(self):
         prices = self.get_equity_curve()
         prices.index = prices.index.date
@@ -304,9 +353,13 @@ class PerformanceReport:
         returns = returns.dropna()
 
         perf_data = self.get_aggregated_data()
-        weight = self.get_weights().tail(1).T
-        weight.columns = [self.get_strategy_name()]
-        return prices, returns, perf_data, weight
+        targetweights, effectiveweights = self.get_weights()
+        targetweights = targetweights.tail(1).T
+        effectiveweights = effectiveweights.tail(1).T
+        targetweights.columns = [self.get_strategy_name()]
+        effectiveweights.columns = [self.get_strategy_name()]
+
+        return prices, returns, perf_data, targetweights, effectiveweights
 
 
 class Cerebro(bt.Cerebro):
@@ -358,8 +411,8 @@ class Cerebro(bt.Cerebro):
         rpt.generate_pdf_report()
         rpt.generate_pyfolio_report()
 
-        prices, returns, perf_data, weight = rpt.output_all_data()
-        return prices, returns, perf_data, weight
+        prices, returns, perf_data, targetweights, effectiveweights = rpt.output_all_data()
+        return prices, returns, perf_data, targetweights, effectiveweights
 
 
 
