@@ -608,10 +608,10 @@ class riskparity_nested(StandaloneStrat):
             self.weights = weights_lst
 
             self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
-            self.broker.get_cash(),
-            self.broker.get_value(),
-            self.broker.get_fundshares(),
-            self.broker.get_fundvalue()))
+                self.broker.get_cash(),
+                self.broker.get_value(),
+                self.broker.get_fundshares(),
+                self.broker.get_fundvalue()))
 
             self.rebalance()
 

@@ -81,24 +81,28 @@ python main.py --shares "UPRO,UGLD,TYD,TMF,UTSL" --shareclass "equity,gold,bond_
 ```
 
 # Dataset explanation
-| Symbol  |                  Meaning                            																					|
-|---------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| DFII10  |     10 Year Treasury Inflation-Indexed Security     																					|
-|  Gold   |               Gold Prices                           																					|
-|SPGSCITR |  SP5 GSCI Total Return Index (commodity and infl.)  																					|
-|  FVX    |          Treasury Yield 5 Years                     																					|
-|  GSPC   |               SP500 Index                           																					|
-|  TYX    |          Treasury Yield 30 Years                    																					|
-|  T10Y2Y |          10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity https://fred.stlouisfed.org/series/T10Y2Y           |
-|  DFII20 |          20-Year Treasury Inflation-Indexed Security, Constant Maturity https://fred.stlouisfed.org/series/DFII20                       |
-|  T10YIE |          10-Year Breakeven Inflation Rate (T10YIE) https://fred.stlouisfed.org/series/T10YIE                                            |
+| Symbol         | Frequency |                 Meaning                            																		    |
+|----------------|-----------|------------------------------------------------------------------------------------------------------------------------------|
+| DFII10         | Daily     | 10 Year Treasury Inflation-Indexed Security																				    |
+| Gold           | Daily     | Gold Prices                    																					            |
+| SPGSCITR       | Daily     | SP500 GSCI Total Return Index (commodity and infl.)  																		|
+| FVX            | Daily     | Treasury Yield 5 Years                     																					|
+| GSPC           | Daily     | SP500 Index                           																					    |
+| TYX            | Daily     | Treasury Yield 30 Years                    																					|
+| T10Y2Y         | Daily     | 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity https://fred.stlouisfed.org/series/T10Y2Y         |
+| DFII20         | Daily     | 20-Year Treasury Inflation-Indexed Security, Constant Maturity https://fred.stlouisfed.org/series/DFII20                     |
+| T10YIE         | Daily     |10-Year Breakeven Inflation Rate (T10YIE) https://fred.stlouisfed.org/series/T10YIE                                           |
+| F000000__3a    | Yearly    | U.S. Crude Oil First Purchase Price (Dollars per Barrel) from 1900 to 2019 (annual frequency)                                |
+| JSTdatasetR4   | Yearly    | Macroeconomic data from 1870 to 2019 http://www.macrohistory.net/data/#DownloadData                                          |
+| GOLD_1800-2019 | Yearly    | Gold prices https://www.measuringworth.com/datasets/gold/                                                                    |
 
 # Todo List
-- [ ] Scan galaxy of assets that are uncorrelated by buckets and save them
+- [ ] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
 - [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
 - [ ] Check money drawdown in report that is probably wrong
+- [X] ~~Scan galaxy of assets that are uncorrelated by buckets and save them~~ See Uncorrelated asset Jupyter notebook
 - [X] ~~Report: add max time in drawdown, VaR.~~ Added Pyfolio report. Added multistrategy report. 
 - [X] Create simple vanilla risk parity strategy
 - [X] Add the function to automatically calculate the different weights
