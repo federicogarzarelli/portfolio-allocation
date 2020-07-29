@@ -66,11 +66,11 @@ __Note__: the asset classes (`--shareclass` argument) used in the strategies are
 
 The parameters below are hardcoded in the `main.py` file. 
 
-*__reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30.
-*__lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 30. 
-*__lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 180.
-*__printlog__ If true a log is output in the terming. Default is True.
-*__corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
+* __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30.
+* __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 30. 
+* __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 180.
+* __printlog__ If true a log is output in the terming. Default is True.
+* __corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
 
 ## EXAMPLES
 1. Historical data, uniform strategy
@@ -118,11 +118,11 @@ python main.py --shares "UPRO,UGLD,TYD,TMF,UTSL" --shareclass "equity,gold,bond_
 | GOLD_1800-2019 | Yearly    | Gold prices https://www.measuringworth.com/datasets/gold/                                                                    |
 
 # Todo List
-- [ ] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
 - [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
 - [ ] Check money drawdown in report that is probably wrong
+- [X] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [X] ~~Scan galaxy of assets that are uncorrelated by buckets and save them~~ See Uncorrelated asset Jupyter notebook
 - [X] ~~Report: add max time in drawdown, VaR.~~ Added Pyfolio report. Added multistrategy report. 
 - [X] Create simple vanilla risk parity strategy
