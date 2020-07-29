@@ -77,7 +77,7 @@ if __name__ == '__main__':
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
     df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
     df = df[df['yield'] != 'null']
-    df['close'] =  100/np.power(1+df['yield']/100,30)
+    df['close'] = 100/np.power(1+df['yield']/100,30)
     df = df.dropna()
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:

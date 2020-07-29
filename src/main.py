@@ -32,8 +32,8 @@ strat_params = {
 def parse_args():
     now = datetime.datetime.now().strftime("%Y_%m_%d")  # string to be used after
     parser = argparse.ArgumentParser(description='main class to run strategies')
-    parser.add_argument('--historic', action='store_true', default=False, required=False,
-                        help='would you like to use the historical manual data')
+    parser.add_argument('--historic', type=str, default='medium', required=False,
+                        help='would you like to use the historical manual data. Long for yearly data from 1900, medium for daily from the 1970')
     parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,
                         help='string corresponding to list of shares if not using historic')
     parser.add_argument('--shareclass', type=str, default='equity,bond', required=False,
@@ -77,10 +77,28 @@ def runOneStrat(strategy=None):
 
     # Add the data
     data = []
-    if args.historic:
+    if args.historic == 'medium':
 
         # Import the historical assets
         shares_list = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']
+        for share in shares_list:
+            df = import_process_hist(share, args)
+            for column in ['open', 'high', 'low', 'close']:
+                df[column]=add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+
+            for column in ['open', 'high', 'low']:
+                df[column] = df['close']
+
+            df['volume'] = 0
+
+            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+
+        shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
+
+    elif args.historic == 'long':
+
+        # Import the historical assets
+        shares_list = ['GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG']
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:

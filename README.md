@@ -24,7 +24,7 @@ or run the bash script **install_reports.sh**
 # Usage of main
 
 ```bash
-python main.py [--historic | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
+python main.py [--historic [medium | long] | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
                [--initial_cash CASH] [--monthly_cash CASH] 
                [--create_report [--report_name NAME]] 
                [--startdate DATE] [--enddate DATE]
@@ -35,33 +35,54 @@ python main.py [--historic | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST
 ## DESCRIPTION
 Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. It is recommended to run the code in a jupyter notebook to obtain the pyfolio reports in the right format. A jupyter notebook is created for this purpose in 'src/apply_jupyter.ipynb'.
 
+### Strategies
+* __riskparity__ Dynamic allocation of weights according to the risk parity methodology (see https://thequantmba.wordpress.com/2016/12/14/risk-parityrisk-budgeting-portfolio-in-python/). Here the risk parity is run at portfolio level.
+* __riskparity_nested__ Dynamic allocation of weights according to the risk parity methodology (see https://thequantmba.wordpress.com/2016/12/14/risk-parityrisk-budgeting-portfolio-in-python/). Here the risk parity is run first at asset classe level (for assets belonging to the same asset class) and then at portfolio level.
+* __rotationstrat__ Asset rotation strategy that buy either gold, bonds or equities based on a signal (see https://seekingalpha.com/article/4283733-simple-rules-based-asset-rotation-strategy). To use this strategy specify the parameter `--indicators`.
+* __uniform__ Static allocation uniform across asset classes. Assets are allocated uniformly within the same asset class.
+* __vanillariskparity__ Static allocation to asset classes where weights are taken from https://www.theoptimizingblog.com/leveraged-all-weather-portfolio/ (see section "True Risk Parity").
+* __onlystocks__ Static allocation only to the equity class. Assets are allocated uniformly within the equity class.
+* __sixtyforty__ Static allocation 60% to the equity class, 20% to the Long Term Bonds class and 20% to the Short Term Bonds class. Assets are allocated uniformly within the asset classes.
+
+__Note__: the asset classes (`--shareclass` argument) used in the strategies are: Gold, Commodities, Equities, Long Term Bonds, Short Term Bonds (see "OPTIONS" section below). When `--shares` is specified, every asset in `SHARES_LIST` must be assigned to one of these 
+
 ## OPTIONS
-* `--historic`             use historical asset data ('GLD', 'COM', 'SP500', 'LTB', 'ITB'), already downloaded manually. Alternative is --shares
-* `--shares`               use downloaded asset data of the tickers specified in comma separated list (e.g. "SPY,TLT,GLD"). Alternative is --historic.
-* `--shareclass`           class of each share specified after --shares (e.g. "equity,bond_lt,gold"). Possibilities are "equity, bond_lt, bond_it, gold, commodity", where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when --shares is chosen__
-* `--weights`              list of portfolio weights for each share specified after --shares (e.g. "0.35,0.35,0.30"). The weights need to sum to 1. When weights are specified a custom weights strategy is used that simply loads the weights specified. Alternative is --strategy. __Either this argument or --strategy is mandatory__
-* `--strategy`             name of one of the strategy to run for the PDF report. Possibilities are "riskparity_pylib, riskparity, rotationstrat, uniform, vanillariskparity, onlystocks, sixtyforty", where "riskparity_pylib" is the dynamic weights risk parity allocation from the package riskparityportfolio and riskparity is our implementation.  Alternative is --weights. __Either this argument or --weights is mandatory__
-* `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when --strategy rotationstrat is chosen__
+* `--historic`             use historical asset data, already downloaded manually. Alternative is `--shares`. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'LTB', 'ITB'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG'`). `--historic = "long"` cannot be used with the following strategies `riskparity, riskparity_nested, rotationstrat`.
+* `--shares`               use downloaded asset data of the tickers specified in comma separated list (e.g. "SPY,TLT,GLD"). Alternative is `--historic`.
+* `--shareclass`           class of each share specified after --shares (e.g. `equity,bond_lt,gold`). Possibilities are `equity, bond_lt, bond_it, gold, commodity`, where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when `--shares` is chosen__
+* `--weights`              list of portfolio weights for each share specified after `--shares` (e.g. `0.35,0.35,0.30`). The weights need to sum to 1. When weights are specified a custom weights strategy is used that simply loads the weights specified. Alternative is `--strategy`. __Either this argument or `--strategy` is mandatory__
+* `--strategy`             name of one of the strategy to run for the PDF report. Possibilities are `riskparity, riskparity_nested, rotationstrat, uniform, vanillariskparity, onlystocks, sixtyforty`. Alternative is --weights. __Either this argument or `--weights` is mandatory__
+* `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when `--strategy rotationstrat` is chosen__
 * `--initial_cash`         initial_cash to start with. Default is 100000.
 * `--monthly_cash`         monthly cash invested. Default is 10000.
 * `--create_report`        creates a report if true
-* `--report_name`          report name. __This argument should be specified ony when --create_report is chosen__ 
+* `--report_name`          report name. __This argument should be specified ony when `--create_report` is chosen__ 
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
 * `--enddate`              end date of the simulation.  If not specified backtrader will take the latest possible date. (To test)
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.
-* `--leverage`             leverage to consider. Leverage is applied both with historical (--historic) and automatic (--shares). data Default is 1. 
+* `--leverage`             leverage to consider. Leverage is applied both with historical (`--historic`) and automatic (`--shares`). data Default is 1. 
+
+### Hidden parameters 
+
+The parameters below are hardcoded in the `main.py` file. 
+
+*__reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30.
+*__lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 30. 
+*__lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 180.
+*__printlog__ If true a log is output in the terming. Default is True.
+*__corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
 
 ## EXAMPLES
 1. Historical data, uniform strategy
 
 ```bash
-python main.py --historic --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 2. Historical data, custom weights
 
 ```bash
-python main.py --historic --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
  3. Automatically downloaded data, custom weights

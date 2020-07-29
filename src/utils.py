@@ -139,7 +139,13 @@ def import_process_hist(dataLabel, args):
         'COM': wd + '/modified_data/clean_spgscitr.csv',
         'LTB': wd + '/modified_data/clean_tyx.csv',
         'ITB': wd + '/modified_data/clean_fvx.csv',
-        'TIP': wd + '/modified_data/clean_dfii10.csv'
+        'TIP': wd + '/modified_data/clean_dfii10.csv',
+        'GLD_LNG': wd + '/modified_data/clean_gld_yearly.csv',
+        'OIL_LNG': wd + '/modified_data/clean_oil_yearly.csv',
+        'EQ_LNG' : wd + '/modified_data/clean_equity_yearly.csv',
+        'RE_LNG': wd + '/modified_data/clean_housing_yearly.csv',
+        'LTB_LNG': wd + '/modified_data/clean_bond_yearly.csv',
+        'ITB_LNG': wd + '/modified_data/clean_bill_yearly.csv'
     }
 
     mapping_path_windows = {
@@ -148,7 +154,13 @@ def import_process_hist(dataLabel, args):
         'COM': wd + '\modified_data\clean_spgscitr.csv',
         'LTB': wd + '\modified_data\clean_tyx.csv',
         'ITB': wd + '\modified_data\clean_fvx.csv',
-        'TIP': wd + '\modified_data\clean_dfii10.csv'
+        'TIP': wd + '\modified_data\clean_dfii10.csv',
+        'GLD_LNG': wd + '\modified_data\clean_gld_yearly.csv',
+        'OIL_LNG': wd + '\modified_data\clean_oil_yearly.csv',
+        'EQ_LNG': wd + '\modified_data\clean_equity_yearly.csv',
+        'RE_LNG': wd + '\modified_data\clean_housing_yearly.csv',
+        'LTB_LNG': wd + '\modified_data\clean_bond_yearly.csv',
+        'ITB_LNG': wd + '\modified_data\clean_bill_yearly.csv'
     }
 
     if args.system == 'linux':
