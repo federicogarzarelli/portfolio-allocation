@@ -7,6 +7,7 @@ import backtrader.feeds as btfeeds
 import numpy as np
 import os
 import argparse
+from utils import *
 
 
 
@@ -36,9 +37,21 @@ if __name__ == '__main__':
     df = df.rename(columns={"close_USD": "close"})
 
     # Go from yearly from day frequency. Fill the gaps with the previous value.
-    r = pd.date_range(start=df.index.min(), end=df.index.max())
-    df = df.reindex(r)
-    df = df.fillna(method='backfill')
+
+#    r = pd.date_range(start=df.index.min(), end=df.index.max())
+#    df = df.reindex(r)
+#    df = df.fillna(method='backfill')
+    sigma = df.pct_change().std().values
+    data_filled = pd.DataFrame(columns=['close'])
+    for j in range(0,len(df)-1):
+        a = df.iloc[j]
+        b = df.iloc[j+1]
+        r = pd.date_range(start=df.index[j], end=df.index[j+1])
+        N = len(r)
+        B = brownian_bridge(1, N, a.values, b.values, 1/sigma)
+        B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+        data_filled = data_filled.append(B_df)
+    df = data_filled
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
@@ -58,9 +71,22 @@ if __name__ == '__main__':
     df.index = df.index.rename('date')
 
     # Go from yearly from day frequency. Fill the gaps with the previous value.
-    r = pd.date_range(start=df.index.min(), end=df.index.max())
-    df = df.reindex(r)
-    df = df.fillna(method='backfill')
+    #r = pd.date_range(start=df.index.min(), end=df.index.max())
+    #df = df.reindex(r)
+    #df = df.fillna(method='backfill')
+
+    sigma = df.pct_change().std().values
+    data_filled = pd.DataFrame(columns=['close'])
+    for j in range(0,len(df)-1):
+        a = df.iloc[j]
+        b = df.iloc[j+1]
+        r = pd.date_range(start=df.index[j], end=df.index[j+1])
+        N = len(r)
+        B = brownian_bridge(1, N, a.values, b.values, sigma/np.sqrt(N))
+        B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+        data_filled = data_filled.append(B_df)
+    df = data_filled
+
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
@@ -101,9 +127,21 @@ if __name__ == '__main__':
         data = data.drop([asset], axis=1)
 
         # 2. go from yearly to day frequency and backfill prices
-        r = pd.date_range(start=data.index.min(), end=data.index.max())
-        data = data.reindex(r)
-        data = data.fillna(method='backfill')
+        #r = pd.date_range(start=data.index.min(), end=data.index.max())
+        #data = data.reindex(r)
+        #data = data.fillna(method='backfill')
+
+        sigma = data.pct_change().std().values
+        data_filled = pd.DataFrame(columns=['close'])
+        for j in range(0, len(data) - 1):
+            a = data.iloc[j]
+            b = data.iloc[j + 1]
+            r = pd.date_range(start=data.index[j], end=data.index[j + 1])
+            N = len(r)
+            B = brownian_bridge(1, N, a.values, b.values, sigma / np.sqrt(N))
+            B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+            data_filled = data_filled.append(B_df)
+        data = data_filled
 
         # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
         for column in ["open", "high", "low"]:

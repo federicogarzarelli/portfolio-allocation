@@ -409,7 +409,14 @@ class Cerebro(bt.Cerebro):
         bt = self.get_strategy_backtest()
         rpt = PerformanceReport(bt, outfile=outfile, user=user, memo=memo, system=system)
         rpt.generate_pdf_report()
-        rpt.generate_pyfolio_report()
+
+        try:
+            rpt.generate_pyfolio_report()
+        except:
+            print("Error raised in rpt.generate_pyfolio_report().")
+            pass
+
+
 
         prices, returns, perf_data, targetweights, effectiveweights = rpt.output_all_data()
         return prices, returns, perf_data, targetweights, effectiveweights

@@ -46,7 +46,7 @@ def parse_args():
     parser.add_argument('--monthly_cash', type=float, default=10000, required=False, help='monthly cash invested')
     parser.add_argument('--create_report', action='store_true', default=False, required=False,
                         help='creates a report if true')
-    parser.add_argument('--report_name', type=str, default='Testf_Report', required=False,
+    parser.add_argument('--report_name', type=str, default='Test_Report', required=False,
                         help='if create_report is True, it is better to have a specific name')
     parser.add_argument('--strategy', type=str, required=False,
                         help='Specify the strategies for which a backtest is run')

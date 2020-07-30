@@ -275,6 +275,25 @@ def covariances(shares=['GLD', 'TLT', 'SPY'],
 
     return covariances
 
+"""
+Brownian bridge
+"""
+def brownian_bridge(M, N, a, b, sigma):
+    dt = 1.0 / (N-1)
+    dt_sqrt = np.sqrt(dt)
+    B = np.empty((M, N), dtype=np.float32)
+    B[:, 0] = a-b
+    for n in range(N - 2):
+         t = n * dt
+         xi = np.random.randn(M) * dt_sqrt * sigma
+         B[:, n + 1] = B[:, n] * (1-dt / (1-t)) + xi
+    B[:, -1] = 0
+    return B+b
+"""
+M = 1
+N = 100 #Steps
+B = sample_path_batch(M, N, 0, 0)
+"""
 
 def timestamp2str(ts):
     """ Converts Timestamp object to str containing date and time
