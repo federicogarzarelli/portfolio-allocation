@@ -41,17 +41,35 @@ if __name__ == '__main__':
 #    r = pd.date_range(start=df.index.min(), end=df.index.max())
 #    df = df.reindex(r)
 #    df = df.fillna(method='backfill')
-    sigma = df.pct_change().std().values
+
+    # Fill the gap with a brownian bridge
     data_filled = pd.DataFrame(columns=['close'])
-    for j in range(0,len(df)-1):
-        a = df.iloc[j]
-        b = df.iloc[j+1]
+
+    # First calculate the yearly standard deviation
+    logret = np.log(df.close) - np.log(df.close.shift(1))
+    sigma = logret.std()
+
+    for j in range(0, len(df)-1): # loop on the yearly prices
+        a = df.close.iloc[j]
+        b = df.close.iloc[j+1]
         r = pd.date_range(start=df.index[j], end=df.index[j+1])
         N = len(r)
-        B = brownian_bridge(1, N, a.values, b.values, 1/sigma)
-        B_df = pd.DataFrame(B.T, columns=['close'], index=r)
-        data_filled = data_filled.append(B_df)
+        sigma_day = sigma/np.sqrt(N) # daily standard deviation
+
+        B = brownian_bridge(N, a, b)
+        BB = pd.DataFrame(data=B.T, columns=['close'], index=r)
+        logret = np.log(BB.close) - np.log(BB.close.shift(1))
+        thisstd = logret.std()
+        scaling = sigma_day / thisstd
+        # Scale the returns to have the desired standard deviation
+        logret_scaled = (logret-logret.mean())*scaling+logret.mean()
+        BB_scaled = BB.close.iloc[0] * np.exp(np.cumsum(logret_scaled))
+        BB_scaled = pd.DataFrame(data=BB_scaled, columns=['close'], index=r)
+        BB_scaled.close.iloc[0] = a
+        #B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+        data_filled = data_filled.append(BB_scaled)
     df = data_filled
+    df = df.drop_duplicates()
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
@@ -75,17 +93,34 @@ if __name__ == '__main__':
     #df = df.reindex(r)
     #df = df.fillna(method='backfill')
 
-    sigma = df.pct_change().std().values
+    # Fill the gap with a brownian bridge
     data_filled = pd.DataFrame(columns=['close'])
-    for j in range(0,len(df)-1):
-        a = df.iloc[j]
-        b = df.iloc[j+1]
+
+    # First calculate the yearly standard deviation
+    logret = np.log(df.close) - np.log(df.close.shift(1))
+    sigma = logret.std()
+
+    for j in range(0, len(df)-1): # loop on the yearly prices
+        a = df.close.iloc[j]
+        b = df.close.iloc[j+1]
         r = pd.date_range(start=df.index[j], end=df.index[j+1])
         N = len(r)
-        B = brownian_bridge(1, N, a.values, b.values, sigma/np.sqrt(N))
-        B_df = pd.DataFrame(B.T, columns=['close'], index=r)
-        data_filled = data_filled.append(B_df)
+        sigma_day = sigma/np.sqrt(N) # daily standard deviation
+
+        B = brownian_bridge(N, a, b)
+        BB = pd.DataFrame(data=B.T, columns=['close'], index=r)
+        logret = np.log(BB.close) - np.log(BB.close.shift(1))
+        thisstd = logret.std()
+        scaling = sigma_day / thisstd
+        # Scale the returns to have the desired standard deviation
+        logret_scaled = (logret-logret.mean())*scaling+logret.mean()
+        BB_scaled = BB.close.iloc[0] * np.exp(np.cumsum(logret_scaled))
+        BB_scaled = pd.DataFrame(data=BB_scaled, columns=['close'], index=r)
+        BB_scaled.close.iloc[0] = a
+        #B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+        data_filled = data_filled.append(BB_scaled)
     df = data_filled
+    df = df.drop_duplicates()
 
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
@@ -131,17 +166,34 @@ if __name__ == '__main__':
         #data = data.reindex(r)
         #data = data.fillna(method='backfill')
 
-        sigma = data.pct_change().std().values
+        # Fill the gap with a brownian bridge
         data_filled = pd.DataFrame(columns=['close'])
-        for j in range(0, len(data) - 1):
-            a = data.iloc[j]
-            b = data.iloc[j + 1]
+
+        # First calculate the yearly standard deviation
+        logret = np.log(data.close) - np.log(data.close.shift(1))
+        sigma = logret.std()
+
+        for j in range(0, len(data) - 1):  # loop on the yearly prices
+            a = data.close.iloc[j]
+            b = data.close.iloc[j + 1]
             r = pd.date_range(start=data.index[j], end=data.index[j + 1])
             N = len(r)
-            B = brownian_bridge(1, N, a.values, b.values, sigma / np.sqrt(N))
-            B_df = pd.DataFrame(B.T, columns=['close'], index=r)
-            data_filled = data_filled.append(B_df)
+            sigma_day = sigma / np.sqrt(N)  # daily standard deviation
+
+            B = brownian_bridge(N, a, b)
+            BB = pd.DataFrame(data=B.T, columns=['close'], index=r)
+            logret = np.log(BB.close) - np.log(BB.close.shift(1))
+            thisstd = logret.std()
+            scaling = sigma_day / thisstd
+            # Scale the returns to have the desired standard deviation
+            logret_scaled = (logret - logret.mean()) * scaling + logret.mean()
+            BB_scaled = BB.close.iloc[0] * np.exp(np.cumsum(logret_scaled))
+            BB_scaled = pd.DataFrame(data=BB_scaled, columns=['close'], index=r)
+            BB_scaled.close.iloc[0] = a
+            # B_df = pd.DataFrame(B.T, columns=['close'], index=r)
+            data_filled = data_filled.append(BB_scaled)
         data = data_filled
+        data = data.drop_duplicates()
 
         # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
         for column in ["open", "high", "low"]:

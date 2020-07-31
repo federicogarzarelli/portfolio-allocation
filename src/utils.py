@@ -278,14 +278,13 @@ def covariances(shares=['GLD', 'TLT', 'SPY'],
 """
 Brownian bridge
 """
-def brownian_bridge(M, N, a, b, sigma):
+def brownian_bridge(N, a, b):
     dt = 1.0 / (N-1)
-    dt_sqrt = np.sqrt(dt)
-    B = np.empty((M, N), dtype=np.float32)
+    B = np.empty((1, N), dtype=np.float32)
     B[:, 0] = a-b
     for n in range(N - 2):
          t = n * dt
-         xi = np.random.randn(M) * dt_sqrt * sigma
+         xi = np.random.randn() * np.sqrt(dt)
          B[:, n + 1] = B[:, n] * (1-dt / (1-t)) + xi
     B[:, -1] = 0
     return B+b
