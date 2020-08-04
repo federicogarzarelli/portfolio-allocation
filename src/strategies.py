@@ -12,6 +12,8 @@ from risk_budgeting import target_risk_contribution
 import os
 import riskparityportfolio as rp
 from backtrader.utils.py3 import range
+from datetime import timedelta
+
 
 
 class StFetcher(object):
@@ -121,6 +123,11 @@ class StandaloneStrat(bt.Strategy):
         self.effectiveweights = [0] * self.params.n_assets
 
         self.startdate = None
+        self.timeframe = self.get_timeframe()
+        if self.timeframe == "Days":
+            self.log("Strategy: you are using data with daily frequency", dt=None)
+        elif self.timeframe == "Years":
+            self.log("Strategy: you are using data with yearly frequency", dt=None)
 
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
@@ -142,12 +149,24 @@ class StandaloneStrat(bt.Strategy):
         self.broker.set_fundmode(fundmode=True, fundstartval=100.00)  # Activate the fund mode, default has 100 shares
         self.broker.set_cash(self.params.initial_cash)  # Set initial cash of the account
 
-        # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
-        self.add_timer(
-            bt.timer.SESSION_START#,
-            #monthdays=[20],  # called on the 20th day of the month
-            #monthcarry=True  # called on another day if 20th day is vacation/weekend)
-        )
+        if self.timeframe == "Days":
+            # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
+            self.add_timer(
+                bt.timer.SESSION_START,
+                monthdays=[20],  # called on the 20th day of the month
+                monthcarry=True  # called on another day if 20th day is vacation/weekend)
+            )
+        elif self.timeframe == "Years":
+            # Add a timer which will be called every year
+            self.add_timer(bt.timer.SESSION_START)
+
+    def get_timeframe(self):
+        dates = [self.datas[0].datetime.datetime(i) for i in range(1, len(self.datas[0].datetime.array) + 1)]
+        datediff = stats.mode(np.diff(dates))[0][0]
+        if datediff > timedelta(days=250):
+            return "Years"
+        elif datediff < timedelta(days=2):
+            return "Days"
 
     def notify_timer(self, timer, when, *args, **kwargs):
         # Add the monthly cash to the broker
@@ -209,23 +228,22 @@ class StandaloneStrat(bt.Strategy):
 
 
     def nextstart(self):
-        year = self.observers.getdate.line0[0]
-        month = self.observers.getdate.line1[0]
-        day = self.observers.getdate.line2[0]
+        self.startdate = self.datas[0].datetime.datetime(1) # the first date is the next one, since nextstart is called one bar before next
 
-        # Put all together
-        self.startdate = datetime.datetime(year=int(year), month=int(month), day=int(day))
-
-        self.initial_buy()
+        #self.initial_buy()
 
         super(StandaloneStrat, self).nextstart()
 
+    """
     def initial_buy(self):
-        # Buy at open price
-        for asset in range(0, self.params.n_assets):
-            target_size = int(self.broker.get_cash() * self.weights[asset] / self.assetclose[asset].get(0)[0])
+    # Buy at open price
+    for asset in range(0, self.params.n_assets):
+        target_size = int(self.broker.get_cash() * self.weights[asset] / self.assetclose[asset].get(0)[0])
+        if target_size > 0:
             self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
                      price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
+    """
+
 
     def rebalance(self):
         sold_value = 0
@@ -241,8 +259,9 @@ class StandaloneStrat(bt.Strategy):
         # Buy at open price
         for asset in range(0, self.params.n_assets):
             target_size = int(cash_after_sell * self.weights[asset] / self.assetclose[asset].get(0)[0])
-            self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
-                     price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
+            if target_size > 0:
+                self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
+                         price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
 
 """
 The child classes below are specific to one strategy.

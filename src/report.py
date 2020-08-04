@@ -13,6 +13,7 @@ import pybloqs.block.table_formatters as tf
 from pybloqs import Block
 from scipy import stats
 from datetime import timedelta
+from myanalyzers import MyAnnualReturn, MyTimeReturn, MySharpeRatio, MySharpeRatio_A, MyReturns, MyDrawDown, MyTimeDrawDown
 
 
 class PerformanceReport:
@@ -56,7 +57,7 @@ class PerformanceReport:
         # Total period for the backtesting in days
         bt_period = dt[-1] - dt[0]
         bt_period_days = bt_period.days
-        bt_period_years = round(bt_period.days/365.2422)-1
+        bt_period_years = round(bt_period.days/365.2422)
 
         drawdown = st.analyzers.myDrawDown.get_analysis()
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
@@ -69,20 +70,22 @@ class PerformanceReport:
         timedd = st.analyzers.myTimeDrawDown.get_analysis()
 
         tot_return = 1
-        for key, value in annualreturns.items():
+        for key, value in timeret.items():
             tot_return = tot_return * (1 + value)
         tot_return = tot_return - 1
 
         if timeframe == "Days":
             annual_return_asset = 100 * ((1 + tot_return) ** (365.2422 / bt_period_days) - 1)
+            annual_return = (returns['rnorm'] + 1) ** ( bt_period_days / 365.2422  ) - 1
         elif timeframe == "Years":
             annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
+            annual_return = (returns['rnorm'] + 1) ** ( len(timeret) /bt_period_years ) - 1
 
         kpi = {# PnL
                'start_cash': self.get_startcash(),
                'end_value': endValue,
                'total_return': 100*tot_return,
-               'annual_return': returns['rnorm100'],
+               'annual_return': 100*annual_return,
                'annual_return_asset': annual_return_asset,
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
@@ -273,7 +276,7 @@ class PerformanceReport:
         # Transform into DatetimeIndex
         df = pd.to_datetime(df[["day", "month", "year"]])
         df.index = df
-        df = df[df > st.startdate]
+        df = df[df >= st.startdate]
         return df.index
 
     def get_start_date(self):
@@ -436,7 +439,7 @@ class Cerebro(bt.Cerebro):
             elif timeframe == bt.TimeFrame.Days:
                 scalar = 365.2422
 
-            self.addanalyzer(bt.analyzers.SharpeRatio,
+            self.addanalyzer(MySharpeRatio,
                              _name="mySharpe",
                              riskfreerate=riskfree,
                              timeframe=timeframe,
@@ -444,14 +447,14 @@ class Cerebro(bt.Cerebro):
                              factor=scalar,
                              annualize=True,
                              stddev_sample=True,
-                             fund=False)
-            self.addanalyzer(bt.analyzers.DrawDown,
-                             fund=False,
+                             fund=True)
+            self.addanalyzer(MyDrawDown,
+                             fund=True,
                              _name="myDrawDown")
-            self.addanalyzer(bt.analyzers.AnnualReturn,
+            self.addanalyzer(MyAnnualReturn,
                              _name="myAnnualReturn")
-            self.addanalyzer(bt.analyzers.Returns,
-                             fund=False,
+            self.addanalyzer(MyReturns,
+                             fund=True,
                              timeframe=timeframe,
                              tann=scalar,
                              _name="myReturns")
@@ -459,20 +462,20 @@ class Cerebro(bt.Cerebro):
                              timeframe=timeframe,
                              tau=2,
                              sdev_max=0.2,
-                             fund=False,
+                             fund=True,
                              _name="myVWR")
             self.addanalyzer(bt.analyzers.PyFolio,
                              timeframe=timeframe,
                              _name="myPyFolio")
             self.addanalyzer(bt.analyzers.LogReturnsRolling,
                              timeframe=timeframe,
-                             fund=False,
+                             fund=True,
                              _name="myLogReturnsRolling")
-            self.addanalyzer(bt.analyzers.TimeReturn,
+            self.addanalyzer(MyTimeReturn,
                              timeframe=timeframe,
-                             fund=False,
+                             fund=True,
                              _name="myTimeReturn")
-            self.addanalyzer(bt.analyzers.TimeDrawDown,
+            self.addanalyzer(MyTimeDrawDown,
                              timeframe=timeframe,
                              fund=True,
                              _name="myTimeDrawDown")

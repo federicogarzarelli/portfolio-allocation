@@ -11,10 +11,20 @@ from report_aggregator import ReportAggregator
 from strategies import customweights
 
 # Set the strategy parameters
+"""
 strat_params_days = {
     'reb_days': 30,  # every month: we rebalance the portfolio
     'lookback_period_short': 30,  # period to calculate the variance
     'lookback_period_long': 180,  # period to calculate the correlation
+    'printlog': True,
+    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
+}
+
+"""
+strat_params_days = {
+    'reb_days': 1,  # rebalance the portfolio every year
+    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
+    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
     'printlog': True,
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
