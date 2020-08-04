@@ -144,9 +144,9 @@ class StandaloneStrat(bt.Strategy):
 
         # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
         self.add_timer(
-            bt.timer.SESSION_START,
-            monthdays=[20],  # called on the 20th day of the month
-            monthcarry=True  # called on another day if 20th day is vacation/weekend)
+            bt.timer.SESSION_START#,
+            #monthdays=[20],  # called on the 20th day of the month
+            #monthcarry=True  # called on another day if 20th day is vacation/weekend)
         )
 
     def notify_timer(self, timer, when, *args, **kwargs):
@@ -213,7 +213,7 @@ class StandaloneStrat(bt.Strategy):
         month = self.observers.getdate.line1[0]
         day = self.observers.getdate.line2[0]
 
-        # Put all together and drop na
+        # Put all together
         self.startdate = datetime.datetime(year=int(year), month=int(month), day=int(day))
 
         self.initial_buy()

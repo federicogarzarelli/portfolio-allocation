@@ -73,8 +73,8 @@ if __name__ == '__main__':
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
-        df[column] = df["close"]
-    df['volume'] = 0
+        df.loc[:, column] = df["close"]
+    df.loc[:, 'volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_gld_yearly.csv')
@@ -125,8 +125,8 @@ if __name__ == '__main__':
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
-        df[column] = df["close"]
-    df['volume'] = 0
+        df.loc[:, column] = df["close"]
+    df.loc[:, 'volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_oil_yearly.csv')
@@ -197,8 +197,8 @@ if __name__ == '__main__':
 
         # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
         for column in ["open", "high", "low"]:
-            data[column] = data["close"]
-        data['volume'] = 0
+            data.loc[:, column] = data["close"]
+        data.loc[:, 'volume'] = 0
         data = data[["open", "high", "low", "close", "volume"]]
         # save the modified csv
         data.to_csv(wd+'/modified_data/'+outname[i]+'.csv')

@@ -10,29 +10,28 @@ from report_aggregator import ReportAggregator
 # Strategy parameters not passed
 from strategies import customweights
 
-strat_params = {
+# Set the strategy parameters
+strat_params_days = {
     'reb_days': 30,  # every month: we rebalance the portfolio
     'lookback_period_short': 30,  # period to calculate the variance
     'lookback_period_long': 180,  # period to calculate the correlation
     'printlog': True,
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-    }
+}
 
-"""
-strat_params = {
-    'reb_days': 2000,  # every month: we rebalance the portfolio
-    'lookback_period_short': 60,  # period to calculate the variance
-    'lookback_period_long': 180,  # period to calculate the correlation
+strat_params_years = {
+    'reb_days': 1,  # rebalance the portfolio every year
+    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
+    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
     'printlog': True,
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
     }
-"""
 
 
 def parse_args():
     now = datetime.datetime.now().strftime("%Y_%m_%d")  # string to be used after
     parser = argparse.ArgumentParser(description='main class to run strategies')
-    parser.add_argument('--historic', type=str, default='medium', required=False,
+    parser.add_argument('--historic', type=str, default=None, required=False,
                         help='would you like to use the historical manual data. Long for yearly data from 1900, medium for daily from the 1970')
     parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,
                         help='string corresponding to list of shares if not using historic')
@@ -66,18 +65,19 @@ def runOneStrat(strategy=None):
     startdate = datetime.datetime.strptime(args.startdate, "%Y-%m-%d")
     enddate = datetime.datetime.strptime(args.enddate, "%Y-%m-%d")
 
-    # Initialize the engine
-    cerebro = Cerebro(cheat_on_open=True)
-    #cerebro = Cerebro()
-    #cerebro.broker.set_coo(True)
-    #cerebro.broker.set_coc(True)
-    cerebro.broker.set_cash(args.initial_cash)
-    cerebro.broker.set_checksubmit(checksubmit=False)  # Do not check if there is enough margin or cash before executing the order
-    #cerebro.broker.set_shortcash(True) # Can short the cash
 
     # Add the data
     data = []
     if args.historic == 'medium':
+        timeframe = bt.TimeFrame.Days
+
+        # Initialize the engine
+        cerebro = Cerebro(cheat_on_open=True, timeframe=timeframe)
+        # cerebro = Cerebro()
+        # cerebro.broker.set_coo(True)
+        # cerebro.broker.set_coc(True)
+        cerebro.broker.set_cash(args.initial_cash)
+        # cerebro.broker.set_shortcash(True) # Can short the cash
 
         # Import the historical assets
         shares_list = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']
@@ -91,11 +91,21 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
 
         shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
 
     elif args.historic == 'long':
+        timeframe = bt.TimeFrame.Years
+
+        # Initialize the engine
+        cerebro = Cerebro(cheat_on_open=True, timeframe=timeframe)
+        # cerebro = Cerebro()
+        # cerebro.broker.set_coo(True)
+        # cerebro.broker.set_coc(True)
+        cerebro.broker.set_cash(args.initial_cash)
+        # cerebro.broker.set_shortcash(True) # Can short the cash
+
 
         # Import the historical assets
         shares_list = ['GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG']
@@ -109,12 +119,21 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
 
         shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
 
     else:
         shares_list = args.shares.split(',')
+        timeframe = bt.TimeFrame.Days
+
+        # Initialize the engine
+        cerebro = Cerebro(cheat_on_open=True, timeframe=timeframe)
+        # cerebro = Cerebro()
+        # cerebro.broker.set_coo(True)
+        # cerebro.broker.set_coc(True)
+        cerebro.broker.set_cash(args.initial_cash)
+        # cerebro.broker.set_shortcash(True) # Can short the cash
 
         # download the datas
         assets_dic = {}
@@ -127,9 +146,14 @@ def runOneStrat(strategy=None):
                 
             assets_dic[shares_list[i]]['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate, timeframe=timeframe))
 
         shareclass = args.shareclass.split(',')
+
+    if timeframe == bt.TimeFrame.Days:
+        strat_params = strat_params_days
+    elif timeframe == bt.TimeFrame.Years:
+        strat_params = strat_params_years
 
     if args.indicators:
         # now import the non-tradable indexes for the rotational strategy
@@ -164,6 +188,7 @@ def runOneStrat(strategy=None):
 
         cerebro.addstrategy(customweights,
                             n_assets=n_assets,
+                            initial_cash=args.initial_cash,
                             monthly_cash=args.monthly_cash,
                             assetweights=weights_listt,
                             shareclass=shareclass,
@@ -185,6 +210,7 @@ def runOneStrat(strategy=None):
         strategy.split(',')
         cerebro.addstrategy(eval(strategy),
                             n_assets=n_assets,
+                            initial_cash=args.initial_cash,
                             monthly_cash=args.monthly_cash,
                             shareclass=shareclass,
                             printlog = strat_params.get('printlog'),

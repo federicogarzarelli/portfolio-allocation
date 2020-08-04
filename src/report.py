@@ -11,7 +11,8 @@ from strategies import *
 import pyfolio as pf
 import pybloqs.block.table_formatters as tf
 from pybloqs import Block
-
+from scipy import stats
+from datetime import timedelta
 
 
 class PerformanceReport:
@@ -34,33 +35,55 @@ class PerformanceReport:
         if not self.memo:
             self.memo = 'Testing'
 
+    def get_timeframe(self):
+        datediff = stats.mode(np.diff(self.get_date_index().to_list()))[0][0]
+        if datediff > timedelta(days=250):
+            print("Report: you are using data with yearly frequency")
+            return "Years"
+        elif datediff < timedelta(days=2):
+            print("Report: you are using data with daily frequency")
+            return "Days"
+
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
         """
+        timeframe = self.get_timeframe()
+
         st = self.stratbt
         dt = self.get_date_index()
 
+        # Total period for the backtesting in days
         bt_period = dt[-1] - dt[0]
         bt_period_days = bt_period.days
+        bt_period_years = round(bt_period.days/365.2422)-1
+
         drawdown = st.analyzers.myDrawDown.get_analysis()
         sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
         returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
         endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
         vwr = st.analyzers.myVWR.get_analysis()['vwr']
+        lorret =st.analyzers.myLogReturnsRolling.get_analysis()
+        timeret = st.analyzers.myTimeReturn.get_analysis()
+        timedd = st.analyzers.myTimeDrawDown.get_analysis()
 
         tot_return = 1
         for key, value in annualreturns.items():
             tot_return = tot_return * (1 + value)
         tot_return = tot_return - 1
 
+        if timeframe == "Days":
+            annual_return_asset = 100 * ((1 + tot_return) ** (365.2422 / bt_period_days) - 1)
+        elif timeframe == "Years":
+            annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
+
         kpi = {# PnL
                'start_cash': self.get_startcash(),
                'end_value': endValue,
                'total_return': 100*tot_return,
                'annual_return': returns['rnorm100'],
-               'annual_return_asset': 100*((1 + tot_return)**(365.25 / bt_period_days) - 1),
+               'annual_return_asset': annual_return_asset,
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
                #  performance
@@ -178,8 +201,13 @@ class PerformanceReport:
 
         # targetweights
         targetweights, effectiveweights = self.get_weights() # only last month
-        targetweights = targetweights.tail(30)
-        effectiveweights = effectiveweights.tail(30)
+        timeframe = self.get_timeframe()
+        if timeframe == "Days": # if daily frequency, take the last month worth of weights
+            targetweights = targetweights.tail(30)
+            effectiveweights = effectiveweights.tail(30)
+        elif timeframe == "Years": # if daily frequency, take the last 5 years
+            targetweights = targetweights.tail(5)
+            effectiveweights = effectiveweights.tail(5)
 
         fmt_pct = tf.FmtPercent(1, apply_to_header_and_index=False)
         fmt_align = tf.FmtAlignTable("left")
@@ -201,7 +229,12 @@ class PerformanceReport:
 
         # Asset targetweights
         size_weights = 100  # get targetweights for the last 100 days
-        idx = self.get_date_index()[len(self.get_date_index()) - size_weights:len(self.get_date_index())]
+        if len(self.get_date_index()) > size_weights:
+            idx = self.get_date_index()[len(self.get_date_index()) - size_weights:len(self.get_date_index())]
+        else:
+            size_weights = len(self.get_date_index())
+            idx = self.get_date_index()[0:len(self.get_date_index())]
+
         targetweights_df = pd.DataFrame(index=idx)
         effectiveweights_df = pd.DataFrame(index=idx)
 
@@ -278,17 +311,22 @@ class PerformanceReport:
         return returns, positions, transactions, gross_lev
 
     def generate_pyfolio_report(self):
-        returns, positions, transactions, gross_lev = self.get_pyfolio()
-        """
-         pf.create_simple_tear_sheet(
-            returns,
-            positions=positions,
-            transactions=transactions)       
-        """
-        pf.create_returns_tear_sheet(
-            returns,
-            positions=positions,
-            transactions=transactions)
+        timeframe = self.get_timeframe()
+        if timeframe == "Days":
+            returns, positions, transactions, gross_lev = self.get_pyfolio()
+            """
+             pf.create_simple_tear_sheet(
+                returns,
+                positions=positions,
+                transactions=transactions)       
+            """
+            pf.create_returns_tear_sheet(
+                returns,
+                positions=positions,
+                transactions=transactions)
+            return
+        else:
+            return
 
     def get_aggregated_data(self):
         kpis = self.get_performance_stats()
@@ -299,39 +337,56 @@ class PerformanceReport:
         kpis_df.loc['max_pct_drawdown'] = kpis_df.loc['max_pct_drawdown'] / 100
         kpis_df.loc['vwr'] = kpis_df.loc['vwr'] / 100
 
-        returns, positions, transactions, gross_lev = self.get_pyfolio()
-        perf_stats_all = pf.timeseries.perf_stats(returns=returns, factor_returns=None, positions=None, transactions=None,
-                                   turnover_denom="AGB")
-        all_stats = pd.concat([kpis_df, perf_stats_all], keys=['backtrader', 'pyfolio'])
+        timeframe = self.get_timeframe()
+        if timeframe == "Days": # Pyfolio works only with daily data
+            returns, positions, transactions, gross_lev = self.get_pyfolio()
+            perf_stats_all = pf.timeseries.perf_stats(returns=returns, factor_returns=None, positions=None, transactions=None,
+                                       turnover_denom="AGB")
+            all_stats = pd.concat([kpis_df, perf_stats_all], keys=['backtrader', 'pyfolio'])
+        else:
+            all_stats = pd.concat([kpis_df], keys=['backtrader'])
+
         all_stats.columns = [self.get_strategy_name()]
         return all_stats
 
     def get_aggregated_data_html(self):
         perf_data = self.get_aggregated_data()
-
-        pct_rows=[('backtrader','total_return'),
-                  ('backtrader', 'total_return'),
-                  ('backtrader', 'annual_return'),
-                  ('backtrader', 'annual_return_asset'),
-                  ('backtrader', 'max_pct_drawdown'),
-                  ('backtrader', 'vwr'),
-                  ('pyfolio', 'Annual return'),
-                  ('pyfolio', 'Cumulative returns'),
-                  ('pyfolio', 'Annual volatility'),
-                  ('pyfolio', 'Max drawdown'),
-                  ('pyfolio', 'Daily value at risk')]
-        dec_rows=[('backtrader','start_cash'),
-                  ('backtrader','end_value'),
-                  ('backtrader',  'max_money_drawdown'),
-                  ('backtrader', 'sharpe_ratio'),
-                  ('pyfolio', 'Sharpe ratio'),
-                  ('pyfolio', 'Calmar ratio'),
-                  ('pyfolio', 'Stability'),
-                  ('pyfolio', 'Omega ratio'),
-                  ('pyfolio', 'Sortino ratio'),
-                  ('pyfolio', 'Skew'),
-                  ('pyfolio', 'Kurtosis'),
-                  ('pyfolio', 'Tail ratio')]
+        timeframe = self.get_timeframe()
+        if timeframe == "Days":
+            pct_rows=[('backtrader','total_return'),
+                      ('backtrader', 'total_return'),
+                      ('backtrader', 'annual_return'),
+                      ('backtrader', 'annual_return_asset'),
+                      ('backtrader', 'max_pct_drawdown'),
+                      ('backtrader', 'vwr'),
+                      ('pyfolio', 'Annual return'),
+                      ('pyfolio', 'Cumulative returns'),
+                      ('pyfolio', 'Annual volatility'),
+                      ('pyfolio', 'Max drawdown'),
+                      ('pyfolio', 'Daily value at risk')]
+            dec_rows=[('backtrader','start_cash'),
+                      ('backtrader','end_value'),
+                      ('backtrader',  'max_money_drawdown'),
+                      ('backtrader', 'sharpe_ratio'),
+                      ('pyfolio', 'Sharpe ratio'),
+                      ('pyfolio', 'Calmar ratio'),
+                      ('pyfolio', 'Stability'),
+                      ('pyfolio', 'Omega ratio'),
+                      ('pyfolio', 'Sortino ratio'),
+                      ('pyfolio', 'Skew'),
+                      ('pyfolio', 'Kurtosis'),
+                      ('pyfolio', 'Tail ratio')]
+        else:
+            pct_rows=[('backtrader','total_return'),
+                      ('backtrader', 'total_return'),
+                      ('backtrader', 'annual_return'),
+                      ('backtrader', 'annual_return_asset'),
+                      ('backtrader', 'max_pct_drawdown'),
+                      ('backtrader', 'vwr')]
+            dec_rows=[('backtrader','start_cash'),
+                      ('backtrader','end_value'),
+                      ('backtrader',  'max_money_drawdown'),
+                      ('backtrader', 'sharpe_ratio')]
 
         fmt_pct = tf.FmtPercent(1, rows=pct_rows, apply_to_header_and_index=False)
         fmt_dec = tf.FmtDecimals(2, rows=dec_rows, apply_to_header_and_index=False)
@@ -363,44 +418,64 @@ class PerformanceReport:
 
 
 class Cerebro(bt.Cerebro):
-    def __init__(self, **kwds):
+    def __init__(self, timeframe=None, **kwds):
         super().__init__(**kwds)
-        self.add_report_analyzers()
+        self.timeframe = timeframe
+        self.add_report_analyzers(timeframe = self.timeframe)
         self.add_report_observers()
 
     def add_report_observers(self):
         self.addobserver(GetDate)
 
 
-    def add_report_analyzers(self, riskfree=0.01):
+    def add_report_analyzers(self, riskfree=0.01, timeframe = None):
             """ Adds performance stats, required for report
             """
+            if timeframe == bt.TimeFrame.Years:
+                scalar = 1
+            elif timeframe == bt.TimeFrame.Days:
+                scalar = 365.2422
+
             self.addanalyzer(bt.analyzers.SharpeRatio,
                              _name="mySharpe",
                              riskfreerate=riskfree,
-                             timeframe=bt.TimeFrame.Days,
+                             timeframe=timeframe,
                              convertrate=True,
-                             factor=252,
+                             factor=scalar,
                              annualize=True,
-                             fund=True)
-            self.addanalyzer(bt.analyzers.DrawDown, fund=True,
+                             stddev_sample=True,
+                             fund=False)
+            self.addanalyzer(bt.analyzers.DrawDown,
+                             fund=False,
                              _name="myDrawDown")
             self.addanalyzer(bt.analyzers.AnnualReturn,
                              _name="myAnnualReturn")
-            self.addanalyzer(bt.analyzers.Returns, fund=True,
+            self.addanalyzer(bt.analyzers.Returns,
+                             fund=False,
+                             timeframe=timeframe,
+                             tann=scalar,
                              _name="myReturns")
-            self.addanalyzer(bt.analyzers.SQN,
-                             _name="mySqn")
             self.addanalyzer(bt.analyzers.VWR,
-                             timeframe=bt.TimeFrame.Days,
+                             timeframe=timeframe,
                              tau=2,
                              sdev_max=0.2,
-                             fund=True,
+                             fund=False,
                              _name="myVWR")
             self.addanalyzer(bt.analyzers.PyFolio,
+                             timeframe=timeframe,
                              _name="myPyFolio")
-
-
+            self.addanalyzer(bt.analyzers.LogReturnsRolling,
+                             timeframe=timeframe,
+                             fund=False,
+                             _name="myLogReturnsRolling")
+            self.addanalyzer(bt.analyzers.TimeReturn,
+                             timeframe=timeframe,
+                             fund=False,
+                             _name="myTimeReturn")
+            self.addanalyzer(bt.analyzers.TimeDrawDown,
+                             timeframe=timeframe,
+                             fund=True,
+                             _name="myTimeDrawDown")
 
     def get_strategy_backtest(self):
         return self.runstrats[0][0]
@@ -415,8 +490,6 @@ class Cerebro(bt.Cerebro):
         except:
             print("Error raised in rpt.generate_pyfolio_report().")
             pass
-
-
 
         prices, returns, perf_data, targetweights, effectiveweights = rpt.output_all_data()
         return prices, returns, perf_data, targetweights, effectiveweights
