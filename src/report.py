@@ -13,7 +13,8 @@ import pybloqs.block.table_formatters as tf
 from pybloqs import Block
 from scipy import stats
 from datetime import timedelta
-from myanalyzers import MyAnnualReturn, MyTimeReturn, MySharpeRatio, MySharpeRatio_A, MyReturns, MyDrawDown, MyTimeDrawDown
+from myanalyzers import MyAnnualReturn, MyTimeReturn, MySharpeRatio, MyReturns, MyDrawDown, \
+                        MyTimeDrawDown, MyLogReturnsRolling
 
 
 class PerformanceReport:
@@ -65,7 +66,7 @@ class PerformanceReport:
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
         endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
         vwr = st.analyzers.myVWR.get_analysis()['vwr']
-        lorret =st.analyzers.myLogReturnsRolling.get_analysis()
+        logret =st.analyzers.myLogReturnsRolling.get_analysis()
         timeret = st.analyzers.myTimeReturn.get_analysis()
         timedd = st.analyzers.myTimeDrawDown.get_analysis()
 
@@ -76,16 +77,14 @@ class PerformanceReport:
 
         if timeframe == "Days":
             annual_return_asset = 100 * ((1 + tot_return) ** (365.2422 / bt_period_days) - 1)
-            annual_return = (returns['rnorm'] + 1) ** ( bt_period_days / 365.2422  ) - 1
         elif timeframe == "Years":
             annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
-            annual_return = (returns['rnorm'] + 1) ** ( len(timeret) /bt_period_years ) - 1
 
         kpi = {# PnL
                'start_cash': self.get_startcash(),
                'end_value': endValue,
                'total_return': 100*tot_return,
-               'annual_return': 100*annual_return,
+               'annual_return': 100*returns['rnorm'],
                'annual_return_asset': annual_return_asset,
                'max_money_drawdown': drawdown['max']['moneydown'],
                'max_pct_drawdown': drawdown['max']['drawdown'],
@@ -443,10 +442,9 @@ class Cerebro(bt.Cerebro):
                              _name="mySharpe",
                              riskfreerate=riskfree,
                              timeframe=timeframe,
-                             convertrate=True,
-                             factor=scalar,
                              annualize=True,
                              stddev_sample=True,
+                             logreturns=True,
                              fund=True)
             self.addanalyzer(MyDrawDown,
                              fund=True,
@@ -467,7 +465,7 @@ class Cerebro(bt.Cerebro):
             self.addanalyzer(bt.analyzers.PyFolio,
                              timeframe=timeframe,
                              _name="myPyFolio")
-            self.addanalyzer(bt.analyzers.LogReturnsRolling,
+            self.addanalyzer(MyLogReturnsRolling,
                              timeframe=timeframe,
                              fund=True,
                              _name="myLogReturnsRolling")

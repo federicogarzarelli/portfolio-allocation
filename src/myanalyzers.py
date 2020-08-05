@@ -1,6 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8; py-indent-offset:4 -*-
 ###############################################################################
+# Modified by Federico Garzarelli 05-08-2020:
+# 1- All the indicators output results from the first date after the minimum
+#    period has passed. In the original implementation the analyzers can be
+#    active well before the trading starts (e.g. the strategy waits to compute
+#    some indicator) and this distorts results.
+# 2- In SharpeRatio:
+#    a. allow to compute the rate using logreturns
+#    b. compute the ratio on annualized returns instead of annualizing the
+#       ratio itself by multiplying it by sqrt(factor). As shown by Andrew W. Lo
+#       in his paper "The Statistics of Sharpe Ratios"
+#       (https://alo.mit.edu/wp-content/uploads/2017/06/The-Statistics-of-Sharpe-Ratios.pdf)
+#       the sharpe ratio can be annualized by multiplying it by sqrt(factor) only
+#       if returns are iid, which is rarely the case.
+#       Therefore I delete ´´ratio = math.sqrt(factor) * ratio´´
 #
 # Copyright (C) 2015-2020 Daniel Rodriguez
 #
@@ -22,12 +36,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from collections import OrderedDict
+import collections
 
 from backtrader.utils.py3 import range
 from backtrader import Analyzer
 from backtrader import TimeFrameAnalyzerBase
 from backtrader.utils import AutoOrderedDict
-
 
 import math
 
@@ -35,9 +49,13 @@ from backtrader.utils.py3 import itervalues
 
 from backtrader import Analyzer, TimeFrame
 from backtrader.mathsupport import average, standarddev
-
+from scipy.stats import kurtosis, skew
 import backtrader as bt
+import utils as ut
 
+__all__ = ['DrawDown', 'TimeDrawDown', 'LogReturnsRolling']
+
+# Returns
 class MyAnnualReturn(Analyzer):
     '''
     This analyzer calculates the AnnualReturns by looking at the beginning
@@ -153,6 +171,7 @@ class MyTimeReturn(TimeFrameAnalyzerBase):
         self._value_start = 0.0
         self._lastvalue = None
         self._deletedFirstVal = None
+
         if self.p.data is None:
             # keep the initial portfolio value if not tracing a data
             if not self._fundmode:
@@ -200,46 +219,36 @@ class MyTimeReturn(TimeFrameAnalyzerBase):
             self._deletedFirstVal = True
         return self.rets
 
-
-class MySharpeRatio(Analyzer):
-    '''This analyzer calculates the SharpeRatio of a strategy using a risk free
-    asset which is simply an interest rate
-    See also:
-      - https://en.wikipedia.org/wiki/Sharpe_ratio
+class MyLogReturnsRolling(bt.TimeFrameAnalyzerBase):
+    '''This analyzer calculates rolling returns for a given timeframe and
+    compression
     Params:
-      - ``timeframe``: (default: ``TimeFrame.Years``)
-      - ``compression`` (default: ``1``)
+      - ``timeframe`` (default: ``None``)
+        If ``None`` the ``timeframe`` of the 1st data in the system will be
+        used
+        Pass ``TimeFrame.NoTimeFrame`` to consider the entire dataset with no
+        time constraints
+      - ``compression`` (default: ``None``)
         Only used for sub-day timeframes to for example work on an hourly
         timeframe by specifying "TimeFrame.Minutes" and 60 as compression
-      - ``riskfreerate`` (default: 0.01 -> 1%)
-        Expressed in annual terms (see ``convertrate`` below)
-      - ``convertrate`` (default: ``True``)
-        Convert the ``riskfreerate`` from annual to monthly, weekly or daily
-        rate. Sub-day conversions are not supported
-      - ``factor`` (default: ``None``)
-        If ``None``, the conversion factor for the riskfree rate from *annual*
-        to the chosen timeframe will be chosen from a predefined table
-          Days: 252, Weeks: 52, Months: 12, Years: 1
-        Else the specified value will be used
-      - ``annualize`` (default: ``False``)
-        If ``convertrate`` is ``True``, the *SharpeRatio* will be delivered in
-        the ``timeframe`` of choice.
-        In most occasions the SharpeRatio is delivered in annualized form.
-        Convert the ``riskfreerate`` from annual to monthly, weekly or daily
-        rate. Sub-day conversions are not supported
-      - ``stddev_sample`` (default: ``False``)
-        If this is set to ``True`` the *standard deviation* will be calculated
-        decreasing the denominator in the mean by ``1``. This is used when
-        calculating the *standard deviation* if it's considered that not all
-        samples are used for the calculation. This is known as the *Bessels'
-        correction*
-      - ``daysfactor`` (default: ``None``)
-        Old naming for ``factor``. If set to anything else than ``None`` and
-        the ``timeframe`` is ``TimeFrame.Days`` it will be assumed this is old
-        code and the value will be used
-      - ``legacyannual`` (default: ``False``)
-        Use the ``AnnualReturn`` return analyzer, which as the name implies
-        only works on years
+        If ``None`` then the compression of the 1st data of the system will be
+        used
+      - ``data`` (default: ``None``)
+        Reference asset to track instead of the portfolio value.
+        .. note:: this data must have been added to a ``cerebro`` instance with
+                  ``addata``, ``resampledata`` or ``replaydata``
+      - ``firstopen`` (default: ``True``)
+        When tracking the returns of a ``data`` the following is done when
+        crossing a timeframe boundary, for example ``Years``:
+          - Last ``close`` of previous year is used as the reference price to
+            see the return in the current year
+        The problem is the 1st calculation, because the data has** no
+        previous** closing price. As such and when this parameter is ``True``
+        the *opening* price will be used for the 1st calculation.
+        This requires the data feed to have an ``open`` price (for ``close``
+        the standard [0] notation will be used without reference to a field
+        price)
+        Else the initial close will be used.
       - ``fund`` (default: ``None``)
         If ``None`` the actual mode of the broker (fundmode - True/False) will
         be autodetected to decide if the returns are based on the total net
@@ -248,114 +257,64 @@ class MySharpeRatio(Analyzer):
         Set it to ``True`` or ``False`` for a specific behavior
     Methods:
       - get_analysis
-        Returns a dictionary with key "sharperatio" holding the ratio
+        Returns a dictionary with returns as values and the datetime points for
+        each return as keys
     '''
-    params = (
-        ('timeframe', TimeFrame.Years),
-        ('compression', 1),
-        ('riskfreerate', 0.01),
-        ('factor', None),
-        ('convertrate', True),
-        ('annualize', False),
-        ('stddev_sample', False),
 
-        # old behavior
-        ('daysfactor', None),
-        ('legacyannual', False),
+    params = (
+        ('data', None),
+        ('firstopen', True),
         ('fund', None),
     )
 
-    RATEFACTORS = {
-        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
-        TimeFrame.Weeks: 52,
-        TimeFrame.Months: 12,
-        TimeFrame.Years: 1,
-    }
+    def start(self):
+        self._deletedFirstVal = None
 
-    def __init__(self):
-        if self.p.legacyannual:
-            self.anret = MyAnnualReturn()
+        super(MyLogReturnsRolling, self).start()
+        if self.p.fund is None:
+            self._fundmode = self.strategy.broker.fundmode
         else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+            self._fundmode = self.p.fund
 
-    def stop(self):
-        super(MySharpeRatio, self).stop()
-        if self.p.legacyannual:
-            rate = self.p.riskfreerate
-            retavg = average([r - rate for r in self.anret.rets])
-            retdev = standarddev(self.anret.rets)
+        self._values = collections.deque([float('Nan')] * self.compression, maxlen=self.compression)
 
-            self.ratio = retavg / retdev
+        if self.p.data is None:
+            # keep the initial portfolio value if not tracing a data
+            if not self._fundmode:
+                self._lastvalue = self.strategy.broker.getvalue()
+            else:
+                self._lastvalue = self.strategy.broker.fundvalue
+
+    def notify_fund(self, cash, value, fundvalue, shares):
+        if not self._fundmode:
+            self._value = value if self.p.data is None else self.p.data[0]
         else:
-            # Get the returns from the subanalyzer
-            returns = list(itervalues(self.timereturn.get_analysis()))
+            self._value = fundvalue if self.p.data is None else self.p.data[0]
 
-            rate = self.p.riskfreerate  #
+    def _on_dt_over(self):
+        # next is called in a new timeframe period
+        if self.p.data is None or len(self.p.data) > 1:
+            # Not tracking a data feed or data feed has data already
+            vst = self._lastvalue  # update value_start to last
+        else:
+            # The 1st tick has no previous reference, use the opening price
+            vst = self.p.data.open[0] if self.p.firstopen else self.p.data[0]
 
-            factor = None
+        self._values.append(vst)  # push values backwards (and out)
 
-            # Hack to identify old code
-            if self.p.timeframe == TimeFrame.Days and \
-               self.p.daysfactor is not None:
+    def next(self):
+        # Calculate the return
+        super(MyLogReturnsRolling, self).next()
+        if self.strategy.startdate is not None and self.dtkey >= self.strategy.startdate:
+            self.rets[self.dtkey] = math.log(self._value / self._values[0])
+            self._lastvalue = self._value  # keep last value
 
-                factor = self.p.daysfactor
-
-            else:
-                if self.p.factor is not None:
-                    factor = self.p.factor  # user specified factor
-                elif self.p.timeframe in self.RATEFACTORS:
-                    # Get the conversion factor from the default table
-                    factor = self.RATEFACTORS[self.p.timeframe]
-
-            if factor is not None:
-                # A factor was found
-
-                if self.p.convertrate:
-                    # Standard: downgrade annual returns to timeframe factor
-                    rate = pow(1.0 + rate, 1.0 / factor) - 1.0
-                else:
-                    # Else upgrade returns to yearly returns
-                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
-
-            lrets = len(returns) - self.p.stddev_sample
-            # Check if the ratio can be calculated
-            if lrets:
-                # Get the excess returns - arithmetic mean - original sharpe
-                ret_free = [r - rate for r in returns]
-                ret_free_avg = average(ret_free)
-                retdev = standarddev(ret_free, avgx=ret_free_avg,
-                                     bessel=self.p.stddev_sample)
-
-                try:
-                    ratio = ret_free_avg / retdev
-
-                    if factor is not None and \
-                       self.p.convertrate and self.p.annualize:
-
-                        ratio = math.sqrt(factor) * ratio
-                except (ValueError, TypeError, ZeroDivisionError):
-                    ratio = None
-            else:
-                # no returns or stddev_sample was active and 1 return
-                ratio = None
-
-            self.ratio = ratio
-
-        self.rets['sharperatio'] = self.ratio
-
-class MySharpeRatio_A(MySharpeRatio):
-    '''Extension of the SharpeRatio which returns the Sharpe Ratio directly in
-    annualized form
-    The following param has been changed from ``SharpeRatio``
-      - ``annualize`` (default: ``True``)
-    '''
-
-    params = (
-        ('annualize', True),
-    )
+    def get_analysis(self):
+        # eliminate first return. The return in that year is set to zero by def. in the code
+        if self._deletedFirstVal is None:
+            del self.rets[list(self.rets.keys())[0]]
+            self._deletedFirstVal = True
+        return self.rets
 
 class MyReturns(TimeFrameAnalyzerBase):
     '''Total, Average, Compound and Annualized Returns calculated using a
@@ -463,10 +422,7 @@ class MyReturns(TimeFrameAnalyzerBase):
         if self.strategy.startdate is not None and self.dtkey >= self.strategy.startdate:
             self._tcount += 1  # count the subperiod
 
-
-__all__ = ['DrawDown', 'TimeDrawDown']
-
-
+# Drawdowns
 class MyDrawDown(bt.Analyzer):
     '''This analyzer calculates trading system drawdowns stats such as drawdown
     values in %s and in dollars, max drawdown in %s and in dollars, drawdown
@@ -532,13 +488,12 @@ class MyDrawDown(bt.Analyzer):
         r.moneydown = moneydown = self._maxvalue - self._value
         r.drawdown = drawdown = 100.0 * moneydown / self._maxvalue
 
-        # maxximum drawdown values
+        # maximum drawdown values
         r.max.moneydown = max(r.max.moneydown, moneydown)
         r.max.drawdown = maxdrawdown = max(r.max.drawdown, drawdown)
 
         r.len = r.len + 1 if drawdown else 0
         r.max.len = max(r.max.len, r.len)
-
 
 class MyTimeDrawDown(bt.TimeFrameAnalyzerBase):
     '''This analyzer calculates trading system drawdowns on the chosen
@@ -612,3 +567,447 @@ class MyTimeDrawDown(bt.TimeFrameAnalyzerBase):
     def stop(self):
         self.rets['maxdrawdown'] = self.maxdd
         self.rets['maxdrawdownperiod'] = self.maxddlen
+
+# Distribution
+class MyDistributionMoments(Analyzer):
+    '''This analyzer calculates the volatility, skewness and kurtosis of returns.
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``annualize`` (default: ``True``)
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with key "sharperatio" holding the ratio
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('annualize', True),
+        ('factor', None),
+        ('stddev_sample', True),
+        ('logreturns', True),
+        ('fund', None),
+    )
+
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MyDistributionMoments, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        if self.p.factor is not None:
+            factor = self.p.factor  # user specified factor
+        elif self.p.timeframe in self.RATEFACTORS:
+            # Get the conversion factor from the default table
+            factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.logreturns:
+                # Upgrade returns to yearly returns
+                returns = [x*factor for x in returns]
+            else:
+                # Upgrade returns to yearly returns
+                returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the excess returns - arithmetic mean - original sharpe
+            ret_avg = average(returns)
+            ret_dev = standarddev(returns, avgx=ret_avg, bessel=self.p.stddev_sample)
+            ret_skew = skew(returns)
+            ret_kurt = kurtosis(returns)
+
+        self.rets['average'] = ret_avg
+        self.rets['std'] = ret_dev
+        self.rets['skewness'] = ret_skew
+        self.rets['kurtosis'] = ret_kurt
+
+# Risk-adjusted return based on Volatility
+class MyRiskAdjusted_VolBased(Analyzer):
+    '''This analyzer calculates the risk-adjusted metrics based on Volatility.
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``annualize`` (default: ``True``)
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with keys holding the metrics
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('annualize', True),
+        ('stddev_sample', True),
+        ('logreturns', True),
+        ('fund', None),
+        ('riskfreerate', 0.01),
+        ('targetrate', 0.01),
+        ('factor', None),
+        ('convertrate', False),
+    )
+
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MyRiskAdjusted_VolBased, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        rate = self.p.riskfreerate
+        target = self.p.targetrate
+
+        if self.p.factor is not None:
+            factor = self.p.factor  # user specified factor
+        elif self.p.timeframe in self.RATEFACTORS:
+            # Get the conversion factor from the default table
+            factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.convertrate:
+                # Standard: downgrade annual returns to timeframe factor
+                rate = pow(1.0 + rate, 1.0 / factor) - 1.0
+                target = pow(1.0 + rate, 1.0 / factor) - 1.0
+            else:
+                if self.p.logreturns:
+                    # Else upgrade returns to yearly returns
+                    returns = [x*factor for x in returns]
+                else:
+                    # Else upgrade returns to yearly returns
+                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the excess returns - arithmetic mean - original sharpe
+            ret_avg = average(returns)
+            treynor_ratio = ut.treynor_ratio(ret_avg, returns, target, rate)
+            sharpe_ratio = ut.sharpe_ratio(ret_avg, returns, rate)
+            information_ratio = ut.information_ratio(returns, target)
+
+        self.rets['treynor_ratio'] = treynor_ratio
+        self.rets['sharpe_ratio'] = sharpe_ratio
+        self.rets['information_ratio'] = information_ratio
+
+class MySharpeRatio(Analyzer):
+    '''This analyzer calculates the SharpeRatio of a strategy using a risk free
+    asset which is simply an interest rate
+    See also:
+      - https://en.wikipedia.org/wiki/Sharpe_ratio
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``riskfreerate`` (default: 0.01 -> 1%)
+        Expressed in annual terms (see ``convertrate`` below)
+      - ``convertrate`` (default: ``True``)
+        Convert the ``riskfreerate`` from annual to monthly, weekly or daily
+        rate. Sub-day conversions are not supported
+      - ``factor`` (default: ``None``)
+        If ``None``, the conversion factor for the riskfree rate from *annual*
+        to the chosen timeframe will be chosen from a predefined table
+          Days: 252, Weeks: 52, Months: 12, Years: 1
+        Else the specified value will be used
+      - ``annualize`` (default: ``True``)
+        If ``convertrate`` is ``True``, the *SharpeRatio* will be delivered in
+        the ``timeframe`` of choice.
+        In most occasions the SharpeRatio is delivered in annualized form.
+        Convert the ``riskfreerate`` from annual to monthly, weekly or daily
+        rate. Sub-day conversions are not supported
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``daysfactor`` (default: ``None``)
+        Old naming for ``factor``. If set to anything else than ``None`` and
+        the ``timeframe`` is ``TimeFrame.Days`` it will be assumed this is old
+        code and the value will be used
+      - ``legacyannual`` (default: ``False``)
+        Use the ``AnnualReturn`` return analyzer, which as the name implies
+        only works on years
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with key "sharperatio" holding the ratio
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('riskfreerate', 0.01),
+        ('factor', None),
+        ('convertrate', False),
+        ('annualize', True),
+        ('stddev_sample', True),
+        ('logreturns', True),
+
+        # old behavior
+        ('daysfactor', None),
+        ('legacyannual', False),
+        ('fund', None),
+    )
+
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MySharpeRatio, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        rate = self.p.riskfreerate  #
+
+        factor = None
+
+        # Hack to identify old code
+        if self.p.timeframe == TimeFrame.Days and \
+           self.p.daysfactor is not None:
+
+            factor = self.p.daysfactor
+
+        else:
+            if self.p.factor is not None:
+                factor = self.p.factor  # user specified factor
+            elif self.p.timeframe in self.RATEFACTORS:
+                # Get the conversion factor from the default table
+                factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.convertrate:
+                # Standard: downgrade annual returns to timeframe factor
+                rate = pow(1.0 + rate, 1.0 / factor) - 1.0
+            else:
+                if self.p.logreturns:
+                    # Else upgrade returns to yearly returns
+                    returns = [x*factor for x in returns]
+                else:
+                    # Else upgrade returns to yearly returns
+                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the excess returns - arithmetic mean - original sharpe
+            ret_free = [r - rate for r in returns]
+            ret_free_avg = average(ret_free)
+            retdev = standarddev(ret_free, avgx=ret_free_avg,
+                                 bessel=self.p.stddev_sample)
+
+            try:
+                ratio = ret_free_avg / retdev
+
+                if factor is not None and \
+                   self.p.convertrate and self.p.annualize:
+
+                    ratio = math.sqrt(factor) * ratio
+            except (ValueError, TypeError, ZeroDivisionError):
+                ratio = None
+        else:
+            # no returns or stddev_sample was active and 1 return
+            ratio = None
+
+        self.ratio = ratio
+
+        self.rets['sharperatio'] = self.ratio
+
+# Risk-adjusted return based on Value at Risk
+class MyRiskAdjusted_VaRBased(Analyzer):
+    '''This analyzer calculates the risk-adjusted metrics based on Value at Risk.
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``annualize`` (default: ``True``)
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with keys holding the metrics
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('annualize', True),
+        ('stddev_sample', True),
+        ('logreturns', True),
+        ('fund', None),
+        ('riskfreerate', 0.01),
+        ('targetrate', 0.01),
+        ('factor', None),
+        ('convertrate', False),
+        ('alpha', 0.05),
+    )
+
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MyRiskAdjusted_VaRBased, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        rate = self.p.riskfreerate
+        target = self.p.targetrate
+
+        if self.p.factor is not None:
+            factor = self.p.factor  # user specified factor
+        elif self.p.timeframe in self.RATEFACTORS:
+            # Get the conversion factor from the default table
+            factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.convertrate:
+                # Standard: downgrade annual returns to timeframe factor
+                rate = pow(1.0 + rate, 1.0 / factor) - 1.0
+                target = pow(1.0 + rate, 1.0 / factor) - 1.0
+            else:
+                if self.p.logreturns:
+                    # Else upgrade returns to yearly returns
+                    returns = [x * factor for x in returns]
+                else:
+                    # Else upgrade returns to yearly returns
+                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the the metrics
+            ret_avg = average(returns)
+            alpha = self.p.alpha
+            excess_var = ut.excess_var(ret_avg, returns, rate, alpha)
+            conditional_sharpe_ratio = ut.conditional_sharpe_ratio(ret_avg, returns, rate, alpha)
+
+        self.rets['excess_var'] = excess_var
+        self.rets['conditional_sharpe_ratio'] = conditional_sharpe_ratio
+
+# Risk-adjusted return based on Lower Partial Moments
+
