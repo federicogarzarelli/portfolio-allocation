@@ -1,42 +1,18 @@
 # -*- coding: utf-8 -*-
-import matplotlib
-from math import *
-import pandas as pd
-import pandas_datareader.data as web
-import datetime
-from scipy import stats, optimize, interpolate
-import backtrader as bt
-import numpy as np
-import matplotlib.pyplot as plt
-from risk_budgeting import target_risk_contribution
-import os
-import riskparityportfolio as rp
-from backtrader.utils.py3 import range
 from datetime import timedelta
 
+import backtrader as bt
+import numpy as np
+import pandas as pd
+import riskparityportfolio as rp
+from backtrader.utils.py3 import range
+from scipy import stats
 
-
-class StFetcher(object):
-    _STRATS = []
-
-    @classmethod
-    def register(cls, target):
-        cls._STRATS.append(target)
-
-    @classmethod
-    def COUNT(cls):
-        return range(len(cls._STRATS))
-
-    def __new__(cls, *args, **kwargs):
-        idx = kwargs.pop('idx')
-
-        obj = cls._STRATS[idx](*args, **kwargs)
-        return obj
+from risk_budgeting import target_risk_contribution
 
 """
 Custom observer to save the target weights 
 """
-
 
 class targetweightsobserver(bt.observer.Observer):
     params = (('n_assets', 100),)  # set conservatively to 100 as the dynamic assignment does not work
@@ -124,6 +100,7 @@ class StandaloneStrat(bt.Strategy):
 
         self.startdate = None
         self.timeframe = self.get_timeframe()
+
         if self.timeframe == "Days":
             self.log("Strategy: you are using data with daily frequency", dt=None)
         elif self.timeframe == "Years":
@@ -153,7 +130,7 @@ class StandaloneStrat(bt.Strategy):
             # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
             self.add_timer(
                 bt.timer.SESSION_START,
-                monthdays=[20],  # called on the 20th day of the month
+                monthdays=[8],  # called on the 20th day of the month #TODO: change after testing
                 monthcarry=True  # called on another day if 20th day is vacation/weekend)
             )
         elif self.timeframe == "Years":
@@ -283,7 +260,6 @@ class customweights(StandaloneStrat):
 
             self.rebalance()
 
-#@StFetcher.register
 class sixtyforty(StandaloneStrat):
     strategy_name = "60-40 Portfolio"
 
@@ -319,7 +295,6 @@ class sixtyforty(StandaloneStrat):
             self.rebalance()
 
 
-#@StFetcher.register
 class onlystocks(StandaloneStrat):
     strategy_name = "Only Stocks Portfolio"
 
@@ -355,7 +330,6 @@ class onlystocks(StandaloneStrat):
             self.rebalance()
 
 
-#@StFetcher.register
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
 
@@ -390,7 +364,6 @@ class vanillariskparity(StandaloneStrat):
 
             self.rebalance()
 
-#@StFetcher.register
 class uniform(StandaloneStrat):
     strategy_name = "Uniform Portfolio"
 
@@ -433,7 +406,6 @@ class uniform(StandaloneStrat):
 
             self.rebalance()
 
-#@StFetcher.register
 class rotationstrat(StandaloneStrat):
     strategy_name = "Asset rotation strategy"
 
@@ -485,7 +457,6 @@ class rotationstrat(StandaloneStrat):
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 # Here the risk parity is run only at portfolio level
-#@StFetcher.register
 class riskparity(StandaloneStrat):
     strategy_name = "Risk Parity"
 
@@ -523,7 +494,6 @@ class riskparity(StandaloneStrat):
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 # Here the risk parity is run first at asset class level and then at portfolio level. To be used when more than an asset
 # is present in each category
-#@StFetcher.register
 class riskparity_nested(StandaloneStrat):
     strategy_name = "Risk Parity (Nested)"
 
@@ -635,7 +605,6 @@ class riskparity_nested(StandaloneStrat):
             self.rebalance()
 
 # Risk parity portfolio. The implementation is based on the Python library riskparity portfolio
-#@StFetcher.register
 class riskparity_pylib(StandaloneStrat):
     strategy_name = "Risk Parity (PythonLib)"
 

@@ -36,26 +36,25 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from collections import OrderedDict
+from GLOBAL_VARS import *
 import collections
-
-from backtrader.utils.py3 import range
-from backtrader import Analyzer
-from backtrader import TimeFrameAnalyzerBase
-from backtrader.utils import AutoOrderedDict
-
 import math
-
-from backtrader.utils.py3 import itervalues
-
-from backtrader import Analyzer, TimeFrame
-from backtrader.mathsupport import average, standarddev
-from scipy.stats import kurtosis, skew
+from collections import OrderedDict
 import backtrader as bt
-import utils as ut
 import numpy as np
+from backtrader import Analyzer, TimeFrame
+from backtrader import TimeFrameAnalyzerBase
+from backtrader.mathsupport import average, standarddev
+from backtrader.utils import AutoOrderedDict
+from backtrader.utils.py3 import itervalues
+from backtrader.utils.py3 import range
+from scipy.stats import kurtosis, skew
 
-__all__ = ['DrawDown', 'TimeDrawDown', 'LogReturnsRolling']
+import utils as ut
+
+__all__ = ['MyAnnualReturn', 'MyTimeReturn', 'MySharpeRatio', 'MyReturns', 'MyDrawDown', 'MyTimeDrawDown',
+           'MyLogReturnsRolling', 'MyDistributionMoments', 'MyRiskAdjusted_VolBased', 'MyRiskAdjusted_VaRBased',
+           'MyRiskAdjusted_LPMBased', 'MyRiskAdjusted_DDBased']
 
 # Returns
 class MyAnnualReturn(Analyzer):
@@ -319,7 +318,7 @@ class MyLogReturnsRolling(bt.TimeFrameAnalyzerBase):
         return self.rets
 
 class MyReturns(TimeFrameAnalyzerBase):
-    '''Total, Average, Compound and Annualized Returns calculated using a
+    """Total, Average, Compound and Annualized Returns calculated using a
     logarithmic approach
     See:
       - https://www.crystalbull.com/sharpe-ratio-better-with-log-returns/
@@ -356,7 +355,7 @@ class MyReturns(TimeFrameAnalyzerBase):
           - ``ravg``: Average return for the entire period (timeframe specific)
           - ``rnorm``: Annualized/Normalized return
           - ``rnorm100``: Annualized/Normalized return expressed in 100%
-    '''
+    """
 
     params = (
         ('tann', None),
@@ -364,7 +363,7 @@ class MyReturns(TimeFrameAnalyzerBase):
     )
 
     _TANN = {
-        bt.TimeFrame.Days: 365.2422, #bt.TimeFrame.Days: 252.0,
+        bt.TimeFrame.Days: DAYS_IN_YEAR, #bt.TimeFrame.Days: 252.0,
         bt.TimeFrame.Weeks: 52.0,
         bt.TimeFrame.Months: 12.0,
         bt.TimeFrame.Years: 1.0,
@@ -572,7 +571,7 @@ class MyTimeDrawDown(bt.TimeFrameAnalyzerBase):
 
 # Distribution
 class MyDistributionMoments(Analyzer):
-    '''This analyzer calculates the volatility, skewness and kurtosis of returns.
+    """This analyzer calculates the volatility, skewness and kurtosis of returns.
     Params:
       - ``timeframe``: (default: ``TimeFrame.Years``)
       - ``compression`` (default: ``1``)
@@ -596,7 +595,7 @@ class MyDistributionMoments(Analyzer):
     Methods:
       - get_analysis
         Returns a dictionary with key "sharperatio" holding the ratio
-    '''
+    """
     params = (
         ('timeframe', TimeFrame.Years),
         ('compression', 1),
@@ -608,7 +607,7 @@ class MyDistributionMoments(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR, #TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -663,7 +662,7 @@ class MyDistributionMoments(Analyzer):
 
 # Risk-adjusted return based on Volatility
 class MyRiskAdjusted_VolBased(Analyzer):
-    '''This analyzer calculates the risk-adjusted metrics based on Volatility.
+    """This analyzer calculates the risk-adjusted metrics based on Volatility.
     Params:
       - ``timeframe``: (default: ``TimeFrame.Years``)
       - ``compression`` (default: ``1``)
@@ -687,7 +686,7 @@ class MyRiskAdjusted_VolBased(Analyzer):
     Methods:
       - get_analysis
         Returns a dictionary with keys holding the metrics
-    '''
+    """
     params = (
         ('timeframe', TimeFrame.Years),
         ('compression', 1),
@@ -703,7 +702,7 @@ class MyRiskAdjusted_VolBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR, #TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -835,7 +834,7 @@ class MySharpeRatio(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422, #TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR, #TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -957,7 +956,7 @@ class MyRiskAdjusted_VaRBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -1010,9 +1009,13 @@ class MyRiskAdjusted_VaRBased(Analyzer):
             # Get the the metrics
             ret_avg = average(returns)
             alpha = self.p.alpha
+            var = ut.var(returns, alpha)
+            cvar = ut.cvar(returns, alpha)
             excess_var = ut.excess_var(ret_avg, returns, rate, alpha)
             conditional_sharpe_ratio = ut.conditional_sharpe_ratio(ret_avg, returns, rate, alpha)
 
+        self.rets['var'] = var
+        self.rets['cvar'] = cvar
         self.rets['excess_var'] = excess_var
         self.rets['conditional_sharpe_ratio'] = conditional_sharpe_ratio
 
@@ -1057,7 +1060,7 @@ class MyRiskAdjusted_LPMBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -1123,7 +1126,7 @@ class MyRiskAdjusted_LPMBased(Analyzer):
 
 # Risk-adjusted return based on Drawdown risk
 class MyRiskAdjusted_DDBased(Analyzer):
-    '''This analyzer calculates the risk-adjusted metrics based on Value at Risk.
+    """This analyzer calculates the risk-adjusted metrics based on Value at Risk.
     Params:
       - ``timeframe``: (default: ``TimeFrame.Years``)
       - ``compression`` (default: ``1``)
@@ -1147,7 +1150,7 @@ class MyRiskAdjusted_DDBased(Analyzer):
     Methods:
       - get_analysis
         Returns a dictionary with keys holding the metrics
-    '''
+    """
     params = (
         ('timeframe', TimeFrame.Years),
         ('compression', 1),
@@ -1161,7 +1164,7 @@ class MyRiskAdjusted_DDBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -1185,7 +1188,6 @@ class MyRiskAdjusted_DDBased(Analyzer):
         returns = list(itervalues(self.timereturn.get_analysis()))
 
         rate = self.p.riskfreerate
-        target = self.p.targetrate
 
         if self.p.factor is not None:
             factor = self.p.factor  # user specified factor

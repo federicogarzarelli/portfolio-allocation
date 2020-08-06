@@ -1,4 +1,5 @@
 import os
+from GLOBAL_VARS import *
 from utils import *
 from strategies import *
 import datetime
@@ -9,33 +10,6 @@ from report_aggregator import ReportAggregator
 
 # Strategy parameters not passed
 from strategies import customweights
-
-# Set the strategy parameters
-"""
-strat_params_days = {
-    'reb_days': 30,  # every month: we rebalance the portfolio
-    'lookback_period_short': 30,  # period to calculate the variance
-    'lookback_period_long': 180,  # period to calculate the correlation
-    'printlog': True,
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-}
-
-"""
-strat_params_days = {
-    'reb_days': 1,  # rebalance the portfolio every year
-    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
-    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
-    'printlog': True,
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-}
-
-strat_params_years = {
-    'reb_days': 1,  # rebalance the portfolio every year
-    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
-    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
-    'printlog': True,
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-    }
 
 
 def parse_args():
@@ -75,7 +49,6 @@ def runOneStrat(strategy=None):
     startdate = datetime.datetime.strptime(args.startdate, "%Y-%m-%d")
     enddate = datetime.datetime.strptime(args.enddate, "%Y-%m-%d")
 
-
     # Add the data
     data = []
     if args.historic == 'medium':
@@ -94,7 +67,7 @@ def runOneStrat(strategy=None):
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column]=add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -110,19 +83,14 @@ def runOneStrat(strategy=None):
 
         # Initialize the engine
         cerebro = Cerebro(cheat_on_open=True, timeframe=timeframe)
-        # cerebro = Cerebro()
-        # cerebro.broker.set_coo(True)
-        # cerebro.broker.set_coc(True)
         cerebro.broker.set_cash(args.initial_cash)
-        # cerebro.broker.set_shortcash(True) # Can short the cash
-
 
         # Import the historical assets
         shares_list = ['GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG']
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column]=add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -139,24 +107,23 @@ def runOneStrat(strategy=None):
 
         # Initialize the engine
         cerebro = Cerebro(cheat_on_open=True, timeframe=timeframe)
-        # cerebro = Cerebro()
-        # cerebro.broker.set_coo(True)
-        # cerebro.broker.set_coc(True)
         cerebro.broker.set_cash(args.initial_cash)
-        # cerebro.broker.set_shortcash(True) # Can short the cash
 
         # download the datas
         assets_dic = {}
         for i in range(len(shares_list)):
-            assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"] # might not always work
-            assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage, expense_ratio=0.0).to_frame("close")
+            assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)[
+                "Adj Close"]  # might not always work
+            assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage,
+                                                      expense_ratio=0.0).to_frame("close")
 
             for column in ['open', 'high', 'low']:
                 assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
-                
+
             assets_dic[shares_list[i]]['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate, timeframe=timeframe))
+            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate,
+                                            timeframe=timeframe))
 
         shareclass = args.shareclass.split(',')
 
@@ -179,13 +146,13 @@ def runOneStrat(strategy=None):
             data.append(
                 bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
 
-        shareclass = shareclass+['non-tradable', 'non-tradable', 'non-tradable']
-        shares_list = shares_list+indicatorLabels
+        shareclass = shareclass + ['non-tradable', 'non-tradable', 'non-tradable']
+        shares_list = shares_list + indicatorLabels
 
     i = 0
     for dt in data:
         cerebro.adddata(dt, name=shares_list[i])
-        i = i+1
+        i = i + 1
 
     n_assets = len([x for x in shareclass if x != 'non-tradable'])
     cerebro.addobserver(targetweightsobserver, n_assets=n_assets)
@@ -211,25 +178,18 @@ def runOneStrat(strategy=None):
 
     # otherwise, rely on the weights of a strategy
     else:
-        """
-        NOT WORKING. IT WOULD BE A BETTER SOLUTION.
-        cerebro.optstrategy(StFetcher, idx=StFetcher.COUNT())
-        results = cerebro.run()
-        print(results)
-        """
         strategy.split(',')
         cerebro.addstrategy(eval(strategy),
                             n_assets=n_assets,
                             initial_cash=args.initial_cash,
                             monthly_cash=args.monthly_cash,
                             shareclass=shareclass,
-                            printlog = strat_params.get('printlog'),
-                            corrmethod = strat_params.get('corrmethod'),
-                            reb_days = strat_params.get('reb_days'),
-                            lookback_period_short = strat_params.get('lookback_period_short'),
-                            lookback_period_long = strat_params.get('lookback_period_long')
-                           )
-
+                            printlog=strat_params.get('printlog'),
+                            corrmethod=strat_params.get('corrmethod'),
+                            reb_days=strat_params.get('reb_days'),
+                            lookback_period_short=strat_params.get('lookback_period_short'),
+                            lookback_period_long=strat_params.get('lookback_period_long')
+                            )
 
     # Run backtest
     cerebro.run()
@@ -237,13 +197,15 @@ def runOneStrat(strategy=None):
 
     # Create report
     if args.create_report:
-        outputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
-        outfile = os.path.join(outputdir, args.report_name)
+        resultsoutputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
+        outfile = os.path.join(resultsoutputdir, args.report_name)
 
-        prices, returns, perf_data, targetweights, effectiveweights = cerebro.report(outfile, system=args.system)
-        return prices, returns, perf_data, targetweights, effectiveweights
+        res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights = cerebro.report(outfile,
+                                                                                                        system=args.system)
+        return res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     args = parse_args()
 
     # Clear the output folder
@@ -266,11 +228,12 @@ if __name__=='__main__':
             returns = pd.DataFrame()
             perf_data = pd.DataFrame()
             targetweights = pd.DataFrame()
-            effectiveweights  = pd.DataFrame()
+            effectiveweights = pd.DataFrame()
             for strat in strategy_list:
                 print_section_divider(strat)
 
-                ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, ThisStrat_effectiveweight = runOneStrat(strat)
+                ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
+                    ThisStrat_effectiveweight = runOneStrat(strat)
                 if prices.empty:
                     prices = ThisStrat_prices
                 else:
@@ -296,9 +259,9 @@ if __name__=='__main__':
                 else:
                     effectiveweights[strat] = ThisStrat_effectiveweight
 
-            outfilename = "Aggregated_Report.pdf"
-            user = "Fabio & Federico"
-            memo = "Testing - Report comparing different strategies"
+            outfilename = report_params['outfilename']
+            user = report_params['user']
+            memo = report_params['memo']
 
             ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, prices, returns,
                                                 perf_data, targetweights, effectiveweights)
