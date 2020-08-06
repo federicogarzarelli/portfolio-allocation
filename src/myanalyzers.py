@@ -15,6 +15,7 @@
 #       the sharpe ratio can be annualized by multiplying it by sqrt(factor) only
 #       if returns are iid, which is rarely the case.
 #       Therefore I delete ´´ratio = math.sqrt(factor) * ratio´´
+# 3- Added numerous new metrics
 #
 # Copyright (C) 2015-2020 Daniel Rodriguez
 #
@@ -52,6 +53,7 @@ from backtrader.mathsupport import average, standarddev
 from scipy.stats import kurtosis, skew
 import backtrader as bt
 import utils as ut
+import numpy as np
 
 __all__ = ['DrawDown', 'TimeDrawDown', 'LogReturnsRolling']
 
@@ -694,7 +696,8 @@ class MyRiskAdjusted_VolBased(Analyzer):
         ('logreturns', True),
         ('fund', None),
         ('riskfreerate', 0.01),
-        ('targetrate', 0.01),
+        ('market_mu', 0.07),
+        ('market_sigma', 0.15),
         ('factor', None),
         ('convertrate', False),
     )
@@ -724,7 +727,8 @@ class MyRiskAdjusted_VolBased(Analyzer):
         returns = list(itervalues(self.timereturn.get_analysis()))
 
         rate = self.p.riskfreerate
-        target = self.p.targetrate
+        market_mu = self.p.market_mu
+        market_sigma = self.p.market_sigma
 
         if self.p.factor is not None:
             factor = self.p.factor  # user specified factor
@@ -738,7 +742,8 @@ class MyRiskAdjusted_VolBased(Analyzer):
             if self.p.convertrate:
                 # Standard: downgrade annual returns to timeframe factor
                 rate = pow(1.0 + rate, 1.0 / factor) - 1.0
-                target = pow(1.0 + rate, 1.0 / factor) - 1.0
+                market_mu = pow(1.0 + market_mu, 1.0 / factor) - 1.0
+                market_sigma = market_sigma / np.sqrt(factor)
             else:
                 if self.p.logreturns:
                     # Else upgrade returns to yearly returns
@@ -752,9 +757,11 @@ class MyRiskAdjusted_VolBased(Analyzer):
         if lrets:
             # Get the excess returns - arithmetic mean - original sharpe
             ret_avg = average(returns)
-            treynor_ratio = ut.treynor_ratio(ret_avg, returns, target, rate)
+            market_array = np.random.normal(market_mu, market_sigma, len(returns))
+
+            treynor_ratio = ut.treynor_ratio(ret_avg, returns, market_array, rate)
             sharpe_ratio = ut.sharpe_ratio(ret_avg, returns, rate)
-            information_ratio = ut.information_ratio(returns, target)
+            information_ratio = ut.information_ratio(returns, market_array)
 
         self.rets['treynor_ratio'] = treynor_ratio
         self.rets['sharpe_ratio'] = sharpe_ratio
@@ -1010,4 +1017,202 @@ class MyRiskAdjusted_VaRBased(Analyzer):
         self.rets['conditional_sharpe_ratio'] = conditional_sharpe_ratio
 
 # Risk-adjusted return based on Lower Partial Moments
+class MyRiskAdjusted_LPMBased(Analyzer):
+    '''This analyzer calculates the risk-adjusted metrics based on Value at Risk.
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``annualize`` (default: ``True``)
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with keys holding the metrics
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('annualize', True),
+        ('stddev_sample', True),
+        ('logreturns', True),
+        ('fund', None),
+        ('riskfreerate', 0.01),
+        ('targetrate', 0.01),
+        ('factor', None),
+        ('convertrate', False),
+    )
 
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MyRiskAdjusted_LPMBased, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        rate = self.p.riskfreerate
+        target = self.p.targetrate
+
+        if self.p.factor is not None:
+            factor = self.p.factor  # user specified factor
+        elif self.p.timeframe in self.RATEFACTORS:
+            # Get the conversion factor from the default table
+            factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.convertrate:
+                # Standard: downgrade annual returns to timeframe factor
+                rate = pow(1.0 + rate, 1.0 / factor) - 1.0
+                target = pow(1.0 + rate, 1.0 / factor) - 1.0
+            else:
+                if self.p.logreturns:
+                    # Else upgrade returns to yearly returns
+                    returns = [x * factor for x in returns]
+                else:
+                    # Else upgrade returns to yearly returns
+                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the the metrics
+            ret_avg = average(returns)
+            omega_ratio = ut.omega_ratio(ret_avg, returns, rate, target)
+            sortino_ratio = ut.sortino_ratio(ret_avg, returns, rate, target)
+            kappa_three_ratio = ut.kappa_three_ratio(ret_avg, returns, rate, target)
+            gain_loss_ratio = ut.gain_loss_ratio(returns, target)
+            upside_potential_ratio = ut.upside_potential_ratio(returns, target)
+
+        self.rets['omega_ratio'] = omega_ratio
+        self.rets['sortino_ratio'] = sortino_ratio
+        self.rets['kappa_three_ratio'] = kappa_three_ratio
+        self.rets['gain_loss_ratio'] = gain_loss_ratio
+        self.rets['upside_potential_ratio'] = upside_potential_ratio
+
+# Risk-adjusted return based on Drawdown risk
+class MyRiskAdjusted_DDBased(Analyzer):
+    '''This analyzer calculates the risk-adjusted metrics based on Value at Risk.
+    Params:
+      - ``timeframe``: (default: ``TimeFrame.Years``)
+      - ``compression`` (default: ``1``)
+        Only used for sub-day timeframes to for example work on an hourly
+        timeframe by specifying "TimeFrame.Minutes" and 60 as compression
+      - ``annualize`` (default: ``True``)
+      - ``stddev_sample`` (default: ``False``)
+        If this is set to ``True`` the *standard deviation* will be calculated
+        decreasing the denominator in the mean by ``1``. This is used when
+        calculating the *standard deviation* if it's considered that not all
+        samples are used for the calculation. This is known as the *Bessels'
+        correction*
+      - ``fund`` (default: ``None``)
+        If ``None`` the actual mode of the broker (fundmode - True/False) will
+        be autodetected to decide if the returns are based on the total net
+        asset value or on the fund value. See ``set_fundmode`` in the broker
+        documentation
+        Set it to ``True`` or ``False`` for a specific behavior
+      - ``logreturns`` (default: ``True``)
+        If ``True`` the Sharpe Ratio will be calculated using logreturns instead of percentage returns
+    Methods:
+      - get_analysis
+        Returns a dictionary with keys holding the metrics
+    '''
+    params = (
+        ('timeframe', TimeFrame.Years),
+        ('compression', 1),
+        ('annualize', True),
+        ('stddev_sample', True),
+        ('logreturns', True),
+        ('fund', None),
+        ('riskfreerate', 0.01),
+        ('factor', None),
+        ('convertrate', False),
+    )
+
+    RATEFACTORS = {
+        TimeFrame.Days: 365.2422,  # TimeFrame.Days: 252,
+        TimeFrame.Weeks: 52,
+        TimeFrame.Months: 12,
+        TimeFrame.Years: 1,
+    }
+
+    def __init__(self):
+        if self.p.logreturns:
+            self.timereturn = MyLogReturnsRolling(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+        else:
+            self.timereturn = MyTimeReturn(
+                timeframe=self.p.timeframe,
+                compression=self.p.compression,
+                fund=self.p.fund)
+
+    def stop(self):
+        super(MyRiskAdjusted_DDBased, self).stop()
+        # Get the returns from the subanalyzer
+        returns = list(itervalues(self.timereturn.get_analysis()))
+
+        rate = self.p.riskfreerate
+        target = self.p.targetrate
+
+        if self.p.factor is not None:
+            factor = self.p.factor  # user specified factor
+        elif self.p.timeframe in self.RATEFACTORS:
+            # Get the conversion factor from the default table
+            factor = self.RATEFACTORS[self.p.timeframe]
+
+        if factor is not None:
+            # A factor was found
+
+            if self.p.convertrate:
+                # Standard: downgrade annual returns to timeframe factor
+                rate = pow(1.0 + rate, 1.0 / factor) - 1.0
+                target = pow(1.0 + rate, 1.0 / factor) - 1.0
+            else:
+                if self.p.logreturns:
+                    # Else upgrade returns to yearly returns
+                    returns = [x * factor for x in returns]
+                else:
+                    # Else upgrade returns to yearly returns
+                    returns = [pow(1.0 + x, factor) - 1.0 for x in returns]
+
+        lrets = len(returns) - self.p.stddev_sample
+        # Check if the ratio can be calculated
+        if lrets:
+            # Get the the metrics
+            ret_avg = average(returns)
+            calmar_ratio = ut.calmar_ratio(ret_avg, returns, rate)
+
+        self.rets['calmar_ratio'] = calmar_ratio

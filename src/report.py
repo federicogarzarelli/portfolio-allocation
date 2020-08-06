@@ -14,7 +14,8 @@ from pybloqs import Block
 from scipy import stats
 from datetime import timedelta
 from myanalyzers import MyAnnualReturn, MyTimeReturn, MySharpeRatio, MyReturns, MyDrawDown, \
-                        MyTimeDrawDown, MyLogReturnsRolling
+                        MyTimeDrawDown, MyLogReturnsRolling, MyDistributionMoments, MyRiskAdjusted_VolBased, \
+                        MyRiskAdjusted_VaRBased, MyRiskAdjusted_LPMBased, MyRiskAdjusted_DDBased
 
 
 class PerformanceReport:
@@ -40,10 +41,10 @@ class PerformanceReport:
     def get_timeframe(self):
         datediff = stats.mode(np.diff(self.get_date_index().to_list()))[0][0]
         if datediff > timedelta(days=250):
-            print("Report: you are using data with yearly frequency")
+            #print("Report: you are using data with yearly frequency")
             return "Years"
         elif datediff < timedelta(days=2):
-            print("Report: you are using data with daily frequency")
+            #print("Report: you are using data with daily frequency")
             return "Days"
 
 
@@ -60,15 +61,37 @@ class PerformanceReport:
         bt_period_days = bt_period.days
         bt_period_years = round(bt_period.days/365.2422)
 
-        drawdown = st.analyzers.myDrawDown.get_analysis()
-        sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
-        returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
+        # Import analyzers results
+        # Returns
         annualreturns = st.analyzers.myAnnualReturn.get_analysis() # For total and annual returns in asset mode
-        endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
-        vwr = st.analyzers.myVWR.get_analysis()['vwr']
-        logret =st.analyzers.myLogReturnsRolling.get_analysis()
         timeret = st.analyzers.myTimeReturn.get_analysis()
+        logret =st.analyzers.myLogReturnsRolling.get_analysis()
+        returns = st.analyzers.myReturns.get_analysis() # For the annual return in fund mode
+
+        # Drawdowns
+        drawdown = st.analyzers.myDrawDown.get_analysis()
         timedd = st.analyzers.myTimeDrawDown.get_analysis()
+
+        # Distribution
+        ret_distrib = st.analyzers.MyDistributionMoments.get_analysis()
+
+        # Risk-adjusted return based on Volatility
+        RiskAdjusted_VolBased = st.analyzers.MyRiskAdjusted_VolBased.get_analysis()
+        sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
+
+        # Risk-adjusted return based on Value at Risk
+        RiskAdjusted_VaRBased = st.analyzers.MyRiskAdjusted_VaRBased.get_analysis()
+
+        # Risk-adjusted return based on Lower Partial Moments
+        RiskAdjusted_LPMBased = st.analyzers.MyRiskAdjusted_LPMBased.get_analysis()
+
+        # Risk-adjusted return based on Drawdown risk
+        RiskAdjusted_DDBased = st.analyzers.MyRiskAdjusted_DDBased.get_analysis()
+
+        vwr = st.analyzers.myVWR.get_analysis()['vwr']
+
+        # Calculate end value and total return (portfolio asset mode)
+        endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
 
         tot_return = 1
         for key, value in timeret.items():
@@ -430,7 +453,8 @@ class Cerebro(bt.Cerebro):
         self.addobserver(GetDate)
 
 
-    def add_report_analyzers(self, riskfree=0.01, timeframe = None):
+    def add_report_analyzers(self, riskfree=0.01, targetrate=0.01, alpha=0.05, market_mu = 0.07, market_sigma = 0.15,
+                                timeframe = None):
             """ Adds performance stats, required for report
             """
             if timeframe == bt.TimeFrame.Years:
@@ -438,45 +462,102 @@ class Cerebro(bt.Cerebro):
             elif timeframe == bt.TimeFrame.Days:
                 scalar = 365.2422
 
-            self.addanalyzer(MySharpeRatio,
-                             _name="mySharpe",
+            # Returns
+            self.addanalyzer(MyAnnualReturn, _name="myAnnualReturn")
+            self.addanalyzer(MyTimeReturn, _name="myTimeReturn",
+                             fund=True)
+            self.addanalyzer(MyLogReturnsRolling, _name="myLogReturnsRolling",
+                             fund=True)
+            self.addanalyzer(MyReturns,_name="myReturns",
+                             fund=True,
+                             tann=scalar)
+            # Drawdowns
+            self.addanalyzer(MyDrawDown,_name="myDrawDown",
+                             fund=True)
+            self.addanalyzer(MyTimeDrawDown,_name="myTimeDrawDown",
+                             fund=True)
+            # Distribution
+            self.addanalyzer(MyDistributionMoments, _name="MyDistributionMoments",
+                             timeframe=timeframe,
+                             compression=1,
+                             annualize=True,
+                             factor=scalar,
+                             stddev_sample=True,
+                             logreturns=True,
+                             fund=True)
+            # Risk-adjusted return based on Volatility
+            self.addanalyzer(MyRiskAdjusted_VolBased, _name="MyRiskAdjusted_VolBased",
+                             timeframe=timeframe,
+                             compression=1,
+                             annualize=True,
+                             stddev_sample=True,
+                             logreturns=True,
+                             fund=True,
+                             riskfreerate=riskfree,
+                             market_mu = market_mu,
+                             market_sigma = market_sigma,
+                             factor=scalar,
+                             convertrate=False)
+
+            self.addanalyzer(MySharpeRatio, _name="mySharpe",
                              riskfreerate=riskfree,
                              timeframe=timeframe,
                              annualize=True,
                              stddev_sample=True,
                              logreturns=True,
                              fund=True)
-            self.addanalyzer(MyDrawDown,
-                             fund=True,
-                             _name="myDrawDown")
-            self.addanalyzer(MyAnnualReturn,
-                             _name="myAnnualReturn")
-            self.addanalyzer(MyReturns,
-                             fund=True,
+            # Risk-adjusted return based on Value at Risk
+            self.addanalyzer(MyRiskAdjusted_VaRBased, _name="MyRiskAdjusted_VaRBased",
                              timeframe=timeframe,
-                             tann=scalar,
-                             _name="myReturns")
+                             compression=1,
+                             annualize=True,
+                             stddev_sample=True,
+                             logreturns=True,
+                             fund=True,
+                             riskfreerate=riskfree,
+                             targetrate=targetrate,
+                             factor=scalar,
+                             convertrate=False,
+                             alpha=alpha)
+            # Risk-adjusted return based on Lower Partial Moments
+            self.addanalyzer(MyRiskAdjusted_LPMBased, _name="MyRiskAdjusted_LPMBased",
+                             timeframe=timeframe,
+                             compression=1,
+                             annualize=True,
+                             stddev_sample=True,
+                             logreturns=True,
+                             fund=True,
+                             riskfreerate=riskfree,
+                             targetrate=targetrate,
+                             factor=scalar,
+                             convertrate=False)
+
+            # Risk-adjusted return based on Drawdown risk
+            self.addanalyzer(MyRiskAdjusted_DDBased, _name="MyRiskAdjusted_DDBased",
+                             timeframe=timeframe,
+                             compression=1,
+                             annualize=True,
+                             stddev_sample=True,
+                             logreturns=True,
+                             fund=True,
+                             riskfreerate=riskfree,
+                             factor=scalar,
+                             convertrate=False)
+
+            # VWR
             self.addanalyzer(bt.analyzers.VWR,
-                             timeframe=timeframe,
-                             tau=2,
-                             sdev_max=0.2,
-                             fund=True,
-                             _name="myVWR")
+                                     timeframe=timeframe,
+                                     tau=2,
+                                     sdev_max=0.2,
+                                     fund=True,
+                                     _name="myVWR")
+
+            # Pyfolio
             self.addanalyzer(bt.analyzers.PyFolio,
                              timeframe=timeframe,
                              _name="myPyFolio")
-            self.addanalyzer(MyLogReturnsRolling,
-                             timeframe=timeframe,
-                             fund=True,
-                             _name="myLogReturnsRolling")
-            self.addanalyzer(MyTimeReturn,
-                             timeframe=timeframe,
-                             fund=True,
-                             _name="myTimeReturn")
-            self.addanalyzer(MyTimeDrawDown,
-                             timeframe=timeframe,
-                             fund=True,
-                             _name="myTimeDrawDown")
+
+
 
     def get_strategy_backtest(self):
         return self.runstrats[0][0]
