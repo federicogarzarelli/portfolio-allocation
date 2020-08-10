@@ -8,7 +8,7 @@ from weasyprint import HTML
 from strategies import *
 from utils import timestamp2str, get_now
 from GLOBAL_VARS import *
-from myanalyzers import MyAnnualReturn, MyTimeReturn, MySharpeRatio, MyReturns, MyDrawDown, \
+from myanalyzers import MyAnnualReturn, MyTimeReturn, MyReturns, MyDrawDown, \
     MyTimeDrawDown, MyLogReturnsRolling, MyDistributionMoments, MyRiskAdjusted_VolBased, \
     MyRiskAdjusted_VaRBased, MyRiskAdjusted_LPMBased, MyRiskAdjusted_DDBased
 
@@ -16,27 +16,35 @@ class PerformanceReport:
     """ Report with performance stats for given backtest run
     """
 
-    def __init__(self, stratbt, outfile, user, memo, system):
+    def __init__(self, stratbt, outfile, user, memo, system, timeframe):
         self.stratbt = stratbt  # works for only 1 strategy
         self.outfile = outfile
         self.user = user
         self.memo = memo
         self.system = system
+        self.timeframe = timeframe
 
-    def get_timeframe(self):
-        datediff = stats.mode(np.diff(self.get_date_index().to_list()))[0][0]
-        if datediff > timedelta(days=12*20):
-            # print("Report: you are using data with yearly frequency")
-            return "Years"
-        elif datediff < timedelta(days=2):
-            # print("Report: you are using data with daily frequency")
-            return "Days"
+    def __str__(self):
+        msg = ("*** PnL: ***\n"
+               "Start capital         : {start_cash:4.2f}\n"
+               "End capital           : {end_value:4.2f}\n"
+               "Total return          : {total_return:4.2f}%\n"
+               "Annual return (asset) : {annual_return_asset:4.2f}%\n"
+               "Annual return (fund)  : {annual_return:4.2f}%\n"
+               "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
+               "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
+               "*** Performance ***\n"
+               "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
+               )
+        kpis = self.get_performance_stats()
+        # see: https://stackoverflow.com/questions/24170519/
+        # python-# typeerror-non-empty-format-string-passed-to-object-format
+        kpis = {k: -999 if v is None else v for k, v in kpis.items()}
+        return msg.format(**kpis)
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
         """
-        timeframe = self.get_timeframe()
-
         st = self.stratbt
         dt = self.get_date_index()
 
@@ -60,7 +68,6 @@ class PerformanceReport:
 
         # Risk-adjusted return based on Volatility
         RiskAdjusted_VolBased = st.analyzers.MyRiskAdjusted_VolBased.get_analysis()
-        sharpe_ratio = st.analyzers.mySharpe.get_analysis()['sharperatio']
 
         # Risk-adjusted return based on Value at Risk
         RiskAdjusted_VaRBased = st.analyzers.MyRiskAdjusted_VaRBased.get_analysis()
@@ -71,8 +78,6 @@ class PerformanceReport:
         # Risk-adjusted return based on Drawdown risk
         RiskAdjusted_DDBased = st.analyzers.MyRiskAdjusted_DDBased.get_analysis()
 
-        vwr = st.analyzers.myVWR.get_analysis()['vwr']
-
         # Calculate end value and total return (portfolio asset mode)
         endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
 
@@ -81,9 +86,9 @@ class PerformanceReport:
             tot_return = tot_return * (1 + value)
         tot_return = tot_return - 1
 
-        if timeframe == "Days":
+        if self.timeframe == bt.TimeFrame.Days:
             annual_return_asset = 100 * ((1 + tot_return) ** (DAYS_IN_YEAR / bt_period_days) - 1)
-        elif timeframe == "Years":
+        elif self.timeframe == bt.TimeFrame.Years:
             annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
 
         kpi = {  # PnL
@@ -129,25 +134,6 @@ class PerformanceReport:
 
         curve = pd.Series(data=vv, index=dt)
         return 100 * curve / curve.iloc[0]
-
-    def __str__(self):
-        msg = ("*** PnL: ***\n"
-               "Start capital         : {start_cash:4.2f}\n"
-               "End capital           : {end_value:4.2f}\n"
-               "Total return          : {total_return:4.2f}%\n"
-               "Annual return (asset) : {annual_return_asset:4.2f}%\n"
-               "Annual return (fund)  : {annual_return:4.2f}%\n"
-               "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
-               "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
-               "*** Performance ***\n"
-               "Variability Weighted Return: {vwr:4.2f}\n"
-               "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
-               )
-        kpis = self.get_performance_stats()
-        # see: https://stackoverflow.com/questions/24170519/
-        # python-# typeerror-non-empty-format-string-passed-to-object-format
-        kpis = {k: -999 if v is None else v for k, v in kpis.items()}
-        return msg.format(**kpis)
 
     def plot_equity_curve(self, fname='equity_curve.png'):
         """ Plots equity curve to png file
@@ -228,11 +214,10 @@ class PerformanceReport:
 
         # targetweights
         targetweights, effectiveweights = self.get_weights()  # only last month
-        timeframe = self.get_timeframe()
-        if timeframe == "Days":  # if daily frequency, take the last month worth of weights
+        if self.timeframe == bt.TimeFrame.Days:  # if daily frequency, take the last month worth of weights
             targetweights = targetweights.tail(30)
             effectiveweights = effectiveweights.tail(30)
-        elif timeframe == "Years":  # if yearly frequency, take the last 5 years
+        elif self.timeframe == bt.TimeFrame.Years:  # if yearly frequency, take the last 5 years
             targetweights = targetweights.tail(5)
             effectiveweights = effectiveweights.tail(5)
 
@@ -342,8 +327,7 @@ class PerformanceReport:
         return returns, positions, transactions, gross_lev
 
     def generate_pyfolio_report(self):
-        timeframe = self.get_timeframe()
-        if timeframe == "Days":
+        if self.timeframe == bt.TimeFrame.Days:
             returns, positions, transactions, gross_lev = self.get_pyfolio()
             """
              pf.create_simple_tear_sheet(
@@ -366,96 +350,58 @@ class PerformanceReport:
         kpis_df.loc['Annual return'] = kpis_df.loc['Annual return'] / 100
         kpis_df.loc['Annual return (asset mode)'] = kpis_df.loc['Annual return (asset mode)'] / 100
         kpis_df.loc['Max percentage drawdown'] = kpis_df.loc['Max percentage drawdown'] / 100
-        # kpis_df.loc['vwr'] = kpis_df.loc['vwr'] / 100 # TODO: decide if eliminate vwr
 
-        timeframe = self.get_timeframe()
-        if timeframe == "Days":  # Pyfolio works only with daily data
-            returns, positions, transactions, gross_lev = self.get_pyfolio()
-            perf_stats_all = pf.timeseries.perf_stats(returns=returns, factor_returns=None, positions=None,
-                                                      transactions=None,
-                                                      turnover_denom="AGB")
-            all_stats = pd.concat([kpis_df, perf_stats_all], keys=['backtrader', 'pyfolio'])
-        else:
-            all_stats = pd.concat([kpis_df], keys=['backtrader'])
+        kpis_df['Category'] = ['P&L', 'P&L', 'P&L', 'P&L', 'P&L',
+                    'Risk-adjusted return based on Drawdown', 'Risk-adjusted return based on Drawdown',
+                    'Distribution moments', 'Distribution moments', 'Distribution moments',
+                    'Risk-adjusted return based on Volatility', 'Risk-adjusted return based on Volatility',
+                    'Risk-adjusted return based on Volatility',
+                    'Risk-adjusted return based on Value at Risk', 'Risk-adjusted return based on Value at Risk',
+                    'Risk-adjusted return based on Value at Risk', 'Risk-adjusted return based on Value at Risk',
+                    'Risk-adjusted return based on Lower Partial Moments',
+                    'Risk-adjusted return based on Lower Partial Moments',
+                    'Risk-adjusted return based on Lower Partial Moments',
+                    'Risk-adjusted return based on Lower Partial Moments',
+                    'Risk-adjusted return based on Lower Partial Moments',
+                    'Risk-adjusted return based on Drawdown']
+
+        kpis_df['Metrics'] = kpis_df.index
+
+        all_stats = kpis_df.set_index(['Category', 'Metrics'])
 
         all_stats.columns = [self.get_strategy_name()]
         return all_stats
 
     def get_aggregated_data_html(self):
         perf_data = self.get_aggregated_data()
-        timeframe = self.get_timeframe()
-        if timeframe == "Days":
-            pct_rows = [('backtrader', 'Total return'),
-                        ('backtrader', 'Annual return'),
-                        ('backtrader', 'Annual return (asset mode)'),
-                        ('backtrader', 'Max percentage drawdown'),
-                        ('pyfolio', 'Annual return'),
-                        ('pyfolio', 'Cumulative returns'),
-                        ('pyfolio', 'Annual volatility'),
-                        ('pyfolio', 'Max drawdown'),
-                        ('pyfolio', 'Daily value at risk')]
-            dec_rows = [('backtrader', 'Starting cash'),
-                        ('backtrader', 'End value'),
-                        ('backtrader', 'Max money drawdown'),
-                        # Distribution
-                        ('backtrader', 'Returns volatility'),
-                        ('backtrader', 'Returns skewness'),
-                        ('backtrader', 'Returns kurtosis'),
-                        # Risk-adjusted return based on Volatility
-                        ('backtrader', 'Treynor ratio'),
-                        ('backtrader', 'Sharpe ratio'),
-                        ('backtrader', 'Information ratio'),
-                        # Risk-adjusted return based on Value at Risk
-                        ('backtrader', 'VaR'),
-                        ('backtrader', 'Expected Shortfall'),
-                        ('backtrader', 'Excess var'),
-                        ('backtrader', 'Conditional sharpe ratio'),
-                        # Risk-adjusted return based on Lower Partial Moments
-                        ('backtrader', 'Omega ratio'),
-                        ('backtrader', 'Sortino ratio'),
-                        ('backtrader', 'Kappa three ratio'),
-                        ('backtrader', 'Gain loss ratio'),
-                        ('backtrader', 'Upside potential ratio'),
-                        # Risk-adjusted return based on Drawdown risk
-                        ('backtrader', 'Calmar ratio'),
-                        # Pyfolio
-                        ('pyfolio', 'Sharpe ratio'),
-                        ('pyfolio', 'Calmar ratio'),
-                        ('pyfolio', 'Stability'),
-                        ('pyfolio', 'Omega ratio'),
-                        ('pyfolio', 'Sortino ratio'),
-                        ('pyfolio', 'Skew'),
-                        ('pyfolio', 'Kurtosis'),
-                        ('pyfolio', 'Tail ratio')]
-        else:
-            pct_rows = [('backtrader', 'Total return'),
-                        ('backtrader', 'Annual return'),
-                        ('backtrader', 'Annual return (asset mode)'),
-                        ('backtrader', 'Max percentage drawdown')]
-            dec_rows = [('backtrader', 'Starting cash'),
-                        ('backtrader', 'End value'),
-                        ('backtrader', 'Max money drawdown'),
-                        # Distribution
-                        ('backtrader', 'Returns volatility'),
-                        ('backtrader', 'Returns skewness'),
-                        ('backtrader', 'Returns kurtosis'),
-                        # Risk-adjusted return based on Volatility
-                        ('backtrader', 'Treynor ratio'),
-                        ('backtrader', 'Sharpe ratio'),
-                        ('backtrader', 'Information ratio'),
-                        # Risk-adjusted return based on Value at Risk
-                        ('backtrader', 'VaR'),
-                        ('backtrader', 'Expected Shortfall'),
-                        ('backtrader', 'Excess var'),
-                        ('backtrader', 'Conditional sharpe ratio'),
-                        # Risk-adjusted return based on Lower Partial Moments
-                        ('backtrader', 'Omega ratio'),
-                        ('backtrader', 'Sortino ratio'),
-                        ('backtrader', 'Kappa three ratio'),
-                        ('backtrader', 'Gain loss ratio'),
-                        ('backtrader', 'Upside potential ratio'),
-                        # Risk-adjusted return based on Drawdown risk
-                        ('backtrader', 'Calmar ratio')]
+        pct_rows = [('P&L', 'Total return'),
+                    ('P&L', 'Annual return'),
+                    ('P&L', 'Annual return (asset mode)'),
+                    ('Risk-adjusted return based on Drawdown', 'Max percentage drawdown')]
+        dec_rows = [('P&L', 'Starting cash'),
+                    ('P&L', 'End value'),
+                    ('Risk-adjusted return based on Drawdown', 'Max money drawdown'),
+                    # Distribution
+                    ('Distribution moments', 'Returns volatility'),
+                    ('Distribution moments', 'Returns skewness'),
+                    ('Distribution moments', 'Returns kurtosis'),
+                    # Risk-adjusted return based on Volatility
+                    ('Risk-adjusted return based on Volatility', 'Treynor ratio'),
+                    ('Risk-adjusted return based on Volatility', 'Sharpe ratio'),
+                    ('Risk-adjusted return based on Volatility', 'Information ratio'),
+                    # Risk-adjusted return based on Value at Risk
+                    ('Risk-adjusted return based on Value at Risk', 'VaR'),
+                    ('Risk-adjusted return based on Value at Risk', 'Expected Shortfall'),
+                    ('Risk-adjusted return based on Value at Risk', 'Excess var'),
+                    ('Risk-adjusted return based on Value at Risk', 'Conditional sharpe ratio'),
+                    # Risk-adjusted return based on Lower Partial Moments
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Omega ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Sortino ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Kappa three ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Gain loss ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Upside potential ratio'),
+                    # Risk-adjusted return based on Drawdown
+                    ('Risk-adjusted return based on Drawdown', 'Calmar ratio')]
 
         fmt_pct = tf.FmtPercent(1, rows=pct_rows, apply_to_header_and_index=False)
         fmt_dec = tf.FmtDecimals(2, rows=dec_rows, apply_to_header_and_index=False)
@@ -494,19 +440,18 @@ class Cerebro(bt.Cerebro):
         self.timeframe = timeframe
         self.add_report_analyzers(riskfree=report_params['riskfree'], targetrate=report_params['targetrate'],
                                   alpha=report_params['alpha'], market_mu=report_params['market_mu'],
-                                  market_sigma=report_params['market_sigma'], timeframe=self.timeframe)
+                                  market_sigma=report_params['market_sigma'])
         self.add_report_observers()
 
     def add_report_observers(self):
         self.addobserver(GetDate)
 
-    def add_report_analyzers(self, riskfree=0.01, targetrate=0.01, alpha=0.05, market_mu=0.07, market_sigma=0.15,
-                             timeframe=None):
+    def add_report_analyzers(self, riskfree=0.01, targetrate=0.01, alpha=0.05, market_mu=0.07, market_sigma=0.15):
         """ Adds performance stats, required for report
             """
-        if timeframe == bt.TimeFrame.Years:
+        if self.timeframe == bt.TimeFrame.Years:
             scalar = 1
-        elif timeframe == bt.TimeFrame.Days:
+        elif self.timeframe == bt.TimeFrame.Days:
             scalar = DAYS_IN_YEAR
 
         # Returns
@@ -525,7 +470,7 @@ class Cerebro(bt.Cerebro):
                          fund=report_params['fundmode'])
         # Distribution
         self.addanalyzer(MyDistributionMoments, _name="MyDistributionMoments",
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          compression=1,
                          annualize=report_params['annualize'],
                          factor=scalar,
@@ -534,7 +479,7 @@ class Cerebro(bt.Cerebro):
                          fund=report_params['fundmode'])
         # Risk-adjusted return based on Volatility
         self.addanalyzer(MyRiskAdjusted_VolBased, _name="MyRiskAdjusted_VolBased",
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          compression=1,
                          annualize=report_params['annualize'],
                          stddev_sample=report_params['stddev_sample'],
@@ -543,19 +488,10 @@ class Cerebro(bt.Cerebro):
                          riskfreerate=riskfree,
                          market_mu=market_mu,
                          market_sigma=market_sigma,
-                         factor=scalar,
-                         convertrate=False)
-
-        self.addanalyzer(MySharpeRatio, _name="mySharpe",
-                         riskfreerate=riskfree,
-                         timeframe=timeframe,
-                         annualize=report_params['annualize'],
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'])
+                         factor=scalar)
         # Risk-adjusted return based on Value at Risk
         self.addanalyzer(MyRiskAdjusted_VaRBased, _name="MyRiskAdjusted_VaRBased",
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          compression=1,
                          annualize=report_params['annualize'],
                          stddev_sample=report_params['stddev_sample'],
@@ -564,11 +500,10 @@ class Cerebro(bt.Cerebro):
                          riskfreerate=riskfree,
                          targetrate=targetrate,
                          factor=scalar,
-                         convertrate=False,
                          alpha=alpha)
         # Risk-adjusted return based on Lower Partial Moments
         self.addanalyzer(MyRiskAdjusted_LPMBased, _name="MyRiskAdjusted_LPMBased",
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          compression=1,
                          annualize=report_params['annualize'],
                          stddev_sample=report_params['stddev_sample'],
@@ -576,32 +511,22 @@ class Cerebro(bt.Cerebro):
                          fund=report_params['fundmode'],
                          riskfreerate=riskfree,
                          targetrate=targetrate,
-                         factor=scalar,
-                         convertrate=False)
+                         factor=scalar)
 
         # Risk-adjusted return based on Drawdown risk
         self.addanalyzer(MyRiskAdjusted_DDBased, _name="MyRiskAdjusted_DDBased",
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          compression=1,
                          annualize=report_params['annualize'],
                          stddev_sample=report_params['stddev_sample'],
                          logreturns=report_params['logreturns'],
                          fund=report_params['fundmode'],
                          riskfreerate=riskfree,
-                         factor=scalar,
-                         convertrate=False)
-
-        # VWR
-        self.addanalyzer(bt.analyzers.VWR,
-                         timeframe=timeframe,
-                         tau=2,
-                         sdev_max=0.2,
-                         fund=report_params['fundmode'],
-                         _name="myVWR")
+                         factor=scalar)
 
         # Pyfolio
         self.addanalyzer(bt.analyzers.PyFolio,
-                         timeframe=timeframe,
+                         timeframe=self.timeframe,
                          _name="myPyFolio")
 
     def get_strategy_backtest(self):
@@ -609,7 +534,7 @@ class Cerebro(bt.Cerebro):
 
     def report(self, outfile, user=None, memo=None, system=None):
         bt = self.get_strategy_backtest()
-        rpt = PerformanceReport(bt, outfile=outfile, user=user, memo=memo, system=system)
+        rpt = PerformanceReport(bt, outfile=outfile, user=user, memo=memo, system=system, timeframe=self.timeframe)
         rpt.generate_pdf_report()
 
         try:

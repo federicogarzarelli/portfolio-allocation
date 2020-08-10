@@ -3,3 +3,4 @@ GettingStarted.py
 *__pycache__*
 *.pdf
 output/
+*.png

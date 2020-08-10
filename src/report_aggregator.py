@@ -16,7 +16,8 @@ class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
     """
 
-    def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, targetweights, effectiveweights):
+    def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, targetweights,
+                 effectiveweights):
         self.outfilename = outfilename
         self.outputdir = outputdir
         self.user = user
@@ -37,7 +38,7 @@ class ReportAggregator:
     """
     def generate_csv(self):
         # Output into CSV for now, later create a PDF from a HTML
-        self.prices.to_csv(self.outputdir+r'Prices_MultiStrategy_' + get_now().replace(':', '') +'.csv')
+        self.prices.to_csv(self.outputdir+r'/Prices_MultiStrategy_' + get_now().replace(':', '') +'.csv')
         self.returns.to_csv(self.outputdir+r'/Returns_MultiStrategy_' + get_now().replace(':', '') +'.csv')
         self.perf_data.to_csv(self.outputdir+r'/Performance_MultiStrategy_' + get_now().replace(':', '') +'.csv')
         self.targetweights.to_csv(self.outputdir+r'/Target_Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
@@ -81,29 +82,35 @@ class ReportAggregator:
         return self.prices.index[-1].strftime("%Y-%m-%d")
 
     def get_performance_stats_html(self):
-        pct_rows=[('backtrader','total_return'),
-                  ('backtrader', 'total_return'),
-                  ('backtrader', 'annual_return'),
-                  ('backtrader', 'annual_return_asset'),
-                  ('backtrader', 'max_pct_drawdown'),
-                  ('backtrader', 'vwr'),
-                  ('pyfolio', 'Annual return'),
-                  ('pyfolio', 'Cumulative returns'),
-                  ('pyfolio', 'Annual volatility'),
-                  ('pyfolio', 'Max drawdown'),
-                  ('pyfolio', 'Daily value at risk')]
-        dec_rows=[('backtrader','start_cash'),
-                  ('backtrader','end_value'),
-                  ('backtrader',  'max_money_drawdown'),
-                  ('backtrader', 'sharpe_ratio'),
-                  ('pyfolio', 'Sharpe ratio'),
-                  ('pyfolio', 'Calmar ratio'),
-                  ('pyfolio', 'Stability'),
-                  ('pyfolio', 'Omega ratio'),
-                  ('pyfolio', 'Sortino ratio'),
-                  ('pyfolio', 'Skew'),
-                  ('pyfolio', 'Kurtosis'),
-                  ('pyfolio', 'Tail ratio')]
+
+        pct_rows = [('P&L', 'Total return'),
+                    ('P&L', 'Annual return'),
+                    ('P&L', 'Annual return (asset mode)'),
+                    ('Risk-adjusted return based on Drawdown', 'Max percentage drawdown')]
+        dec_rows = [('P&L', 'Starting cash'),
+                    ('P&L', 'End value'),
+                    ('Risk-adjusted return based on Drawdown', 'Max money drawdown'),
+                    # Distribution
+                    ('Distribution moments', 'Returns volatility'),
+                    ('Distribution moments', 'Returns skewness'),
+                    ('Distribution moments', 'Returns kurtosis'),
+                    # Risk-adjusted return based on Volatility
+                    ('Risk-adjusted return based on Volatility', 'Treynor ratio'),
+                    ('Risk-adjusted return based on Volatility', 'Sharpe ratio'),
+                    ('Risk-adjusted return based on Volatility', 'Information ratio'),
+                    # Risk-adjusted return based on Value at Risk
+                    ('Risk-adjusted return based on Value at Risk', 'VaR'),
+                    ('Risk-adjusted return based on Value at Risk', 'Expected Shortfall'),
+                    ('Risk-adjusted return based on Value at Risk', 'Excess var'),
+                    ('Risk-adjusted return based on Value at Risk', 'Conditional sharpe ratio'),
+                    # Risk-adjusted return based on Lower Partial Moments
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Omega ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Sortino ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Kappa three ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Gain loss ratio'),
+                    ('Risk-adjusted return based on Lower Partial Moments', 'Upside potential ratio'),
+                    # Risk-adjusted return based on Drawdown
+                    ('Risk-adjusted return based on Drawdown', 'Calmar ratio')]
 
         fmt_pct = tf.FmtPercent(1, rows=pct_rows, apply_to_header_and_index=False)
         fmt_dec = tf.FmtDecimals(2, rows=dec_rows, apply_to_header_and_index=False)

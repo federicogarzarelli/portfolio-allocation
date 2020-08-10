@@ -11,27 +11,26 @@
 # Set the strategy parameters
 """
 strat_params_days = {
-    'reb_days': 30,  # every month: we rebalance the portfolio
-    'lookback_period_short': 30,  # period to calculate the variance (Minimum 2)
-    'lookback_period_long': 180,  # period to calculate the correlation (Minimum 2)
-    'printlog': True,  # Print log in the console
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-}
-
-"""
-# TODO: change after testing
-strat_params_days = {
-    'reb_days': 1,  # rebalance the portfolio every year
+    'reb_days': 1,  # every month: we rebalance the portfolio
     'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
     'printlog': True,  # Print log in the console
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
+"""
+strat_params_days = {
+    'reb_days': 30,  # every month: we rebalance the portfolio
+    'lookback_period_short': 20,  # period to calculate the variance (Minimum 2)
+    'lookback_period_long': 120,  # period to calculate the correlation (Minimum 2)
+    'printlog': True,  # Print log in the console
+    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
+}
+
 
 strat_params_years = {
     'reb_days': 1,  # rebalance the portfolio every year
-    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
-    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
+    'lookback_period_short': 5,  # period to calculate the variance (Minimum 2)
+    'lookback_period_long': 10,  # period to calculate the correlation (Minimum 2)
     'printlog': True,  # Print log in the console
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }

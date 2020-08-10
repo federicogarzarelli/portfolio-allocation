@@ -12,6 +12,7 @@ from scipy.optimize import minimize
 import pandas_datareader.data as web
 import math
 import numpy.random as nrand
+from GLOBAL_VARS import *
 
 
 def backtest(datas, strategy, plot=False, **kwargs):
@@ -173,7 +174,7 @@ def import_process_hist(dataLabel, args):
     return df
 
 
-def add_leverage(proxy, leverage=1, expense_ratio=0.0):
+def add_leverage(proxy, leverage=1, expense_ratio=0.0, timeframe=bt.TimeFrame.Days):
     """
     Simulates a leverage ETF given its proxy, leverage, and expense ratio.
 
@@ -182,9 +183,14 @@ def add_leverage(proxy, leverage=1, expense_ratio=0.0):
     """
     initial_value = proxy.iloc[0]
     pct_change = proxy.pct_change(1)
-    pct_change = (pct_change - expense_ratio / 252) * leverage
+    if timeframe == bt.TimeFrame.Days:
+        pct_change = (pct_change - expense_ratio / DAYS_IN_YEAR) * leverage
+    elif timeframe == bt.TimeFrame.Years:
+        pct_change = ((1 + pct_change) ** (1 / DAYS_IN_YEAR)) - 1 # Transform into daily returns
+        pct_change = (pct_change - expense_ratio / DAYS_IN_YEAR) * leverage # Apply leverage
+        pct_change = ((1 + pct_change) ** DAYS_IN_YEAR) - 1 # Re-transform into yearly returns
     new_price = initial_value * (1 + pct_change).cumprod()
-    new_price[0] = initial_value
+    new_price.iloc[0] = initial_value
     return new_price
 
 
@@ -357,6 +363,8 @@ def strat_dictionary(stratname):
 Functions to calculate performance metrics
 
 From: http://www.turingfinance.com/computational-investing-with-python-week-one/
+http://quantopian.github.io/empyrical/_modules/empyrical/stats.html (for omega ratio and validation)
+
 """
 
 """
@@ -374,7 +382,10 @@ def beta(returns, market):
     # Create a matrix of [returns, market]
     m = np.matrix([returns, market])
     # Return the covariance of m divided by the standard deviation of the market returns
-    return np.cov(m)[0][1] / np.std(market)
+    if np.std(market) != 0:
+        return np.cov(m)[0][1] / np.std(market)
+    else:
+        return math.nan
 
 
 def lpm(returns, threshold, order):
@@ -423,7 +434,10 @@ def cvar(returns, alpha):
         sum_var += sorted_returns[i]
     # Return the average VaR
     # CVaR should be positive
-    return abs(sum_var / index)
+    if index > 0:
+        return abs(sum_var / index)
+    else:
+        return math.nan
 
 
 def prices(returns, base):
@@ -488,16 +502,23 @@ def average_dd_squared(returns, periods):
 
 
 def treynor_ratio(er, returns, market, rf):
-    return (er - rf) / beta(returns, market)
-
+    if beta(returns, market) != 0:
+        return (er - rf) / beta(returns, market)
+    else:
+        return math.nan
 
 def sharpe_ratio(er, returns, rf):
-    return (er - rf) / vol(returns)
-
+    if vol(returns) != 0:
+        return (er - rf) / vol(returns)
+    else:
+        return math.nan
 
 def information_ratio(returns, benchmark):
     diff = returns - benchmark
-    return np.mean(diff) / vol(diff)
+    if vol(diff) != 0:
+        return np.mean(diff) / vol(diff)
+    else:
+        return math.nan
 
 
 def modigliani_ratio(er, returns, benchmark, rf):
@@ -509,43 +530,83 @@ def modigliani_ratio(er, returns, benchmark, rf):
 
 
 def excess_var(er, returns, rf, alpha):
-    return (er - rf) / var(returns, alpha)
+    if var(returns, alpha) != 0:
+        return (er - rf) / var(returns, alpha)
+    else:
+        return math.nan
 
 
 def conditional_sharpe_ratio(er, returns, rf, alpha):
-    return (er - rf) / cvar(returns, alpha)
+    if cvar(returns, alpha) != 0:
+        return (er - rf) / cvar(returns, alpha)
+    else:
+        return math.nan
 
 
 def omega_ratio(er, returns, rf, target=0):
-    return (er - rf) / lpm(returns, target, 1)
+    """
+    Omega ratio definition replaced by the definition found in http://quantopian.github.io/empyrical/_modules/empyrical/stats.html
+    that matches the Wikipedia definition https://en.wikipedia.org/wiki/Omega_ratio
+
+    old definition:
+
+    def omega_ratio(er, returns, rf, target=0):
+        return (er - rf) / lpm(returns, target, 1)
+    """
+    if lpm(returns, target+rf, 1) != 0:
+        return -hpm(returns, target+rf, 1)/lpm(returns, target+rf, 1)
+    else:
+        return math.nan
 
 
 def sortino_ratio(er, returns, rf, target=0):
-    return (er - rf) / math.sqrt(lpm(returns, target, 2))
+    if math.sqrt(lpm(returns, target, 2)) != 0:
+        return (er - rf) / math.sqrt(lpm(returns, target, 2))
+    else:
+        return math.nan
 
 
 def kappa_three_ratio(er, returns, rf, target=0):
-    return (er - rf) / math.pow(lpm(returns, target, 3), float(1/3))
+    if math.pow(lpm(returns, target, 3), float(1 / 3)) != 0:
+        return (er - rf) / math.pow(lpm(returns, target, 3), float(1 / 3))
+    else:
+        return math.nan
 
 
 def gain_loss_ratio(returns, target=0):
-    return hpm(returns, target, 1) / lpm(returns, target, 1)
+    if lpm(returns, target, 1) != 0:
+        return hpm(returns, target, 1) / lpm(returns, target, 1)
+    else:
+        return math.nan
 
 
 def upside_potential_ratio(returns, target=0):
-    return hpm(returns, target, 1) / math.sqrt(lpm(returns, target, 2))
+    if math.sqrt(lpm(returns, target, 2)) != 0:
+        return hpm(returns, target, 1) / math.sqrt(lpm(returns, target, 2))
+    else:
+        return math.nan
 
 
 def calmar_ratio(er, returns, rf):
-    return (er - rf) / max_dd(returns)
+    if max_dd(returns)!=0:
+        return (er - rf) / max_dd(returns)
+    else:
+        return math.nan
+
 
 
 def sterling_ration(er, returns, rf, periods):
-    return (er - rf) / average_dd(returns, periods)
+    if average_dd(returns, periods)!=0:
+        return (er - rf) / average_dd(returns, periods)
+    else:
+        return math.nan
 
 
 def burke_ratio(er, returns, rf, periods):
-    return (er - rf) / math.sqrt(average_dd_squared(returns, periods))
+    if math.sqrt(average_dd_squared(returns, periods))!=0:
+        return (er - rf) / math.sqrt(average_dd_squared(returns, periods))
+    else:
+        return math.nan
 
 """
 def test_risk_metrics():

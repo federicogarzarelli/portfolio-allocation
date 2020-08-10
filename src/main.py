@@ -67,7 +67,7 @@ def runOneStrat(strategy=None):
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0, timeframe=timeframe)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -90,7 +90,7 @@ def runOneStrat(strategy=None):
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0, timeframe=timeframe)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -115,7 +115,7 @@ def runOneStrat(strategy=None):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)[
                 "Adj Close"]  # might not always work
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage,
-                                                      expense_ratio=0.0).to_frame("close")
+                                                      expense_ratio=0.0,timeframe=timeframe).to_frame("close")
 
             for column in ['open', 'high', 'low']:
                 assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']

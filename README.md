@@ -30,7 +30,6 @@ python main.py [--historic [medium | long] | --shares SHARES_LIST --shareclass S
                [--startdate DATE] [--enddate DATE]
                [--system SYSTEM] [--leverage LEV]
 ```
-               
 
 ## DESCRIPTION
 Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. It is recommended to run the code in a jupyter notebook to obtain the pyfolio reports in the right format. A jupyter notebook is created for this purpose in 'src/apply_jupyter.ipynb'.
@@ -45,6 +44,16 @@ Running main.py with the options below a backtest is performed on the assets spe
 * __sixtyforty__ Static allocation 60% to the equity class, 20% to the Long Term Bonds class and 20% to the Short Term Bonds class. Assets are allocated uniformly within the asset classes.
 
 __Note__: the asset classes (`--shareclass` argument) used in the strategies are: Gold, Commodities, Equities, Long Term Bonds, Short Term Bonds (see "OPTIONS" section below). When `--shares` is specified, every asset in `SHARES_LIST` must be assigned to one of these 
+
+### Taking into account the minimum period
+
+Please note that the backtest starts after the periods used to calculate the covariance matrix and variance of assets, necessary to compute the weights of `riskparity` and `riskparity_nested` strategies.
+
+The number of periods is set to 120 days for daily data and to 10 years for yearly data (see `GLOBAL_VARS.py`).
+
+For example:
+* __Years__ i.e. when `--historic` is `long`, if startdate is between "1916-01-02" and "1917-01-01" the backtest starts on the "1926-01-01"
+* __Days__ e.g. when `--historic` is `medium` or when `--shares` are specified, if startdate is "1999-01-01" the backtest starts on the "1999-06-18"
 
 ## OPTIONS
 * `--historic`             use historical asset data, already downloaded manually. Alternative is `--shares`. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'LTB', 'ITB'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG'`). `--historic = "long"` cannot be used with the following strategies `riskparity, riskparity_nested, rotationstrat`.
@@ -64,13 +73,35 @@ __Note__: the asset classes (`--shareclass` argument) used in the strategies are
 
 ### Hidden parameters 
 
-The parameters below are hardcoded in the `main.py` file. 
+The parameters below are hardcoded in the `GLOBAL_VARS.py` file. 
 
-* __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30.
-* __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 30. 
-* __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 180.
+#### General parameters
+* __DAYS_IN_YEAR__ Number of days in a year. Default is 260
+
+#### Strategy parameters
+
+* __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30 for daily data and 1 for yearly data.
+* __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 20 for daily data and 10 for yearly data. 
+* __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 120 for daily data and 10 for yearly data.
 * __printlog__ If true a log is output in the terming. Default is True.
 * __corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
+
+#### Report parameters
+
+* __outfilename__ File name of the aggregated report. Default is "Aggregated_Report.pdf".
+* __user__ username shown in the report. Default is "Fabio & Federico",
+* __memo__ notes displayed in the report. Default is "Testing - Report comparing different strategies",
+* __riskfree__ Risk free rate to be used in metrics like treynor_ratio, sharpe_ratio, etc. Default is 0.01.
+* __targetrate__ Target return rate to be used in omega_ratio, sortino_ratio, kappa_three_ratio, gain_loss_ratio, upside_potential_ratio. Default is 0.01.
+* __alpha__ Confidence interval to be used in VaR, CVaR and VaR based metrics (excess VaR, conditional Sharpe Ratio). Default is 0.05.
+* __market_mu__ Average annual return of the market, to be used in Treynor ratio, Information ratio. Default is 0.07.
+* __market_sigma__ Annual standard deviation of the market, to be used in Treynor ratio, Information ratio. Default is  0.15.
+* __fundmode__ Calculate metrics in fund model vs asset mode. Default is True.
+* __stddev_sample__ Bessel correction (N-1) when calculating standard deviation from a sample. Default is True.
+* __logreturns__ Use logreturns instead of percentage returns when calculating metrics (recommended). Default is True.
+* __annualize__  Calculate annualized metrics by annualizing returns first. Default is True.
+
+
 
 ## EXAMPLES
 1. Historical data, uniform strategy
@@ -121,7 +152,7 @@ python main.py --shares "UPRO,UGLD,TYD,TMF,UTSL" --shareclass "equity,gold,bond_
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
 - [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
-- [ ] Check money drawdown in report that is probably wrong
+- [X] Check money drawdown in report that is probably wrong
 - [X] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [X] ~~Scan galaxy of assets that are uncorrelated by buckets and save them~~ See Uncorrelated asset Jupyter notebook
 - [X] ~~Report: add max time in drawdown, VaR.~~ Added Pyfolio report. Added multistrategy report. 
