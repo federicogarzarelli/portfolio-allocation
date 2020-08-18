@@ -9,6 +9,24 @@
 
 # main.py
 # Set the strategy parameters
+
+assetclass_dict = {
+    # "medium" term, daily time series
+    'GLD': 'gold',
+    'COM': 'commodity',
+    'SP500': 'equity',
+    'LTB': 'bond_lt',
+    'ITB': 'bond_it',
+    'TIP': 'bond_lt',  # can also be classified as commodities due to their inflation hedge
+    # "long" term, annual time series
+    'GLD_LNG': 'gold',
+    'OIL_LNG': 'commodity',
+    'EQ_LNG': 'equity',
+    'LTB_LNG': 'bond_lt',
+    'ITB_LNG': 'bond_it',
+    'RE_LNG': 'commodity'  # can also be classified as equities
+}
+
 """
 strat_params_days = {
     'reb_days': 1,  # every month: we rebalance the portfolio
@@ -26,7 +44,6 @@ strat_params_days = {
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
 
-
 strat_params_years = {
     'reb_days': 1,  # rebalance the portfolio every year
     'lookback_period_short': 5,  # period to calculate the variance (Minimum 2)
@@ -36,7 +53,7 @@ strat_params_years = {
 }
 
 # report.py
-DAYS_IN_YEAR = 260 # 365.2422
+DAYS_IN_YEAR = 260  # 365.2422
 
 report_params = {
     'outfilename': "Aggregated_Report.pdf",

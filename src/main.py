@@ -16,13 +16,13 @@ def parse_args():
     now = datetime.datetime.now().strftime("%Y_%m_%d")  # string to be used after
     parser = argparse.ArgumentParser(description='main class to run strategies')
     parser.add_argument('--historic', type=str, default=None, required=False,
-                        help='would you like to use the historical manual data. Long for yearly data from 1900, medium for daily from the 1970')
+                        help='"Long" for yearly data from 1900, "medium" for daily data from the 1970')
     parser.add_argument('--shares', type=str, default='SPY,TLT', required=False,
-                        help='string corresponding to list of shares if not using historic')
-    parser.add_argument('--shareclass', type=str, default='equity,bond', required=False,
-                        help='string corresponding to list of asset classes, in not using historic (needed for static strategies)')
+                        help='string corresponding to list of shares')
+    parser.add_argument('--shareclass', type=str, default=None, required=False,
+                        help='string corresponding to list of asset classes, if not using historic')
     parser.add_argument('--weights', type=str, default='', required=False,
-                        help='string corresponding to list of weights. if no values, risk parity weights are taken')
+                        help='string corresponding to list of weights. if no values, strategy weights are taken')
     parser.add_argument('--indicators', action='store_true', default=False, required=False,
                         help='include indicators for rotational strategy, if true')
     parser.add_argument('--initial_cash', type=int, default=100000, required=False, help='initial_cash to start with')
@@ -63,7 +63,7 @@ def runOneStrat(strategy=None):
         # cerebro.broker.set_shortcash(True) # Can short the cash
 
         # Import the historical assets
-        shares_list = ['GLD', 'COM', 'SP500', 'LTB', 'ITB']
+        shares_list = args.shares.split(',') # GLD,COM,SP500,LTB,ITB,TIP
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
@@ -76,7 +76,10 @@ def runOneStrat(strategy=None):
 
             data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
 
-        shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
+        if args.shareclass is None:
+            shareclass = [assetclass_dict[x] for x in shares_list]
+        else:
+            shareclass = args.shareclass.split(',')
 
     elif args.historic == 'long':
         timeframe = bt.TimeFrame.Years
@@ -86,7 +89,7 @@ def runOneStrat(strategy=None):
         cerebro.broker.set_cash(args.initial_cash)
 
         # Import the historical assets
-        shares_list = ['GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG']
+        shares_list = args.shares.split(',') # GLD_LNG,OIL_LNG,EQ_LNG,LTB_LNG,ITB_LNG,RE_LNG
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
@@ -99,7 +102,10 @@ def runOneStrat(strategy=None):
 
             data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
 
-        shareclass = ['gold', 'commodity', 'equity', 'bond_lt', 'bond_it']
+        if args.shareclass is None:
+            shareclass = [assetclass_dict[x] for x in shares_list]
+        else:
+            shareclass = args.shareclass.split(',')
 
     else:
         shares_list = args.shares.split(',')
@@ -143,8 +149,7 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
             df = df[['open', 'high', 'low', 'close', 'volume']]
-            data.append(
-                bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
 
         shareclass = shareclass + ['non-tradable', 'non-tradable', 'non-tradable']
         shares_list = shares_list + indicatorLabels

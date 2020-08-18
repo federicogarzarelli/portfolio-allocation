@@ -24,7 +24,7 @@ or run the bash script **install_reports.sh**
 # Usage of main
 
 ```bash
-python main.py [--historic [medium | long] | --shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
+python main.py [--historic [medium | long]] [--shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
                [--initial_cash CASH] [--monthly_cash CASH] 
                [--create_report [--report_name NAME]] 
                [--startdate DATE] [--enddate DATE]
@@ -43,7 +43,7 @@ Running main.py with the options below a backtest is performed on the assets spe
 * __onlystocks__ Static allocation only to the equity class. Assets are allocated uniformly within the equity class.
 * __sixtyforty__ Static allocation 60% to the equity class, 20% to the Long Term Bonds class and 20% to the Short Term Bonds class. Assets are allocated uniformly within the asset classes.
 
-__Note__: the asset classes (`--shareclass` argument) used in the strategies are: Gold, Commodities, Equities, Long Term Bonds, Short Term Bonds (see "OPTIONS" section below). When `--shares` is specified, every asset in `SHARES_LIST` must be assigned to one of these 
+__Note__: the asset classes (`--shareclass` argument) used in the strategies are: Gold, Commodities, Equities, Long Term Bonds, Short Term Bonds (see "OPTIONS" section below). When `--historic` is __not__ specified, every asset after `--shares` must be assigned to one of these 
 
 ### Taking into account the minimum period
 
@@ -56,9 +56,9 @@ For example:
 * __Days__ e.g. when `--historic` is `medium` or when `--shares` are specified, if startdate is "1999-01-01" the backtest starts on the "1999-06-18"
 
 ## OPTIONS
-* `--historic`             use historical asset data, already downloaded manually. Alternative is `--shares`. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'LTB', 'ITB'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG'`). `--historic = "long"` cannot be used with the following strategies `riskparity, riskparity_nested, rotationstrat`.
-* `--shares`               use downloaded asset data of the tickers specified in comma separated list (e.g. "SPY,TLT,GLD"). Alternative is `--historic`.
-* `--shareclass`           class of each share specified after --shares (e.g. `equity,bond_lt,gold`). Possibilities are `equity, bond_lt, bond_it, gold, commodity`, where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when `--shares` is chosen__
+* `--historic`             use historical asset data, already downloaded manually. Alternative is using assets downloaded automatically from the Yahoo API. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'LTB', 'ITB','TIP'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG','RE_LNG''`). The specific assets to be loaded need to be specified after `--shares`.
+* `--shares`               if `--historic` is not specified, use downloaded asset data of the tickers specified in a comma separated list (e.g. "SPY,TLT,GLD"). If `--historic` is specified, load asset data of the tickers specified in a comma separated list.
+* `--shareclass`           class of each share specified after `--shares` (e.g. `equity,bond_lt,gold`). Possibilities are `equity, bond_lt, bond_it, gold, commodity`, where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when `--historic` is not chosen__
 * `--weights`              list of portfolio weights for each share specified after `--shares` (e.g. `0.35,0.35,0.30`). The weights need to sum to 1. When weights are specified a custom weights strategy is used that simply loads the weights specified. Alternative is `--strategy`. __Either this argument or `--strategy` is mandatory__
 * `--strategy`             name of one of the strategy to run for the PDF report. Possibilities are `riskparity, riskparity_nested, rotationstrat, uniform, vanillariskparity, onlystocks, sixtyforty`. Alternative is --weights. __Either this argument or `--weights` is mandatory__
 * `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when `--strategy rotationstrat` is chosen__
@@ -77,6 +77,7 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 
 #### General parameters
 * __DAYS_IN_YEAR__ Number of days in a year. Default is 260
+* __assetclass_dict__ Mapping between historic assets and asset classes
 
 #### Strategy parameters
 
@@ -107,29 +108,29 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 1. Historical data, uniform strategy
 
 ```bash
-python main.py --historic "medium" --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB  --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 2. Historical data, custom weights
 
 ```bash
-python main.py --historic "medium" --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
  3. Automatically downloaded data, custom weights
 
 ```bash
-python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 4. Automatically downloaded data, 60-40 strategy
 
 ```bash
-python main.py --shares "SPY,IWM,TLT,GLD," --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 5. Multiple strategies backtest
 ```bash
-python main.py --shares "UPRO,UGLD,TYD,TMF,UTSL" --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --monthly_cash 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
+python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --monthly_cash 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
 ```
 
 # Dataset explanation
