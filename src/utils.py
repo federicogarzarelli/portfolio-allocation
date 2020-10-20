@@ -136,33 +136,43 @@ def import_process_hist(dataLabel, args):
     wd = os.path.dirname(os.getcwd())
 
     mapping_path_linux = {
+        # "medium" term, daily time series
         'GLD': wd + '/modified_data/clean_gld.csv',
         'SP500': wd + '/modified_data/clean_gspc.csv',
+        'SP500TR': wd + '/modified_data/clean_sp500tr.csv',
         'COM': wd + '/modified_data/clean_spgscitr.csv',
         'LTB': wd + '/modified_data/clean_tyx.csv',
         'ITB': wd + '/modified_data/clean_fvx.csv',
         'TIP': wd + '/modified_data/clean_dfii10.csv',
+        # "long" term, annual time series
         'GLD_LNG': wd + '/modified_data/clean_gld_yearly.csv',
         'OIL_LNG': wd + '/modified_data/clean_oil_yearly.csv',
         'EQ_LNG' : wd + '/modified_data/clean_equity_yearly.csv',
         'RE_LNG': wd + '/modified_data/clean_housing_yearly.csv',
         'LTB_LNG': wd + '/modified_data/clean_bond_yearly.csv',
-        'ITB_LNG': wd + '/modified_data/clean_bill_yearly.csv'
+        'ITB_LNG': wd + '/modified_data/clean_bill_yearly.csv',
+        '10YB_LNG': wd + '/modified_data/clean_US10Y_yearly.csv',
+
     }
 
     mapping_path_windows = {
+        # "medium" term, daily time series
         'GLD': wd + '\modified_data\clean_gld.csv',
         'SP500': wd + '\modified_data\clean_gspc.csv',
+        'SP500TR': wd + '\modified_data\clean_sp500tr.csv',
         'COM': wd + '\modified_data\clean_spgscitr.csv',
         'LTB': wd + '\modified_data\clean_tyx.csv',
         'ITB': wd + '\modified_data\clean_fvx.csv',
         'TIP': wd + '\modified_data\clean_dfii10.csv',
+        # "long" term, annual time series
         'GLD_LNG': wd + '\modified_data\clean_gld_yearly.csv',
         'OIL_LNG': wd + '\modified_data\clean_oil_yearly.csv',
         'EQ_LNG': wd + '\modified_data\clean_equity_yearly.csv',
         'RE_LNG': wd + '\modified_data\clean_housing_yearly.csv',
         'LTB_LNG': wd + '\modified_data\clean_bond_yearly.csv',
-        'ITB_LNG': wd + '\modified_data\clean_bill_yearly.csv'
+        'ITB_LNG': wd + '\modified_data\clean_bill_yearly.csv',
+        '10YB_LNG': wd + '\modified_data\clean_US10Y_yearly.csv',
+
     }
 
     if args.system == 'linux':
@@ -192,6 +202,51 @@ def add_leverage(proxy, leverage=1, expense_ratio=0.0, timeframe=bt.TimeFrame.Da
     new_price = initial_value * (1 + pct_change).cumprod()
     new_price.iloc[0] = initial_value
     return new_price
+
+"""
+bond total return based on formula 5 of paper 
+https://mpra.ub.uni-muenchen.de/92607/1/MPRA_paper_92607.pdf
+"""
+def bond_total_return(ytm, dt, maturity):
+    ytm_pc = ytm.to_numpy()/100
+    P0 = 1/np.power(1+ytm_pc, maturity) # price
+
+    # first and second price derivatives
+    P0_backward = np.roll(P0, 1)
+    P0_backward = np.delete(P0_backward, 0, axis=0)
+    P0_backward = np.delete(P0_backward, len(P0_backward)-1, axis=0)
+
+    P0_forward = np.roll(P0, -1)
+    P0_forward = np.delete(P0_forward, 0, axis=0)
+    P0_forward = np.delete(P0_forward, len(P0_forward) - 1, axis=0)
+
+    d_ytm = np.roll(np.diff(ytm_pc, axis=0),-1)
+    d_ytm = np.delete(d_ytm, len(d_ytm)-1, axis=0)
+
+    dP0_dytm = (P0_forward-P0_backward)/(2*d_ytm)
+    dP0_dytm[dP0_dytm == np.inf] = 0
+    dP0_dytm[dP0_dytm == -np.inf] = 0
+    dP0_dytm[np.isnan(dP0_dytm)] = 0
+
+    d2P0_dytm2 = (P0_forward - 2 * P0[1:len(P0)-1] + P0_backward) / (np.power(d_ytm, 2))
+    d2P0_dytm2[d2P0_dytm2 == np.inf] = 0
+    d2P0_dytm2[d2P0_dytm2 == -np.inf] = 0
+    d2P0_dytm2[np.isnan(d2P0_dytm2)] = 0
+
+    # Duration and convexity
+    duration = -dP0_dytm/P0[1:len(P0)-1]
+    convexity = d2P0_dytm2/P0[1:len(P0)-1]
+
+    yield_income = (np.log(1+ytm_pc[1:len(ytm_pc)-1])*dt)   # First term
+    duration_term = -duration * d_ytm
+    convexity_term = 0.5 * (convexity - np.power(duration,2)) * np.power(d_ytm,2)
+    time_term = (1/(1+ytm_pc))[1:len(ytm_pc)-1]*dt*d_ytm
+    total_return = yield_income + duration_term + convexity_term + time_term
+
+    total_return_df = pd.DataFrame(data=total_return, index=ytm.index[1:len(ytm.index)-1])
+    total_return_df.columns = ["total_return"]
+    return total_return_df
+
 
 
 class WeightsObserver(bt.observer.Observer):
@@ -263,9 +318,9 @@ def target_risk_contribution(target_risk, cov):
 def covariances(shares=['GLD', 'TLT', 'SPY'], start=datetime.datetime(2020, 1, 1), end=datetime.datetime(2020, 6, 1)):
     '''
     function that provides the covariance matrix of a certain number of shares
-    
+
     :param shares: (list) shares that we would like to compute
-    
+
     :return: covariance matrix
     '''
     prices = pd.DataFrame([web.DataReader(t,

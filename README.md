@@ -26,9 +26,9 @@ or run the bash script **install_reports.sh**
 ```bash
 python main.py [--historic [medium | long]] [--shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
                [--initial_cash CASH] [--monthly_cash CASH] 
-               [--create_report [--report_name NAME]] 
                [--startdate DATE] [--enddate DATE]
-               [--system SYSTEM] [--leverage LEV]
+               [--system SYSTEM] [--leverage LEV] 
+               [--create_report [--report_name NAME] [--user USER] [--memo MEMO]] 
 ```
 
 ## DESCRIPTION
@@ -64,12 +64,14 @@ For example:
 * `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when `--strategy rotationstrat` is chosen__
 * `--initial_cash`         initial_cash to start with. Default is 100000.
 * `--monthly_cash`         monthly cash invested. Default is 10000.
-* `--create_report`        creates a report if true
-* `--report_name`          report name. __This argument should be specified ony when `--create_report` is chosen__ 
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
 * `--enddate`              end date of the simulation.  If not specified backtrader will take the latest possible date. (To test)
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.
 * `--leverage`             leverage to consider. Leverage is applied both with historical (`--historic`) and automatic (`--shares`). data Default is 1. 
+* `--create_report`        creates a report if true
+* `--report_name`          report name. Default is "Report_DATE". __This argument should be specified only when `--create_report` is chosen__ 
+* `--user`                 user generating the report. Default is "Federico & Fabio". __This argument should be specified ony when `--create_report` is chosen__ 
+* `--memo`                 description of the report. Default is "Backtest". __This argument should be specified ony when `--create_report` is chosen__ 
 
 ### Hidden parameters 
 
@@ -88,10 +90,6 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 * __corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
 
 #### Report parameters
-
-* __outfilename__ File name of the aggregated report. Default is "Aggregated_Report.pdf".
-* __user__ username shown in the report. Default is "Fabio & Federico",
-* __memo__ notes displayed in the report. Default is "Testing - Report comparing different strategies",
 * __riskfree__ Risk free rate to be used in metrics like treynor_ratio, sharpe_ratio, etc. Default is 0.01.
 * __targetrate__ Target return rate to be used in omega_ratio, sortino_ratio, kappa_three_ratio, gain_loss_ratio, upside_potential_ratio. Default is 0.01.
 * __alpha__ Confidence interval to be used in VaR, CVaR and VaR based metrics (excess VaR, conditional Sharpe Ratio). Default is 0.05.
@@ -134,20 +132,24 @@ python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it
 ```
 
 # Dataset explanation
-| Symbol         | Frequency |                 Meaning                            																		    |
-|----------------|-----------|------------------------------------------------------------------------------------------------------------------------------|
-| DFII10         | Daily     | 10 Year Treasury Inflation-Indexed Security																				    |
-| Gold           | Daily     | Gold Prices                    																					            |
-| SPGSCITR       | Daily     | SP500 GSCI Total Return Index (commodity and infl.)  																		|
-| FVX            | Daily     | Treasury Yield 5 Years                     																					|
-| GSPC           | Daily     | SP500 Index                           																					    |
-| TYX            | Daily     | Treasury Yield 30 Years                    																					|
-| T10Y2Y         | Daily     | 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity https://fred.stlouisfed.org/series/T10Y2Y         |
-| DFII20         | Daily     | 20-Year Treasury Inflation-Indexed Security, Constant Maturity https://fred.stlouisfed.org/series/DFII20                     |
-| T10YIE         | Daily     |10-Year Breakeven Inflation Rate (T10YIE) https://fred.stlouisfed.org/series/T10YIE                                           |
-| F000000__3a    | Yearly    | U.S. Crude Oil First Purchase Price (Dollars per Barrel) from 1900 to 2019 (annual frequency)                                |
-| JSTdatasetR4   | Yearly    | Macroeconomic data from 1870 to 2019 http://www.macrohistory.net/data/#DownloadData                                          |
-| GOLD_1800-2019 | Yearly    | Gold prices https://www.measuringworth.com/datasets/gold/                                                                    |
+| Symbol Name                       | File name                  |Used (Y/N)| Used for                                                           | Frequency |                 Description                            																       | Source                                                                              |
+|-----------------------------------|----------------------------|----------|--------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| TIP                               | DFII10.csv                 | Y | Medium term backtest                                               | Daily     | 10 Year Treasury Inflation-Indexed Security																				   | https://fred.stlouisfed.org/series/DFII10                                           |
+| GLD                               | Gold.csv                   | Y | Medium term backtest                                               | Daily     | Gold Prices                    																					           | ???                                                                                 |
+| COM                               | SPGSCITR_IND.csv           | Y | Medium term backtest                                               | Daily     | SP500 GSCI Total Return Index (commodity and infl.)  																	   | https://tradingeconomics.com/commodity/gsci (Not sure)                              |
+| ITB                               | ^FVX.csv                   | Y | Medium term backtest                                               | Daily     | Treasury Yield 5 Years                     																				   | https://finance.yahoo.com/quote/%5EFVX/history?p=%5EFVX                             |
+| SP500                             | ^GSPC.csv                  | Y | Medium term backtest                                               | Daily     | SP500 Index                           																					   | https://finance.yahoo.com/quote/%5EGSPC/history?p=%5EGSPC                           |
+| SP500TR                           | ^SP500TR.csv               | Y | Medium term backtest                                               | Daily     | SP500 Index total return                          																		   | https://finance.yahoo.com/quote/%5ESP500TR/history?p=%5ESP500TR                     |
+| LTB                               | ^TYX.csv                   | Y | Medium term backtest                                               | Daily     | Treasury Yield 30 Years                    																				   | https://finance.yahoo.com/quote/%5ETYX/history?p=%5ETYX                             |
+|                                   | T10Y2Y                     | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity          									   | https://fred.stlouisfed.org/series/T10Y2Y                                           |
+|                                   | DFII20                     | Y | Indicator for rotational strategy                                  | Daily     | 20-Year Treasury Inflation-Indexed Security, Constant Maturity                     										   | https://fred.stlouisfed.org/series/DFII20                                           |
+|                                   | T10YIE                     | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Breakeven Inflation Rate (T10YIE)                                         										   | https://fred.stlouisfed.org/series/T10YIE                                           |
+| OIL_LNG                           | F000000__3a.xls            | Y | Long term backtest                                                 | Yearly    | U.S. Crude Oil First Purchase Price (Dollars per Barrel) from 1900 to 2019 (annual frequency)                              | http://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=F000000__3&f=A            |
+| EQ_LNG, RE_LNG, LTB_LNG, ITB_LNG  | JSTdatasetR4.xlsx          | Y | Long term backtest (US equity, bond, bills, housing total return)  | Yearly    | Macroeconomic data from 1870 to 2019                                          											   | http://www.macrohistory.net/data/#DownloadData                                      |
+| 10YB_LNG                          | 10usy_b_y.csv              | Y | Long term backtest                                                 | Yearly    | US 10Y Bond yield   																									   | https://stooq.com/q/d/?s=10usy.b													 |
+|                                   | GOLD_1800-2019.csv         | N | Replaced. It was used for the long term backtest.                  | Yearly    | Gold prices                                                                     										   | https://www.measuringworth.com/datasets/gold/                                       |
+| GLD_LNG                           | GOLD_PIKETTY_1850-2011.csv | Y | Long term backtest                                                 | Yearly    | Gold prices   																											   | http://piketty.pse.ens.fr/files/capital21c/xls/RawDataFiles/GoldPrices17922012.pdf  |
+
 
 # Todo List
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)

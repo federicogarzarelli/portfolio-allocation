@@ -36,9 +36,9 @@ th {
 
 <!-- ----------------------- header block ------------------- -->
 
-<h2><center>Multiple Strategies Report</center></h2>
+<h2><left>One-Strategy Backtesting Report</left></h2>
 
-<div class="pybloqs">
+  <div class="pybloqs">
    <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
     <thead style="">
      <tr style="">
@@ -49,19 +49,24 @@ th {
     <tbody>
      <tr style="">
       <td style="background-color:rgb(255,255,255)"> name </td>
-      <td style="background-color:rgb(255,255,255)"> {{strategy_names}} </td>
+      <td style="background-color:rgb(255,255,255)"> {{strategy_name}} </td>
      </tr>
+     {% for k, v in params.items() %}
+    <tr style="">
+      <td style="background-color:rgb(255,255,255)"> {{k}} </td>
+      <td style="background-color:rgb(255,255,255)"> {{v}} </td>
+     </tr>
+{% endfor %}
 </tbody>
 </table>
 </div>
-
 
 <div class="pybloqs">
    <table border="0" cellpadding="1" cellspacing="0" class="" id="blox_table_id" style="margin-right:auto">
     <thead style="">
          <tr style="">
       <th style="background-color:rgb(0,0,0)"> </th>
-      <th style="background-color:rgb(0,0,0)"> Datafeed </th>
+      <th style="background-color:rgb(0,0,0)"> Backtest Period </th>
      </tr>
     </thead>
 <tbody>
@@ -91,7 +96,7 @@ th {
       <td style="background-color:rgb(255,255,255)"> {{name_user}} </td>
      </tr>
      <tr style="">
-      <td style="background-color:rgb(255,255,255)"> test at </td>
+      <td style="background-color:rgb(255,255,255)"> Backtest as of </td>
       <td style="background-color:rgb(255,255,255)"> {{processing_date}} </td>
      </tr>
       <tr style="">
@@ -105,13 +110,13 @@ th {
 <!-- -------------------- equity & return curve --------------- -->
 
 <p>
-<img src= "{{url_equity_curve_multistrat}}" alt="Equity Curve" style="width:650px;height:500px;" class=center>
-</p>
+<img src="{{url_equity_curve}}" alt="Portfolio value" style="width:650px;height:500px;" class=center>
+<img src="{{url_equity_curve}}" alt="Portfolio value" style="width:650px;height:500px;" class=center>
 
-<!--
+</p>
 <p>
-<img src= "{{url_return_curve }}" alt="Return Curve" style="width:650px;height:500px;" class=center>
-</p> -->
+<img src="{{url_return_curve}}" alt="Returns time series" style="width:650px;height:500px;" class=center>
+</p>
 
 
 <!-- ------------------- performance statistics ----------------------------- -->
@@ -126,37 +131,52 @@ th {
     <h2><left>Performance</left></h2>
 
     <!-- Weights table -->
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
     {{ performance_table | safe }}
+
+    <h2>Notes on the performance metrics</h2>
+
+    <ul>
+      <li>The pyfolio metrics are to be interpreted as net of contributions (not fund-like)</li>
+    </ul>
+
 
 </section>
 
-<h2>Notes on the performance metrics</h2>
-
-<ul>
-  <li>The pyfolio metrics are to be interpreted as net of contributions (not fund-like)</li>
-</ul>
-
-<!-- weights table -->
+<!-- ------------------- target weights ----------------------------- -->
+<br>
 
 <section>
 
     <h2><left>Target weights</left></h2>
 
     <!-- Weights table -->
+
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
     {{ targetweights_table | safe }}
 
 </section>
 
-<!-- weights table -->
+<!-- ------------------- effective weights ----------------------------- -->
+<br>
 
 <section>
 
     <h2><left>Effective weights</left></h2>
 
     <!-- Weights table -->
+
+    <style>
+        .df tbody tr:nth-child(even) { background-color: lightblue; }
+    </style>
     {{ effectiveweights_table | safe }}
 
 </section>
+
 
 
 </font>

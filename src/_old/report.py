@@ -1,6 +1,12 @@
+import os
 import matplotlib.pyplot as plt
+import pybloqs.block.table_formatters as tf
+import pyfolio as pf
+from jinja2 import Environment, FileSystemLoader
+from pybloqs import Block
+from weasyprint import HTML
 from strategies import *
-from utils import timestamp2str
+from utils import timestamp2str, get_now
 from GLOBAL_VARS import *
 from myanalyzers import MyAnnualReturn, MyTimeReturn, MyReturns, MyDrawDown, \
     MyTimeDrawDown, MyLogReturnsRolling, MyDistributionMoments, MyRiskAdjusted_VolBased, \
@@ -9,10 +15,32 @@ from myanalyzers import MyAnnualReturn, MyTimeReturn, MyReturns, MyDrawDown, \
 class PerformanceReport:
     """ Report with performance stats for given backtest run
     """
-    def __init__(self, stratbt, system, timeframe):
+
+    def __init__(self, stratbt, outfile, user, memo, system, timeframe):
         self.stratbt = stratbt  # works for only 1 strategy
+        self.outfile = outfile
+        self.user = user
+        self.memo = memo
         self.system = system
         self.timeframe = timeframe
+
+    def __str__(self):
+        msg = ("*** PnL: ***\n"
+               "Start capital         : {start_cash:4.2f}\n"
+               "End capital           : {end_value:4.2f}\n"
+               "Total return          : {total_return:4.2f}%\n"
+               "Annual return (asset) : {annual_return_asset:4.2f}%\n"
+               "Annual return (fund)  : {annual_return:4.2f}%\n"
+               "Max. money drawdown   : {max_money_drawdown:4.2f}\n"
+               "Max. percent drawdown : {max_pct_drawdown:4.2f}%\n\n"
+               "*** Performance ***\n"
+               "Sharpe ratio          : {sharpe_ratio:4.2f}\n"
+               )
+        kpis = self.get_performance_stats()
+        # see: https://stackoverflow.com/questions/24170519/
+        # python-# typeerror-non-empty-format-string-passed-to-object-format
+        kpis = {k: -999 if v is None else v for k, v in kpis.items()}
+        return msg.format(**kpis)
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
@@ -95,22 +123,6 @@ class PerformanceReport:
         }
         return kpi
 
-    def get_assets(self):
-        st = self.stratbt
-        dt = self.get_date_index()
-        n_assets = self.get_strategy_params().get('n_assets')
-
-        dt_df = pd.DataFrame(data=dt, columns=["date"])
-
-        for i in range(0, n_assets):
-            thisasset = st.datas[i]._dataname[["close"]]
-            thisasset = thisasset.rename(columns={"close": st.assets[i]._name})
-            dt_df = pd.merge(left=dt_df, right=thisasset, how='left', left_on='date', right_on='date')
-
-        dt_df = dt_df.set_index("date", drop=True)
-
-        return dt_df.div(dt_df.iloc[0])
-
     def get_equity_curve(self):
         """ Return series containing equity curve
         """
@@ -121,8 +133,110 @@ class PerformanceReport:
         vv = vv[~np.isnan(vv)]
 
         curve = pd.Series(data=vv, index=dt)
-        #return 100 * curve / curve.iloc[0]
-        return curve
+        return 100 * curve / curve.iloc[0]
+
+    def plot_equity_curve(self, fname='equity_curve.png'):
+        """ Plots equity curve to png file
+        """
+        curve = self.get_equity_curve()
+        xrnge = [curve.index[0], curve.index[-1]]
+        dotted = pd.Series(data=[100, 100], index=xrnge)
+        fig, ax = plt.subplots(1, 1)
+        ax.set_ylabel('Net Asset Value (start=100)')
+        ax.set_title('Equity curve')
+        _ = curve.plot(kind='line', ax=ax)
+        _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+        return fig
+
+    def _get_periodicity(self):
+        """ Maps length backtesting interval to appropriate periodicity for return plot
+        """
+        curve = self.get_equity_curve()
+        startdate = curve.index[0]
+        enddate = curve.index[-1]
+        time_interval = enddate - startdate
+        time_interval_days = time_interval.days
+        if time_interval_days > 5 * DAYS_IN_YEAR:
+            periodicity = ('Yearly', 'Y')
+        elif time_interval_days > DAYS_IN_YEAR:
+            periodicity = ('Monthly', 'M')
+        elif time_interval_days > 50:
+            periodicity = ('Weekly', '168H')
+        elif time_interval_days > 5:
+            periodicity = ('Daily', '24H')
+        elif time_interval_days > 0.5:
+            periodicity = ('Hourly', 'H')
+        elif time_interval_days > 0.05:
+            periodicity = ('Per 15 Min', '15M')
+        else:
+            periodicity = ('Per minute', '1M')
+        return periodicity
+
+    def plot_return_curve(self, fname='return_curve.png'):
+        """ Plots return curve to png file
+        """
+        curve = self.get_equity_curve()
+        period = self._get_periodicity()
+        values = curve.resample(period[1]).ohlc()['close']
+        returns = values.diff() / values
+        returns.index = returns.index.date
+        is_positive = returns > 0
+        fig, ax = plt.subplots(1, 1)
+        ax.set_title("{} returns".format(period[0]))
+        ax.set_xlabel("date")
+        ax.set_ylabel("return (%)")
+        _ = returns.plot.bar(color=is_positive.map({True: 'green', False: 'red'}), ax=ax)
+        return fig
+
+    def generate_html(self):
+        """ Returns parsed HTML text string for report
+        """
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        images = os.path.join(basedir, 'templates')
+        eq_curve = os.path.join(images, 'equity_curve.png')
+        rt_curve = os.path.join(images, 'return_curve.png')
+        fig_equity = self.plot_equity_curve()
+        fig_equity.savefig(eq_curve)
+        fig_return = self.plot_return_curve()
+        fig_return.savefig(rt_curve)
+        env = Environment(loader=FileSystemLoader('.'))
+        template = env.get_template("templates/template.html")
+        header = self.get_header_data()
+        kpis = self.get_aggregated_data_html()
+        if self.system == 'windows':
+            graphics = {'url_equity_curve': 'file:\\' + eq_curve,
+                        'url_return_curve': 'file:\\' + rt_curve
+                        }
+        else:
+            graphics = {'url_equity_curve': 'file://' + eq_curve,
+                        'url_return_curve': 'file://' + rt_curve
+                        }
+
+        # targetweights
+        targetweights, effectiveweights = self.get_weights()  # only last month
+        if self.timeframe == bt.TimeFrame.Days:  # if daily frequency, take the last month worth of weights
+            targetweights = targetweights.tail(30)
+            effectiveweights = effectiveweights.tail(30)
+        elif self.timeframe == bt.TimeFrame.Years:  # if yearly frequency, take the last 5 years
+            targetweights = targetweights.tail(5)
+            effectiveweights = effectiveweights.tail(5)
+
+        fmt_pct = tf.FmtPercent(1, apply_to_header_and_index=False)
+        fmt_align = tf.FmtAlignTable("left")
+        fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE,
+                                                header_color=tf.colors.BLACK)
+
+        targetweights = Block(targetweights, formatters=[fmt_pct, fmt_align, fmt_background],
+                              use_default_formatters=False)._repr_html_()
+        effectiveweights = Block(effectiveweights, formatters=[fmt_pct, fmt_align, fmt_background],
+                                 use_default_formatters=False)._repr_html_()
+
+        targetweights = {'targetweights_table': targetweights}
+        effectiveweights = {'effectiveweights_table': effectiveweights}
+
+        all_numbers = {**header, **kpis, **graphics, **targetweights, **effectiveweights}
+        html_out = template.render(all_numbers)
+        return html_out
 
     def get_weights(self):
         st = self.stratbt
@@ -144,6 +258,15 @@ class PerformanceReport:
             effectiveweights_df[st.assets[i]._name] = st.observers.effectiveweightsobserver.lines[i].get(
                 size=size_weights)
         return targetweights_df, effectiveweights_df
+
+    def generate_pdf_report(self):
+        """ Returns PDF report with backtest results
+        """
+        html = self.generate_html()
+        outfile = self.outfile + "_" + self.get_strategy_name() + "_" + get_now() + ".pdf"
+        HTML(string=html).write_pdf(outfile)
+        msg = "See {} for report with backtest results."
+        print(msg.format(outfile))
 
     def get_strategy_name(self):
         return self.stratbt.__class__.__name__
@@ -181,8 +304,44 @@ class PerformanceReport:
         dt = self.get_date_index()
         return timestamp2str(dt[-1])
 
+    def get_header_data(self):
+        """ Return dict with data for report header
+        """
+        header = {'strategy_name': self.get_strategy_name(),
+                  'params': self.get_strategy_params(),
+                  'start_date': self.get_start_date(),
+                  'end_date': self.get_end_date(),
+                  'name_user': self.user,
+                  'processing_date': get_now(),
+                  'memo_field': self.memo
+                  }
+        return header
+
     def get_startcash(self):
         return self.stratbt.broker.startingcash
+
+    def get_pyfolio(self):
+        st = self.stratbt
+        pyfoliozer = st.analyzers.getbyname('myPyFolio')
+        returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
+        return returns, positions, transactions, gross_lev
+
+    def generate_pyfolio_report(self):
+        if self.timeframe == bt.TimeFrame.Days:
+            returns, positions, transactions, gross_lev = self.get_pyfolio()
+            """
+             pf.create_simple_tear_sheet(
+                returns,
+                positions=positions,
+                transactions=transactions)       
+            """
+            pf.create_returns_tear_sheet(
+                returns,
+                positions=positions,
+                transactions=transactions)
+            return
+        else:
+            return
 
     def get_aggregated_data(self):
         kpis = self.get_performance_stats()
@@ -217,7 +376,6 @@ class PerformanceReport:
         prices = self.get_equity_curve()
         prices.index = prices.index.date
         returns = prices.diff() / prices
-        assetprices = self.get_assets()
 
         prices = pd.DataFrame(data=prices, columns=[self.get_strategy_name()])
         returns = pd.DataFrame(data=returns, columns=[self.get_strategy_name()])
@@ -232,7 +390,7 @@ class PerformanceReport:
 
         params = self.get_strategy_params()
 
-        return prices, returns, perf_data, targetweights, effectiveweights, params, assetprices
+        return prices, returns, perf_data, targetweights, effectiveweights, params
 
 class Cerebro(bt.Cerebro):
     def __init__(self, timeframe=None, **kwds):
@@ -332,9 +490,16 @@ class Cerebro(bt.Cerebro):
     def get_strategy_backtest(self):
         return self.runstrats[0][0]
 
-    def report(self, system=None):
+    def report(self, outfile, user=None, memo=None, system=None):
         bt = self.get_strategy_backtest()
-        rpt = PerformanceReport(bt, system=system, timeframe=self.timeframe)
+        rpt = PerformanceReport(bt, outfile=outfile, user=user, memo=memo, system=system, timeframe=self.timeframe)
+        rpt.generate_pdf_report()
 
-        prices, returns, perf_data, targetweights, effectiveweights, params, assetprices = rpt.output_all_data()
-        return prices, returns, perf_data, targetweights, effectiveweights, params, assetprices
+        try:
+            rpt.generate_pyfolio_report()
+        except:
+            print("Error raised in rpt.generate_pyfolio_report().")
+            pass
+
+        prices, returns, perf_data, targetweights, effectiveweights, params = rpt.output_all_data()
+        return prices, returns, perf_data, targetweights, effectiveweights, params

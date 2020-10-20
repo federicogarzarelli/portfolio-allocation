@@ -1,23 +1,19 @@
-import backtrader as bt
 import sys
 import matplotlib.pyplot as plt
 import os
-import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
-from utils import timestamp2str, get_now, dir_exists
-import numpy as np
+from utils import get_now, dir_exists
 from strategies import *
 import pybloqs.block.table_formatters as tf
 from pybloqs import Block
-
 
 class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
     """
 
     def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, targetweights,
-                 effectiveweights):
+                 effectiveweights, params, assetprices):
         self.outfilename = outfilename
         self.outputdir = outputdir
         self.user = user
@@ -29,21 +25,20 @@ class ReportAggregator:
         self.perf_data = perf_data
         self.targetweights = targetweights
         self.effectiveweights = effectiveweights
-
+        self.params = params
+        self.assetprices = assetprices
         self.outfile = os.path.join(self.outputdir, self.outfilename)
 
-
     """
-    Multistrategy report
+    Report
     """
     def generate_csv(self):
-        # Output into CSV for now, later create a PDF from a HTML
-        self.prices.to_csv(self.outputdir+r'/Prices_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-        self.returns.to_csv(self.outputdir+r'/Returns_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-        self.perf_data.to_csv(self.outputdir+r'/Performance_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-        self.targetweights.to_csv(self.outputdir+r'/Target_Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-        self.effectiveweights.to_csv(self.outputdir+r'/Effective_Weights_MultiStrategy_' + get_now().replace(':', '') +'.csv')
-
+        # Output into CSV
+        self.prices.to_csv(self.outputdir+r'/Fund_Prices_' + get_now().replace(':', '') +'.csv')
+        self.returns.to_csv(self.outputdir+r'/Returns_' + get_now().replace(':', '') +'.csv')
+        self.perf_data.to_csv(self.outputdir+r'/Performance_' + get_now().replace(':', '') +'.csv')
+        self.targetweights.to_csv(self.outputdir+r'/Target_Weights_' + get_now().replace(':', '') +'.csv')
+        self.effectiveweights.to_csv(self.outputdir+r'/Effective_Weights_' + get_now().replace(':', '') +'.csv')
 
     def check_and_assign_defaults(self):
         """ Check initialization parameters or assign defaults
@@ -64,16 +59,38 @@ class ReportAggregator:
         """
         curve = self.prices
         xrnge = [curve.index[0], curve.index[-1]]
-        dotted = pd.Series(data=[100, 100], index=xrnge)
+        dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
         fig, ax = plt.subplots(1, 1)
-        ax.set_ylabel('Net Asset Value (start=100)')
-        ax.set_title('Equity curve')
+        ax.set_ylabel('Value')
+        ax.set_xlabel("Date")
+        ax.set_title('Portfolio value')
         _ = curve.plot(kind='line', ax=ax)
         _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+        fig.autofmt_xdate(rotation=45)
+        plt.tight_layout()
+        return fig
+
+    def plot_asset_prices(self):
+        """ Plots assets' relative prices to png file
+        """
+        curve = self.assetprices
+        xrnge = [curve.index[0], curve.index[-1]]
+        dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
+        fig, ax = plt.subplots(1, 1)
+        ax.set_ylabel('Assets value')
+        ax.set_xlabel("Date")
+        ax.set_title('Assets values (normalized to 1)')
+        _ = curve.plot(kind='line', ax=ax)
+        _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+        fig.autofmt_xdate(rotation=45)
+        plt.tight_layout()
         return fig
 
     def get_strategy_names(self):
         return self.perf_data.columns.to_list()
+
+    def get_strategy_params(self):
+        return self.params
 
     def get_start_date(self):
         return self.prices.index[0].strftime("%Y-%m-%d")
@@ -138,16 +155,23 @@ class ReportAggregator:
         """
         basedir = os.path.abspath(os.path.dirname(__file__))
         images = os.path.join(basedir, 'templates')
-        eq_curve = os.path.join(images, 'equity_curve_multistrat.png')
+        eq_curve = os.path.join(images, 'equity_curve.png')
+        assets_curve = os.path.join(images, 'assetprices_curve.png')
         fig_equity = self.plot_equity_curve()
+        fig_assets = self.plot_asset_prices()
+
         fig_equity.savefig(eq_curve)
+        fig_assets.savefig(assets_curve)
+
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("templates/template_multistrat.html")
+        template = env.get_template("templates/template.html")
         header = self.get_header_data()
         if self.system == 'windows':
-            graphics = {'url_equity_curve_multistrat': 'file:\\' + eq_curve}
+            graphics = {'url_equity_curve': 'file:\\' + eq_curve,
+                        'url_assetprices': 'file:\\' + assets_curve}
         else:
-            graphics = {'url_equity_curve_multistrat': 'file://' + eq_curve}
+            graphics = {'url_equity_curve': 'file://' + eq_curve,
+                        'url_assetprices': 'file://' + assets_curve}
 
         kpis = self.get_performance_stats_html()
         targetweights, effectiveweights = self.get_weights_html()
@@ -167,13 +191,14 @@ class ReportAggregator:
         """ Return dict with data for report header
         """
         header = {'strategy_names': self.get_strategy_names(),
-                  'file_name': self.outfilename,
+                  'params': self.get_strategy_params(),
                   'start_date': self.get_start_date(),
                   'end_date': self.get_end_date(),
                   'name_user': self.user,
                   'processing_date': get_now(),
                   'memo_field': self.memo
                   }
+
         return header
 
     def report(self):

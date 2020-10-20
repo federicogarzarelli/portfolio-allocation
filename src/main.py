@@ -27,10 +27,6 @@ def parse_args():
                         help='include indicators for rotational strategy, if true')
     parser.add_argument('--initial_cash', type=int, default=100000, required=False, help='initial_cash to start with')
     parser.add_argument('--monthly_cash', type=float, default=10000, required=False, help='monthly cash invested')
-    parser.add_argument('--create_report', action='store_true', default=False, required=False,
-                        help='creates a report if true')
-    parser.add_argument('--report_name', type=str, default='Test_Report', required=False,
-                        help='if create_report is True, it is better to have a specific name')
     parser.add_argument('--strategy', type=str, required=False,
                         help='Specify the strategies for which a backtest is run')
     parser.add_argument('--startdate', type=str, default='2017-01-01', required=False,
@@ -38,6 +34,12 @@ def parse_args():
     parser.add_argument('--enddate', type=str, default=now, required=False, help='end date of the simulation')
     parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
     parser.add_argument('--leverage', type=int, default=1, help='leverage to consider')
+    parser.add_argument('--create_report', action='store_true', default=False, required=False,
+                        help='creates a report if true')
+    parser.add_argument('--report_name', type=str, default=None, required=False,
+                        help='if create_report is True, it is better to have a specific name')
+    parser.add_argument('--user', type=str, default="Federico & Fabio", required=False, help='user generating the report')
+    parser.add_argument('--memo', type=str, default="Backtest", required=False, help='Description of the report')
 
     return parser.parse_args()
 
@@ -118,8 +120,7 @@ def runOneStrat(strategy=None):
         # download the datas
         assets_dic = {}
         for i in range(len(shares_list)):
-            assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)[
-                "Adj Close"]  # might not always work
+            assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"]
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage,
                                                       expense_ratio=0.0,timeframe=timeframe).to_frame("close")
 
@@ -133,7 +134,11 @@ def runOneStrat(strategy=None):
 
         shareclass = args.shareclass.split(',')
 
-    if timeframe == bt.TimeFrame.Days:
+    # Set the minimum periods, lookback period (and other parameters) depending on the data used (daily or yearly) and
+    # if weights are used instead of a strategy
+    if args.weights != '' or strategy is None:
+        strat_params = strat_params_weights
+    elif timeframe == bt.TimeFrame.Days:
         strat_params = strat_params_days
     elif timeframe == bt.TimeFrame.Years:
         strat_params = strat_params_years
@@ -202,12 +207,9 @@ def runOneStrat(strategy=None):
 
     # Create report
     if args.create_report:
-        resultsoutputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
-        outfile = os.path.join(resultsoutputdir, args.report_name)
+        res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights, res_params, res_assetprices = cerebro.report(system=args.system)
 
-        res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights = cerebro.report(outfile,
-                                                                                                        system=args.system)
-        return res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights
+        return res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights, res_params, res_assetprices
 
 
 if __name__ == '__main__':
@@ -218,56 +220,60 @@ if __name__ == '__main__':
     delete_in_dir(outputdir)
 
     print_header(args)
+
     if args.strategy is None:
-        print_section_divider("Custom Weights")
-        runOneStrat()
+        strategy_list = ["Custom Weights"]
     else:
         strategy_list = args.strategy.split(',')
-        if len(strategy_list) == 1:
-            print_section_divider(args.strategy)
 
-            runOneStrat()
-        elif len(strategy_list) > 1:
+    prices = pd.DataFrame()
+    returns = pd.DataFrame()
+    perf_data = pd.DataFrame()
+    targetweights = pd.DataFrame()
+    effectiveweights = pd.DataFrame()
+    params = pd.DataFrame()
 
-            prices = pd.DataFrame()
-            returns = pd.DataFrame()
-            perf_data = pd.DataFrame()
-            targetweights = pd.DataFrame()
-            effectiveweights = pd.DataFrame()
-            for strat in strategy_list:
-                print_section_divider(strat)
+    for strat in strategy_list:
+        print_section_divider(strat)
 
-                ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
-                    ThisStrat_effectiveweight = runOneStrat(strat)
-                if prices.empty:
-                    prices = ThisStrat_prices
-                else:
-                    prices[strat] = ThisStrat_prices
+        ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
+            ThisStrat_effectiveweight, ThisStrat_params, ThisStrat_assetprices = runOneStrat(strat)
 
-                if returns.empty:
-                    returns = ThisStrat_returns
-                else:
-                    returns[strat] = ThisStrat_returns
+        if prices.empty:
+            prices = ThisStrat_prices
+        else:
+            prices[strat] = ThisStrat_prices
 
-                if perf_data.empty:
-                    perf_data = ThisStrat_perf_data
-                else:
-                    perf_data[strat] = ThisStrat_perf_data
+        if returns.empty:
+            returns = ThisStrat_returns
+        else:
+            returns[strat] = ThisStrat_returns
 
-                if targetweights.empty:
-                    targetweights = ThisStrat_targetweight
-                else:
-                    targetweights[strat] = ThisStrat_targetweight
+        if perf_data.empty:
+            perf_data = ThisStrat_perf_data
+        else:
+            perf_data[strat] = ThisStrat_perf_data
 
-                if effectiveweights.empty:
-                    effectiveweights = ThisStrat_effectiveweight
-                else:
-                    effectiveweights[strat] = ThisStrat_effectiveweight
+        if targetweights.empty:
+            targetweights = ThisStrat_targetweight
+        else:
+            targetweights[strat] = ThisStrat_targetweight
 
-            outfilename = report_params['outfilename']
-            user = report_params['user']
-            memo = report_params['memo']
+        if effectiveweights.empty:
+            effectiveweights = ThisStrat_effectiveweight
+        else:
+            effectiveweights[strat] = ThisStrat_effectiveweight
 
-            ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, prices, returns,
-                                                perf_data, targetweights, effectiveweights)
-            ReportAggregator.report()
+        params = ThisStrat_params
+        assetprices = ThisStrat_assetprices
+
+    if args.report_name is not None:
+        outfilename = args.report_name + "_" + get_now() + ".pdf"
+    else:
+        outfilename = "Report_" + get_now() + ".pdf"
+    user = args.user
+    memo = args.memo
+
+    ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, prices, returns,
+                                        perf_data, targetweights, effectiveweights, params, assetprices)
+    ReportAggregator.report()

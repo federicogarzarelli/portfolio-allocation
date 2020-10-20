@@ -15,6 +15,7 @@ assetclass_dict = {
     'GLD': 'gold',
     'COM': 'commodity',
     'SP500': 'equity',
+    'SP500TR': 'equity',
     'LTB': 'bond_lt',
     'ITB': 'bond_it',
     'TIP': 'bond_lt',  # can also be classified as commodities due to their inflation hedge
@@ -24,7 +25,8 @@ assetclass_dict = {
     'EQ_LNG': 'equity',
     'LTB_LNG': 'bond_lt',
     'ITB_LNG': 'bond_it',
-    'RE_LNG': 'commodity'  # can also be classified as equities
+    'RE_LNG': 'commodity',  # can also be classified as equities
+    '10YB_LNG': 'bond_it'
 }
 
 """
@@ -49,16 +51,21 @@ strat_params_years = {
     'lookback_period_short': 5,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 10,  # period to calculate the correlation (Minimum 2)
     'printlog': True,  # Print log in the console
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
+    'corrmethod': 'pearson'  # 'spea    rman' # method for the calculation of the correlation matrix
+}
+
+strat_params_weights = {
+    'reb_days': 30,  #  rebalance the portfolio every month
+    'lookback_period_short': 2,  # set the minimum period to the minimum possible value (i.e. 2), when weights are provided
+    'lookback_period_long': 2,
+    'printlog': True,  # Print log in the console
+    'corrmethod': 'pearson'  # 'spea    rman' # method for the calculation of the correlation matrix
 }
 
 # report.py
 DAYS_IN_YEAR = 260  # 365.2422
 
 report_params = {
-    'outfilename': "Aggregated_Report.pdf",
-    'user': "Fabio & Federico",
-    'memo': "Testing - Report comparing different strategies",
     'riskfree': 0.01,  # Risk free rate to be used in metrics like treynor_ratio, sharpe_ratio, etc
     'targetrate': 0.01,
     # target return rate to be used in omega_ratio, sortino_ratio, kappa_three_ratio, gain_loss_ratio, upside_potential_ratio
