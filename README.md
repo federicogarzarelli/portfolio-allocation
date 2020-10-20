@@ -56,7 +56,7 @@ For example:
 * __Days__ e.g. when `--historic` is `medium` or when `--shares` are specified, if startdate is "1999-01-01" the backtest starts on the "1999-06-18"
 
 ## OPTIONS
-* `--historic`             use historical asset data, already downloaded manually. Alternative is using assets downloaded automatically from the Yahoo API. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'LTB', 'ITB','TIP'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG','RE_LNG''`). The specific assets to be loaded need to be specified after `--shares`.
+* `--historic`             use historical asset data, already downloaded manually. Alternative is using assets downloaded automatically from the Yahoo API. If `--historic = "medium"` assets from about 1970 at daily frequency are loaded (`'GLD', 'COM', 'SP500', 'SP500TR', 'LTB', 'ITB','TIP'`). If `--historic = "long"` assets from 1900 at annual frequency are loaded (`'GLD_LNG', 'OIL_LNG', 'EQ_LNG', 'LTB_LNG', 'ITB_LNG', '10YB_LNG', 'RE_LNG''`). The specific assets to be loaded need to be specified after `--shares`.
 * `--shares`               if `--historic` is not specified, use downloaded asset data of the tickers specified in a comma separated list (e.g. "SPY,TLT,GLD"). If `--historic` is specified, load asset data of the tickers specified in a comma separated list.
 * `--shareclass`           class of each share specified after `--shares` (e.g. `equity,bond_lt,gold`). Possibilities are `equity, bond_lt, bond_it, gold, commodity`, where "bond_lt" and "bond_it" are long and intermediate duration bonds, respectively. __This argument is mandatory when `--historic` is not chosen__
 * `--weights`              list of portfolio weights for each share specified after `--shares` (e.g. `0.35,0.35,0.30`). The weights need to sum to 1. When weights are specified a custom weights strategy is used that simply loads the weights specified. Alternative is `--strategy`. __Either this argument or `--strategy` is mandatory__
@@ -126,6 +126,7 @@ python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold
 ```bash
 python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
+
 5. Multiple strategies backtest
 ```bash
 python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --monthly_cash 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
