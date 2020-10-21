@@ -153,9 +153,11 @@ python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it
 
 
 # Todo List
+- [ ] Add drawdown plots (for portfolio and assets)
+- [ ] Add money withdrawal functionality
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
-- [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
+- [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
 - [X] Check money drawdown in report that is probably wrong
 - [X] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [X] ~~Scan galaxy of assets that are uncorrelated by buckets and save them~~ See Uncorrelated asset Jupyter notebook
