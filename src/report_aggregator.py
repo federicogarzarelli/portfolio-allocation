@@ -12,33 +12,30 @@ class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
     """
 
-    def __init__(self, outfilename, outputdir, user, memo, system, prices, returns, perf_data, targetweights,
-                 effectiveweights, params, assetprices):
+    def __init__(self, outfilename, outputdir, user, memo, system, InputList):
         self.outfilename = outfilename
         self.outputdir = outputdir
         self.user = user
         self.memo = memo
         self.check_and_assign_defaults()
         self.system = system
-        self.prices = prices
-        self.returns = returns 
-        self.perf_data = perf_data
-        self.targetweights = targetweights
-        self.effectiveweights = effectiveweights
-        self.params = params
-        self.assetprices = assetprices
+
+        self.InputList = []
+        for i in range(0,len(InputList)):
+            self.InputList.append(InputList[i])
+
         self.outfile = os.path.join(self.outputdir, self.outfilename)
 
     """
     Report
     """
     def generate_csv(self):
+        outputfilename = ["/Fund_Prices_", "/Returns_", "/PerformanceMetrics_", "/Target_Weights_",
+                          "/Effective_Weights_", "/Portfolio_Drawdown_", "/Asset_Prices_", "/Assets_drawdown_"]
+
         # Output into CSV
-        self.prices.to_csv(self.outputdir+r'/Fund_Prices_' + get_now().replace(':', '') +'.csv')
-        self.returns.to_csv(self.outputdir+r'/Returns_' + get_now().replace(':', '') +'.csv')
-        self.perf_data.to_csv(self.outputdir+r'/Performance_' + get_now().replace(':', '') +'.csv')
-        self.targetweights.to_csv(self.outputdir+r'/Target_Weights_' + get_now().replace(':', '') +'.csv')
-        self.effectiveweights.to_csv(self.outputdir+r'/Effective_Weights_' + get_now().replace(':', '') +'.csv')
+        for i in range(0, len(self.InputList)-1): # -1 is to exclude the parameters output
+            self.InputList[i].to_csv(self.outputdir + outputfilename[i] + get_now().replace(':', '') +'.csv')
 
     def check_and_assign_defaults(self):
         """ Check initialization parameters or assign defaults
@@ -57,7 +54,7 @@ class ReportAggregator:
     def plot_equity_curve(self):
         """ Plots equity curve to png file
         """
-        curve = self.prices
+        curve = self.InputList[0]
         xrnge = [curve.index[0], curve.index[-1]]
         dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
         fig, ax = plt.subplots(1, 1)
@@ -70,10 +67,26 @@ class ReportAggregator:
         plt.tight_layout()
         return fig
 
+    def plot_equity_dd(self):
+        """ Plots equity curve to png file
+        """
+        curve = self.InputList[5]
+        xrnge = [curve.index[0], curve.index[-1]]
+        dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
+        fig, ax = plt.subplots(1, 1)
+        ax.set_ylabel('% Drawdown')
+        ax.set_xlabel("Date")
+        ax.set_title('Portfolio drawdown')
+        _ = curve.plot(kind='line', ax=ax)
+        _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+        fig.autofmt_xdate(rotation=45)
+        plt.tight_layout()
+        return fig
+
     def plot_asset_prices(self):
         """ Plots assets' relative prices to png file
         """
-        curve = self.assetprices
+        curve = self.InputList[6]
         xrnge = [curve.index[0], curve.index[-1]]
         dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
         fig, ax = plt.subplots(1, 1)
@@ -86,17 +99,33 @@ class ReportAggregator:
         plt.tight_layout()
         return fig
 
+    def plot_asset_dd(self):
+        """ Plots assets' relative prices to png file
+        """
+        curve = self.InputList[7]
+        xrnge = [curve.index[0], curve.index[-1]]
+        dotted = pd.Series(data=[curve.iloc[0].values[0], curve.iloc[0].values[0]], index=xrnge)
+        fig, ax = plt.subplots(1, 1)
+        ax.set_ylabel('Assets % Drawdown')
+        ax.set_xlabel("Date")
+        ax.set_title('Assets drawdown')
+        _ = curve.plot(kind='line', ax=ax)
+        _ = dotted.plot(kind='line', ax=ax, color='grey', linestyle=':')
+        fig.autofmt_xdate(rotation=45)
+        plt.tight_layout()
+        return fig
+
     def get_strategy_names(self):
-        return self.perf_data.columns.to_list()
+        return self.InputList[2].columns.to_list() # InputList[2] = Performance data
 
     def get_strategy_params(self):
-        return self.params
+        return self.InputList[8] # InputList[8] = Parameters
 
     def get_start_date(self):
-        return self.prices.index[0].strftime("%Y-%m-%d")
+        return self.InputList[0].index[0].strftime("%Y-%m-%d") # InputList[0] = prices
 
     def get_end_date(self):
-        return self.prices.index[-1].strftime("%Y-%m-%d")
+        return self.InputList[0].index[-1].strftime("%Y-%m-%d")
 
     def get_performance_stats_html(self):
 
@@ -135,7 +164,7 @@ class ReportAggregator:
         fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
         fmt_multiindex = tf.FmtExpandMultiIndex(operator=tf.OP_NONE)
 
-        perf_data = Block(self.perf_data, formatters=[fmt_multiindex, fmt_pct, fmt_dec, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        perf_data = Block(self.InputList[2], formatters=[fmt_multiindex, fmt_pct, fmt_dec, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
         perf_data = {'performance_table': perf_data}
         return perf_data
 
@@ -144,9 +173,9 @@ class ReportAggregator:
         fmt_align = tf.FmtAlignTable("left")
         fmt_background = tf.FmtStripeBackground(first_color=tf.colors.LIGHT_GREY, second_color=tf.colors.WHITE, header_color=tf.colors.BLACK)
 
-        targetweights = Block(self.targetweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        targetweights = Block(self.InputList[3], formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
         targetweights = {'targetweights_table': targetweights}
-        effectiveweights = Block(self.effectiveweights, formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
+        effectiveweights = Block(self.InputList[4], formatters=[fmt_pct, fmt_align, fmt_background], use_default_formatters=False)._repr_html_()
         effectiveweights = {'effectiveweights_table': effectiveweights}
         return targetweights, effectiveweights
 
@@ -157,21 +186,31 @@ class ReportAggregator:
         images = os.path.join(basedir, 'templates')
         eq_curve = os.path.join(images, 'equity_curve.png')
         assets_curve = os.path.join(images, 'assetprices_curve.png')
+        eq_dd_curve = os.path.join(images, 'equitydrawdown_curve.png')
+        assets_dd_curve = os.path.join(images, 'assetdrawdown_curve.png')
         fig_equity = self.plot_equity_curve()
         fig_assets = self.plot_asset_prices()
+        fig_equity_dd = self.plot_equity_dd()
+        fig_assets_dd = self.plot_asset_dd()
 
         fig_equity.savefig(eq_curve)
         fig_assets.savefig(assets_curve)
+        fig_equity_dd.savefig(eq_dd_curve)
+        fig_assets_dd.savefig(assets_dd_curve)
 
         env = Environment(loader=FileSystemLoader('.'))
         template = env.get_template("templates/template.html")
         header = self.get_header_data()
         if self.system == 'windows':
             graphics = {'url_equity_curve': 'file:\\' + eq_curve,
-                        'url_assetprices': 'file:\\' + assets_curve}
+                        'url_assetprices': 'file:\\' + assets_curve,
+                        'url_eq_dd_curve': 'file:\\' + eq_dd_curve,
+                        'url_assets_dd_curve': 'file:\\' + assets_dd_curve}
         else:
             graphics = {'url_equity_curve': 'file://' + eq_curve,
-                        'url_assetprices': 'file://' + assets_curve}
+                        'url_assetprices': 'file://' + assets_curve,
+                        'url_eq_dd_curve': 'file://' + eq_dd_curve,
+                        'url_assets_dd_curve': 'file://' + assets_dd_curve}
 
         kpis = self.get_performance_stats_html()
         targetweights, effectiveweights = self.get_weights_html()

@@ -79,7 +79,7 @@ class StandaloneStrat(bt.Strategy):
         ('lookback_period_short', 60),  # period to calculate the variance
         ('lookback_period_long', 180),  # period to calculate the correlation
         ('initial_cash', 100000),  # initial amount of cash to be invested
-        ('monthly_cash', 10000),  # amount of cash to buy invested every month
+        ('contribution', 0),  # amount of cash to buy invested every month
         ('n_assets', 5),  # number of assets
         ('shareclass', []),  # class of assets
         ('assetweights', []),  # weights of portfolio items (if provided)
@@ -130,7 +130,7 @@ class StandaloneStrat(bt.Strategy):
             # Add a timer which will be called on the 20st trading day of the month, when salaries are paid
             self.add_timer(
                 bt.timer.SESSION_START,
-                monthdays=[8],  # called on the 20th day of the month #TODO: change after testing
+                monthdays=[20],  # called on the 20th day of the month
                 monthcarry=True  # called on another day if 20th day is vacation/weekend)
             )
         elif self.timeframe == "Years":
@@ -146,11 +146,22 @@ class StandaloneStrat(bt.Strategy):
             return "Days"
 
     def notify_timer(self, timer, when, *args, **kwargs):
-        # Add the monthly cash to the broker
-        if self.startdate is not None and self.datas[0].datetime.datetime(0) >= self.startdate:
-            if self.params.monthly_cash > 0:
-                self.broker.add_cash(self.params.monthly_cash)  # Add monthly cash on the 20th day
-                self.log('MONTHLY CASH ADDED: new cash amount is %.f' % (self.broker.get_cash() + self.params.monthly_cash))
+        # Add/Remove the cash to the broker
+        if self.startdate is not None and self.datas[0].datetime.datetime(0) >= self.startdate: # Start adding removing cash after the minimum period
+            if self.params.contribution != 0:
+                if abs(self.params.contribution) < 1: # The user specifies a % amount
+                    contribution = self.broker.get_value() * self.params.contribution
+                else: # the user specifies a dollar amount
+                    contribution = self.params.contribution
+                if self.timeframe == "Days":
+                    contribution = contribution / 12
+
+                if self.broker.get_value() > 0: # Withdraw money only is value is positive
+                    self.broker.add_cash(contribution)  # Add monthly cash on the 20th day OR withdraw money
+                    if contribution > 0:
+                        self.log('CASH ADDED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
+                    else:
+                        self.log('CASH REMOVED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
 
     def log(self, txt, dt=None):
         ''' Logging function for this strategy txt is the statement and dt can be used to specify a specific datetime'''
@@ -233,6 +244,12 @@ class StandaloneStrat(bt.Strategy):
                 sold_value = sold_value + (self.assetclose[asset].get(0)[0] * position)
 
         cash_after_sell = sold_value + self.broker.get_cash()
+
+        if cash_after_sell < 0: # If after having sold everything, the portfolio value is negative, close the backtesting
+        #    self.env.runstop()
+        #    print('Early stop envoked! Portfolio value is %.f.' % cash_after_sell)
+            print('Portfolio value is negative %.f.' % cash_after_sell)
+
         # Buy at open price
         for asset in range(0, self.params.n_assets):
             target_size = int(cash_after_sell * self.weights[asset] / self.assetclose[asset].get(0)[0])

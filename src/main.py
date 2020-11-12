@@ -26,14 +26,14 @@ def parse_args():
     parser.add_argument('--indicators', action='store_true', default=False, required=False,
                         help='include indicators for rotational strategy, if true')
     parser.add_argument('--initial_cash', type=int, default=100000, required=False, help='initial_cash to start with')
-    parser.add_argument('--monthly_cash', type=float, default=10000, required=False, help='monthly cash invested')
+    parser.add_argument('--contribution', type=float, default=0, required=False, help='investment or withdrawal')
     parser.add_argument('--strategy', type=str, required=False,
                         help='Specify the strategies for which a backtest is run')
     parser.add_argument('--startdate', type=str, default='2017-01-01', required=False,
                         help='starting date of the simulation')
     parser.add_argument('--enddate', type=str, default=now, required=False, help='end date of the simulation')
     parser.add_argument('--system', type=str, default='windows', help='operating system, to deal with different paths')
-    parser.add_argument('--leverage', type=int, default=1, help='leverage to consider')
+    parser.add_argument('--leverage', type=float, default=1.0, help='leverage to consider')
     parser.add_argument('--create_report', action='store_true', default=False, required=False,
                         help='creates a report if true')
     parser.add_argument('--report_name', type=str, default=None, required=False,
@@ -62,7 +62,8 @@ def runOneStrat(strategy=None):
         # cerebro.broker.set_coo(True)
         # cerebro.broker.set_coc(True)
         cerebro.broker.set_cash(args.initial_cash)
-        # cerebro.broker.set_shortcash(True) # Can short the cash
+        cerebro.broker.set_checksubmit(False)
+        cerebro.broker.set_shortcash(True) # Can short the cash
 
         # Import the historical assets
         shares_list = args.shares.split(',') # GLD,COM,SP500,LTB,ITB,TIP
@@ -176,7 +177,7 @@ def runOneStrat(strategy=None):
         cerebro.addstrategy(customweights,
                             n_assets=n_assets,
                             initial_cash=args.initial_cash,
-                            monthly_cash=args.monthly_cash,
+                            contribution=args.contribution,
                             assetweights=weights_listt,
                             shareclass=shareclass,
                             printlog=strat_params.get('printlog'),
@@ -192,7 +193,7 @@ def runOneStrat(strategy=None):
         cerebro.addstrategy(eval(strategy),
                             n_assets=n_assets,
                             initial_cash=args.initial_cash,
-                            monthly_cash=args.monthly_cash,
+                            contribution=args.contribution,
                             shareclass=shareclass,
                             printlog=strat_params.get('printlog'),
                             corrmethod=strat_params.get('corrmethod'),
@@ -207,9 +208,9 @@ def runOneStrat(strategy=None):
 
     # Create report
     if args.create_report:
-        res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights, res_params, res_assetprices = cerebro.report(system=args.system)
+        OutputList = cerebro.report(system=args.system)
 
-        return res_prices, res_returns, res_perfdata, res_targetweights, res_effectiveweights, res_params, res_assetprices
+        return OutputList
 
 
 if __name__ == '__main__':
@@ -226,46 +227,37 @@ if __name__ == '__main__':
     else:
         strategy_list = args.strategy.split(',')
 
+    """
     prices = pd.DataFrame()
     returns = pd.DataFrame()
     perf_data = pd.DataFrame()
     targetweights = pd.DataFrame()
     effectiveweights = pd.DataFrame()
     params = pd.DataFrame()
+    """
+
+    # 0. prices, 1. returns, 2. performance data, 3. target weights, 4. effective weights, 5. portfolio drawdown
+    # 6. assetprices, 7. assets drawdown, 8. parameters
+    InputList = []
+    stratIndependentOutput = [6, 7, 8] # these indexes correspond to the strategy independent outputs
+
+    for i in range(0,9):
+        InputList.append(pd.DataFrame())
+
 
     for strat in strategy_list:
         print_section_divider(strat)
 
-        ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
-            ThisStrat_effectiveweight, ThisStrat_params, ThisStrat_assetprices = runOneStrat(strat)
+        #ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
+        #    ThisStrat_effectiveweight, ThisStrat_params, ThisStrat_assetprices = runOneStrat(strat)
 
-        if prices.empty:
-            prices = ThisStrat_prices
-        else:
-            prices[strat] = ThisStrat_prices
+        ThisOutputList = runOneStrat(strat)
 
-        if returns.empty:
-            returns = ThisStrat_returns
-        else:
-            returns[strat] = ThisStrat_returns
-
-        if perf_data.empty:
-            perf_data = ThisStrat_perf_data
-        else:
-            perf_data[strat] = ThisStrat_perf_data
-
-        if targetweights.empty:
-            targetweights = ThisStrat_targetweight
-        else:
-            targetweights[strat] = ThisStrat_targetweight
-
-        if effectiveweights.empty:
-            effectiveweights = ThisStrat_effectiveweight
-        else:
-            effectiveweights[strat] = ThisStrat_effectiveweight
-
-        params = ThisStrat_params
-        assetprices = ThisStrat_assetprices
+        for i in range(0, len(ThisOutputList)):
+            if strat == strategy_list[0] or i in stratIndependentOutput:
+                InputList[i] = ThisOutputList[i]
+            else:
+                InputList[i][strat] = ThisOutputList[i]
 
     if args.report_name is not None:
         outfilename = args.report_name + "_" + get_now() + ".pdf"
@@ -274,6 +266,5 @@ if __name__ == '__main__':
     user = args.user
     memo = args.memo
 
-    ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, prices, returns,
-                                        perf_data, targetweights, effectiveweights, params, assetprices)
+    ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, InputList)
     ReportAggregator.report()

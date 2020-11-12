@@ -24,11 +24,11 @@ or run the bash script **install_reports.sh**
 # Usage of main
 
 ```bash
-python main.py [--historic [medium | long]] [--shares SHARES_LIST --shareclass SHARES_CLASS_LIST] [--weights ASSET_WEIGHTS | --strategy STRATEGY] [--indicators] 
-               [--initial_cash CASH] [--monthly_cash CASH] 
-               [--startdate DATE] [--enddate DATE]
-               [--system SYSTEM] [--leverage LEV] 
-               [--create_report [--report_name NAME] [--user USER] [--memo MEMO]] 
+python main.py [--historic [medium | long]] [--shares SHARES --shareclass SHARECLASS] [--weights WEIGHTS | --strategy STRATEGY] [--indicators] 
+               [--initial_cash INITIAL_CASH] [--contribution CONTRIBUTION] 
+               [--startdate STARTDATE] [--enddate ENDDATE]
+               [--system SYSTEM] [--leverage LEVERAGE] 
+               [--create_report [--report_name REPORT_NAME] [--user USER] [--memo MEMO]] 
 ```
 
 ## DESCRIPTION
@@ -63,7 +63,7 @@ For example:
 * `--strategy`             name of one of the strategy to run for the PDF report. Possibilities are `riskparity, riskparity_nested, rotationstrat, uniform, vanillariskparity, onlystocks, sixtyforty`. Alternative is --weights. __Either this argument or `--weights` is mandatory__
 * `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when `--strategy rotationstrat` is chosen__
 * `--initial_cash`         initial_cash to start with. Default is 100000.
-* `--monthly_cash`         monthly cash invested. Default is 10000.
+* `--contribution`         cash invested or withdrawn in a given year. If the data frequency is daily cash is added or removed on the 20th of each month; if the data frequency is yearly, cash is added or removed each year. If the amount is between (-1,1) the amount is considered to be a % of the portfolio value (e.g. if the amount is -0.04, the 4% of the portfolio is withdrawn). Default is 0.
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
 * `--enddate`              end date of the simulation.  If not specified backtrader will take the latest possible date. (To test)
 * `--system`               operating system, to deal with different path. Default is windows. If not specified windows is not chosen.

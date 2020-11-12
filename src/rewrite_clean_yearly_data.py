@@ -44,7 +44,8 @@ if __name__ == '__main__':
         datapath = (wd + '\data_raw\GOLD_PIKETTY_1850-2011.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x: dt.strptime(x, '%Y'),
                      index_col=0)
-    df = df.rename(columns={"Price": "close"}, index={"Year": "date"})
+    df = df.rename(columns={"Price": "close"}, index={"Year": "Date"})
+    df.index = df.index.rename('Date')
 
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
@@ -62,7 +63,7 @@ if __name__ == '__main__':
 
     df = pd.read_excel(datapath, sheet_name='Data 1', skiprows=2, header=0, index_col=0)
     df = df.rename(columns={"U.S. Crude Oil First Purchase Price (Dollars per Barrel)": "close"})
-    df.index = df.index.rename('date')
+    df.index = df.index.rename('Date')
     df.index = df.index - pd.offsets.YearBegin(1) # assign the yearly price to year start. The yearly price is
     # actually an average of the price over a year (with monthly frequency)
 
@@ -82,7 +83,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x: dt.strptime(x, '%d/%m/%Y'),
                      index_col=0)
-    df = df.rename(columns={"Close": "yield"}, index={"Date": "date"})
+    df = df.rename(columns={"Close": "yield"}, index={"Date": "Date"})
+    df.index = df.index.rename('Date')
     df.index = df.index + pd.Timedelta(days=1)
     df = df[["yield"]]
 
@@ -108,7 +110,7 @@ if __name__ == '__main__':
 
     df = pd.read_excel(datapath, sheet_name='Data', skiprows=0, header=0, index_col=0,
                        parse_dates=True, date_parser=lambda x: dt.strptime(x, '%Y'))
-    df.index = df.index.rename('date')
+    df.index = df.index.rename('Date')
     # For now take only US data
     df = df[df["iso"] == "USA"]
 

@@ -159,6 +159,7 @@ class MyTimeReturn(MyTimeFrameAnalyzerBase):
     params = (
         ('data', None),
         ('firstopen', True),
+        ('logreturns', True),
         ('fund', None),
     )
 
@@ -210,7 +211,11 @@ class MyTimeReturn(MyTimeFrameAnalyzerBase):
         # Calculate the return
         super(MyTimeReturn, self).next()
         if self.strategy.startdate is not None and self.dtkey >= self.strategy.startdate:
-            self.rets[self.dtkey] = (self._value / self._value_start) - 1.0
+            if self.p.logreturns:
+                self.rets[self.dtkey] = math.log(self._value / self._value_start)
+            else:
+                self.rets[self.dtkey] = (self._value / self._value_start) - 1.0
+
             self._lastvalue = self._value  # keep last value
 
     def get_analysis(self):
@@ -307,8 +312,15 @@ class MyLogReturnsRolling(MyTimeFrameAnalyzerBase):
         # Calculate the return
         super(MyLogReturnsRolling, self).next()
         if self.strategy.startdate is not None and self.dtkey >= self.strategy.startdate:
-            self.rets[self.dtkey] = math.log(self._value / self._values[0])
-            self._lastvalue = self._value  # keep last value
+            try:
+                self.rets[self.dtkey] = math.log(self._value / self._values[0])
+            except ZeroDivisionError:
+                self.rets[self.dtkey] = float('-inf')
+            except ValueError:
+                print("Negative portfolio value: %.f" % self._value, flush=True)
+        else:
+                self._lastvalue = self._value  # keep last value
+
 
     def get_analysis(self):
         # eliminate first return. The return in that year is set to zero by def. in the code
@@ -614,16 +626,11 @@ class MyDistributionMoments(Analyzer):
     }
 
     def __init__(self):
-        if self.p.logreturns:
-            self.timereturn = MyLogReturnsRolling(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
-        else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+        self.timereturn = MyTimeReturn(
+            timeframe=self.p.timeframe,
+            compression=self.p.compression,
+            logreturns=self.p.logreturns,
+            fund=self.p.fund)
 
     def stop(self):
         super(MyDistributionMoments, self).stop()
@@ -712,16 +719,11 @@ class MyRiskAdjusted_VolBased(Analyzer):
     }
 
     def __init__(self):
-        if self.p.logreturns:
-            self.timereturn = MyLogReturnsRolling(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
-        else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+        self.timereturn = MyTimeReturn(
+            timeframe=self.p.timeframe,
+            compression=self.p.compression,
+            logreturns=self.p.logreturns,
+            fund=self.p.fund)
 
     def stop(self):
         super(MyRiskAdjusted_VolBased, self).stop()
@@ -822,16 +824,11 @@ class MyRiskAdjusted_VaRBased(Analyzer):
     }
 
     def __init__(self):
-        if self.p.logreturns:
-            self.timereturn = MyLogReturnsRolling(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
-        else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+        self.timereturn = MyTimeReturn(
+            timeframe=self.p.timeframe,
+            compression=self.p.compression,
+            logreturns=self.p.logreturns,
+            fund=self.p.fund)
 
     def stop(self):
         super(MyRiskAdjusted_VaRBased, self).stop()
@@ -929,16 +926,11 @@ class MyRiskAdjusted_LPMBased(Analyzer):
     }
 
     def __init__(self):
-        if self.p.logreturns:
-            self.timereturn = MyLogReturnsRolling(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
-        else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+        self.timereturn = MyTimeReturn(
+            timeframe=self.p.timeframe,
+            compression=self.p.compression,
+            logreturns=self.p.logreturns,
+            fund=self.p.fund)
 
     def stop(self):
         super(MyRiskAdjusted_LPMBased, self).stop()
@@ -1039,16 +1031,11 @@ class MyRiskAdjusted_DDBased(Analyzer):
     }
 
     def __init__(self):
-        if self.p.logreturns:
-            self.timereturn = MyLogReturnsRolling(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
-        else:
-            self.timereturn = MyTimeReturn(
-                timeframe=self.p.timeframe,
-                compression=self.p.compression,
-                fund=self.p.fund)
+        self.timereturn = MyTimeReturn(
+            timeframe=self.p.timeframe,
+            compression=self.p.compression,
+            logreturns=self.p.logreturns,
+            fund=self.p.fund)
 
     def stop(self):
         super(MyRiskAdjusted_DDBased, self).stop()

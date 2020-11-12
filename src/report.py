@@ -13,6 +13,7 @@ class PerformanceReport:
         self.stratbt = stratbt  # works for only 1 strategy
         self.system = system
         self.timeframe = timeframe
+        self.logreturns = report_params['logreturns']
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
@@ -54,14 +55,25 @@ class PerformanceReport:
         endValue = st.observers.broker.lines[1].get(size=len(dt))[-1]
 
         tot_return = 1
+
         for key, value in timeret.items():
-            tot_return = tot_return * (1 + value)
+            if self.logreturns:
+                tot_return = tot_return + value
+            else:
+                tot_return = tot_return * (1 + value)
         tot_return = tot_return - 1
 
         if self.timeframe == bt.TimeFrame.Days:
-            annual_return_asset = 100 * ((1 + tot_return) ** (DAYS_IN_YEAR / bt_period_days) - 1)
+            if self.logreturns:
+                annual_return_asset = 100 * tot_return / bt_period_days * DAYS_IN_YEAR
+            else:
+                annual_return_asset = 100 * ((1 + tot_return) ** (DAYS_IN_YEAR / bt_period_days) - 1)
         elif self.timeframe == bt.TimeFrame.Years:
-            annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
+            if self.logreturns:
+                annual_return_asset = 100 * tot_return / bt_period_days
+            else:
+                annual_return_asset = 100 * ((1 + tot_return) ** (1 / bt_period_years) - 1)
+
 
         kpi = {  # PnL
             'Starting cash': self.get_startcash(),
@@ -100,16 +112,23 @@ class PerformanceReport:
         dt = self.get_date_index()
         n_assets = self.get_strategy_params().get('n_assets')
 
-        dt_df = pd.DataFrame(data=dt, columns=["date"])
+        dt_df = pd.DataFrame(data=dt, columns=["Date"])
 
         for i in range(0, n_assets):
             thisasset = st.datas[i]._dataname[["close"]]
             thisasset = thisasset.rename(columns={"close": st.assets[i]._name})
-            dt_df = pd.merge(left=dt_df, right=thisasset, how='left', left_on='date', right_on='date')
+            dt_df = pd.merge(left=dt_df, right=thisasset, how='left', left_on='Date', right_on='Date')
 
-        dt_df = dt_df.set_index("date", drop=True)
+        dt_df = dt_df.set_index("Date", drop=True)
 
         return dt_df.div(dt_df.iloc[0])
+
+    def get_assets_drawdown(self):
+        assets = self.get_assets()
+        dd = (assets.shift(-1) / assets.cummax(axis=0) - 1).shift(1)
+        dd.iloc[0] = 0
+        dd = dd.clip(None, 0)
+        return dd
 
     def get_equity_curve(self):
         """ Return series containing equity curve
@@ -123,6 +142,13 @@ class PerformanceReport:
         curve = pd.Series(data=vv, index=dt)
         #return 100 * curve / curve.iloc[0]
         return curve
+
+    def get_equity_drawdown(self):
+        equity = self.get_equity_curve()
+        dd = (equity.shift(-1) / equity.cummax() - 1).shift(1)
+        dd.iloc[0] = 0
+        dd = dd.clip(None, 0)
+        return dd
 
     def get_weights(self):
         st = self.stratbt
@@ -217,22 +243,35 @@ class PerformanceReport:
         prices = self.get_equity_curve()
         prices.index = prices.index.date
         returns = prices.diff() / prices
+
         assetprices = self.get_assets()
+        assetprices.index = assetprices.index.date
 
         prices = pd.DataFrame(data=prices, columns=[self.get_strategy_name()])
         returns = pd.DataFrame(data=returns, columns=[self.get_strategy_name()])
         returns = returns.dropna()
 
         perf_data = self.get_aggregated_data()
+
         targetweights, effectiveweights = self.get_weights()
         targetweights = targetweights.tail(1).T
         effectiveweights = effectiveweights.tail(1).T
         targetweights.columns = [self.get_strategy_name()]
         effectiveweights.columns = [self.get_strategy_name()]
 
+        equitydd = self.get_equity_drawdown()
+        equitydd.index = equitydd.index.date
+        equitydd = pd.DataFrame(data=equitydd, columns=[self.get_strategy_name()])
+
+        assetsdd = self.get_assets_drawdown()
+        assetsdd.index = assetsdd.index.date
+
         params = self.get_strategy_params()
 
-        return prices, returns, perf_data, targetweights, effectiveweights, params, assetprices
+        output_ls = [prices, returns, perf_data, targetweights, effectiveweights, equitydd,
+                     assetprices, assetsdd, params]
+
+        return output_ls
 
 class Cerebro(bt.Cerebro):
     def __init__(self, timeframe=None, **kwds):
@@ -257,6 +296,7 @@ class Cerebro(bt.Cerebro):
         # Returns
         self.addanalyzer(MyAnnualReturn, _name="myAnnualReturn")
         self.addanalyzer(MyTimeReturn, _name="myTimeReturn",
+                         logreturns=report_params['logreturns'],
                          fund=report_params['fundmode'])
         self.addanalyzer(MyLogReturnsRolling, _name="myLogReturnsRolling",
                          fund=report_params['fundmode'])
@@ -336,5 +376,5 @@ class Cerebro(bt.Cerebro):
         bt = self.get_strategy_backtest()
         rpt = PerformanceReport(bt, system=system, timeframe=self.timeframe)
 
-        prices, returns, perf_data, targetweights, effectiveweights, params, assetprices = rpt.output_all_data()
-        return prices, returns, perf_data, targetweights, effectiveweights, params, assetprices
+        output_ls = rpt.output_all_data()
+        return output_ls

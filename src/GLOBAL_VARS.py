@@ -26,7 +26,7 @@ assetclass_dict = {
     'LTB_LNG': 'bond_lt',
     'ITB_LNG': 'bond_it',
     'RE_LNG': 'commodity',  # can also be classified as equities
-    '10YB_LNG': 'bond_it'
+    'US10YB_LNG': 'bond_it'
 }
 
 """
@@ -75,7 +75,7 @@ report_params = {
     'market_sigma': 0.15,  # std dev of the market, to be used in Treynor ratio, Information ratio
     'fundmode': True,  # Calculate metrics in fund model vs asset mode
     'stddev_sample': True,  # Bessel correction (N-1) when calculating standard deviation from a sample
-    'logreturns': True,  # Use logreturns instead of percentage returns when calculating metrics (recommended)
+    'logreturns': False,  # Use logreturns instead of percentage returns when calculating metrics (not recommended)
     'annualize': True  # calculate annualized metrics by annualizing returns first
 
 }

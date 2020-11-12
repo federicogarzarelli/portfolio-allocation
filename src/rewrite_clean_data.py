@@ -20,13 +20,14 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\Gold.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
-    df = df.rename(columns={"Gold USD": "close"}, index={'Date': 'date'})
+    df = df.rename(columns={"Gold USD": "close"}, index={'Date': 'Date'})
     df['close'] = df['close'].str.replace(',', '').astype(float)
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_gld.csv')
 
@@ -36,12 +37,13 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\^GSPC.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'date'})
+    df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'Date'})
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_gspc.csv')
 
@@ -51,12 +53,13 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\^SP500TR.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'date'})
+    df = df.rename(columns={"Adj Close": "close"}, index={'Date': 'Date'})
     # Add columns open, high, low and set them  equal to close. Add column volume and set it equal to 0
     for column in ["open", "high", "low"]:
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_sp500tr.csv')
 
@@ -67,7 +70,7 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\SPGSCITR_IND.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    df = df.rename(columns={"Close": "close"}, index={'Date': 'date'})
+    df = df.rename(columns={"Close": "close"}, index={'Date': 'Date'})
     df['close'] = df['close'].str.replace(',', '').astype(float)
     # Eliminate the flash crashes between Apr 08 - Jul 08 from the data
     df['log_ret'] = (np.log(df.close) - np.log(df.close.shift(1)))
@@ -79,6 +82,7 @@ if __name__ == '__main__':
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_spgscitr.csv')
 
@@ -88,7 +92,7 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\^TYX.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, date_parser=lambda x:pd.datetime.strptime(x, '%d/%m/%Y'), index_col=0)
-    df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
+    df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'Date'})
     df = df[df['yield'] != 'null']
     df = df.dropna()
 
@@ -102,6 +106,7 @@ if __name__ == '__main__':
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_tyx.csv')
 
@@ -111,7 +116,7 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\^FVX.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'date'})
+    df = df.rename(columns={"Adj Close": "yield"}, index={'Date': 'Date'})
     df = df[df['yield'] != 'null']
     df = df.dropna()
 
@@ -125,6 +130,7 @@ if __name__ == '__main__':
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_fvx.csv')
 
@@ -134,7 +140,7 @@ if __name__ == '__main__':
     else:
         datapath = (wd + '\data_raw\DFII10.csv')
     df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    df = df.rename(columns={"DFII10": "yield"}, index={'DATE': 'date'})
+    df = df.rename(columns={"DFII10": "yield"}, index={'DATE': 'Date'})
     df = df[df['yield'] != '.']
     df['yield'] = df['yield'].astype(float)
     df = df.dropna()
@@ -149,5 +155,6 @@ if __name__ == '__main__':
         df[column] = df["close"]
     df['volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
+    df.index = df.index.rename('Date')
     # save the modified csv
     df.to_csv(wd+'/modified_data/clean_dfii10.csv')

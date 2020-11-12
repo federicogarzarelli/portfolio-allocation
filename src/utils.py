@@ -107,7 +107,7 @@ def print_header(args):
     print('###    --weights' + ' ' + str(vars(args)['weights']))
     print('###    --indicators' + ' ' + str(vars(args)['indicators']))
     print('###    --initial_cash' + ' ' + str(vars(args)['initial_cash']))
-    print('###    --monthly_cash' + ' ' + str(vars(args)['monthly_cash']))
+    print('###    --contribution' + ' ' + str(vars(args)['contribution']))
     print('###    --create_report' + ' ' + str(vars(args)['create_report']))
     print('###    --report_name' + ' ' + str(vars(args)['report_name']))
     print('###    --strategy' + ' ' + str(vars(args)['strategy']))
@@ -151,7 +151,7 @@ def import_process_hist(dataLabel, args):
         'RE_LNG': wd + '/modified_data/clean_housing_yearly.csv',
         'LTB_LNG': wd + '/modified_data/clean_bond_yearly.csv',
         'ITB_LNG': wd + '/modified_data/clean_bill_yearly.csv',
-        '10YB_LNG': wd + '/modified_data/clean_US10Y_yearly.csv',
+        'US10YB_LNG': wd + '/modified_data/clean_US10Y_yearly.csv',
 
     }
 
@@ -171,7 +171,7 @@ def import_process_hist(dataLabel, args):
         'RE_LNG': wd + '\modified_data\clean_housing_yearly.csv',
         'LTB_LNG': wd + '\modified_data\clean_bond_yearly.csv',
         'ITB_LNG': wd + '\modified_data\clean_bill_yearly.csv',
-        '10YB_LNG': wd + '\modified_data\clean_US10Y_yearly.csv',
+        'US10YB_LNG': wd + '\modified_data\clean_US10Y_yearly.csv',
 
     }
 
@@ -206,9 +206,12 @@ def add_leverage(proxy, leverage=1, expense_ratio=0.0, timeframe=bt.TimeFrame.Da
 """
 bond total return based on formula 5 of paper 
 https://mpra.ub.uni-muenchen.de/92607/1/MPRA_paper_92607.pdf
+See also https://quant.stackexchange.com/questions/22837/how-to-calculate-us-treasury-total-return-from-yield
+
 """
 def bond_total_return(ytm, dt, maturity):
     ytm_pc = ytm.to_numpy()/100
+
     P0 = 1/np.power(1+ytm_pc, maturity) # price
 
     # first and second price derivatives
@@ -609,7 +612,7 @@ def omega_ratio(er, returns, rf, target=0):
         return (er - rf) / lpm(returns, target, 1)
     """
     if lpm(returns, target+rf, 1) != 0:
-        return -hpm(returns, target+rf, 1)/lpm(returns, target+rf, 1)
+        return hpm(returns, target+rf, 1)/lpm(returns, target+rf, 1)
     else:
         return math.nan
 
