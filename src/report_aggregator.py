@@ -7,16 +7,18 @@ from utils import get_now, dir_exists
 from strategies import *
 import pybloqs.block.table_formatters as tf
 from pybloqs import Block
+import GLOBAL_VARS as GLOBAL_VARS
 
 class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
     """
 
-    def __init__(self, outfilename, outputdir, user, memo, system, InputList):
+    def __init__(self, outfilename, outputdir, user, memo, leverage, system, InputList):
         self.outfilename = outfilename
         self.outputdir = outputdir
         self.user = user
         self.memo = memo
+        self.leverage = leverage
         self.check_and_assign_defaults()
         self.system = system
 
@@ -114,6 +116,9 @@ class ReportAggregator:
         fig.autofmt_xdate(rotation=45)
         plt.tight_layout()
         return fig
+
+    def get_report_params(self):
+        return GLOBAL_VARS.report_params
 
     def get_strategy_names(self):
         return self.InputList[2].columns.to_list() # InputList[2] = Performance data
@@ -235,7 +240,9 @@ class ReportAggregator:
                   'end_date': self.get_end_date(),
                   'name_user': self.user,
                   'processing_date': get_now(),
-                  'memo_field': self.memo
+                  'memo_field': self.memo,
+                  'leverage': self.leverage,
+                  'report_params': self.get_report_params()
                   }
 
         return header

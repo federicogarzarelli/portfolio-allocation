@@ -216,6 +216,12 @@ def runOneStrat(strategy=None):
 if __name__ == '__main__':
     args = parse_args()
 
+    # Fund mode if contribution is 0 otherwise, asset mode
+    if args.contribution == 0:
+        report_params["fundmode"] = True
+    else:
+        report_params["fundmode"] = False
+
     # Clear the output folder
     outputdir = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "output")
     delete_in_dir(outputdir)
@@ -263,8 +269,6 @@ if __name__ == '__main__':
         outfilename = args.report_name + "_" + get_now() + ".pdf"
     else:
         outfilename = "Report_" + get_now() + ".pdf"
-    user = args.user
-    memo = args.memo
 
-    ReportAggregator = ReportAggregator(outfilename, outputdir, user, memo, args.system, InputList)
+    ReportAggregator = ReportAggregator(outfilename, outputdir, args.user, args.memo, args.leverage, args.system, InputList)
     ReportAggregator.report()
