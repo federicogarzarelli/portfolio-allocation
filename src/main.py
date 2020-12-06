@@ -1,4 +1,3 @@
-import os
 from GLOBAL_VARS import *
 from utils import *
 from strategies import *
@@ -70,7 +69,7 @@ def runOneStrat(strategy=None):
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0, timeframe=timeframe)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=expense_ratio, timeframe=timeframe)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -96,7 +95,7 @@ def runOneStrat(strategy=None):
         for share in shares_list:
             df = import_process_hist(share, args)
             for column in ['open', 'high', 'low', 'close']:
-                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=0.0, timeframe=timeframe)
+                df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=expense_ratio, timeframe=timeframe)
 
             for column in ['open', 'high', 'low']:
                 df[column] = df['close']
@@ -123,7 +122,7 @@ def runOneStrat(strategy=None):
         for i in range(len(shares_list)):
             assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"]
             assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage,
-                                                      expense_ratio=0.0,timeframe=timeframe).to_frame("close")
+                                                      expense_ratio=expense_ratio,timeframe=timeframe).to_frame("close")
 
             for column in ['open', 'high', 'low']:
                 assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
@@ -233,17 +232,17 @@ if __name__ == '__main__':
     else:
         strategy_list = args.strategy.split(',')
 
-    """
-    prices = pd.DataFrame()
-    returns = pd.DataFrame()
-    perf_data = pd.DataFrame()
-    targetweights = pd.DataFrame()
-    effectiveweights = pd.DataFrame()
-    params = pd.DataFrame()
-    """
-
-    # 0. prices, 1. returns, 2. performance data, 3. target weights, 4. effective weights, 5. portfolio drawdown
-    # 6. assetprices, 7. assets drawdown, 8. parameters
+    # Output list description:
+    # list index, content
+    # 0, prices
+    # 1, returns
+    # 2, performance data
+    # 3, target weights
+    # 4, effective weights
+    # 5, portfolio drawdown
+    # 6, assetprices
+    # 7, assets drawdown
+    # 8, parameters
     InputList = []
     stratIndependentOutput = [6, 7, 8] # these indexes correspond to the strategy independent outputs
 
@@ -253,9 +252,6 @@ if __name__ == '__main__':
 
     for strat in strategy_list:
         print_section_divider(strat)
-
-        #ThisStrat_prices, ThisStrat_returns, ThisStrat_perf_data, ThisStrat_targetweight, \
-        #    ThisStrat_effectiveweight, ThisStrat_params, ThisStrat_assetprices = runOneStrat(strat)
 
         ThisOutputList = runOneStrat(strat)
 
