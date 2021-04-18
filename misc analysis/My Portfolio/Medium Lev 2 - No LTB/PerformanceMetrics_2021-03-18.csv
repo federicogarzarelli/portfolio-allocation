@@ -1,0 +1,24 @@
+Category,Metrics,customweights,benchmark
+P&L,Starting cash,100000.0,100000.0
+P&L,End value,1706600.295760251,2529754.133994001
+P&L,Total return,16.066002957602443,24.297541339939865
+P&L,Annual return,0.09240623121027597,0.10588407664598533
+P&L,Annual return (asset mode),inf,inf
+Risk-adjusted return based on Drawdown,Max money drawdown,670.5920792922577,521.86813614
+Risk-adjusted return based on Drawdown,Max percentage drawdown,0.44730420379113084,0.5524578527883167
+Distribution moments,Returns volatility,0.13224724898449064,0.17175697542741375
+Distribution moments,Returns skewness,-0.019139505542633033,-0.006945168661229454
+Distribution moments,Returns kurtosis,0.02373332816870516,0.0363292634324098
+Risk-adjusted return based on Volatility,Treynor ratio,-74.98262540145315,-459.6291310611789
+Risk-adjusted return based on Volatility,Sharpe ratio,0.6594482023022294,0.6141464840025621
+Risk-adjusted return based on Volatility,Information ratio,0.012394185788864706,0.31261079694011323
+Risk-adjusted return based on Value at Risk,VaR,0.3624018091480935,0.4782183889249361
+Risk-adjusted return based on Value at Risk,Expected Shortfall,0.5129296110476825,0.6832219195669865
+Risk-adjusted return based on Value at Risk,Excess var,0.24063065794176047,0.22056371186071616
+Risk-adjusted return based on Value at Risk,Conditional sharpe ratio,0.1700135533147907,0.15438266823784766
+Risk-adjusted return based on Lower Partial Moments,Omega ratio,1.1226059908471793,1.1219579740485013
+Risk-adjusted return based on Lower Partial Moments,Sortino ratio,0.9388804890220595,0.8755300544793403
+Risk-adjusted return based on Lower Partial Moments,Kappa three ratio,0.606484658233496,0.5527161723308354
+Risk-adjusted return based on Lower Partial Moments,Gain loss ratio,1.1375145777026034,1.134205235013701
+Risk-adjusted return based on Lower Partial Moments,Upside potential ratio,0.5363976568552081,0.5020118160366678
+Risk-adjusted return based on Drawdown,Calmar ratio,0.628802137181324,0.5711973767619835

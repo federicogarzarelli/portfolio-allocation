@@ -112,14 +112,16 @@ class PerformanceReport:
         dt = self.get_date_index()
         n_assets = self.get_strategy_params().get('n_assets')
 
-        dt_df = pd.DataFrame(data=dt, columns=["Date"])
+        #dt_df = pd.DataFrame(data=dt, columns=["Date"])
+        dt_df = pd.DataFrame(index=dt)
 
         for i in range(0, n_assets):
             thisasset = st.datas[i]._dataname[["close"]]
             thisasset = thisasset.rename(columns={"close": st.assets[i]._name})
-            dt_df = pd.merge(left=dt_df, right=thisasset, how='left', left_on='Date', right_on='Date')
+            #dt_df = pd.merge(left=dt_df, right=thisasset, how='left', left_on='Date', right_on='Date')
+            dt_df = pd.merge(left=dt_df, right=thisasset, left_index=True, right_index=True, how="left")
 
-        dt_df = dt_df.set_index("Date", drop=True)
+        #dt_df = dt_df.set_index("Date", drop=True)
 
         return dt_df.div(dt_df.iloc[0])
 

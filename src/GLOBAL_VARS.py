@@ -11,6 +11,7 @@
 # Set the strategy parameters
 
 expense_ratio = 0.01
+APPLY_LEVERAGE_ON_LIVE_STOCKS = False
 
 assetclass_dict = {
     # "medium" term, daily time series
@@ -19,6 +20,7 @@ assetclass_dict = {
     'SP500': 'equity',
     'SP500TR': 'equity',
     'LTB': 'bond_lt',
+    'US20YB': 'bond_lt',
     'ITB': 'bond_it',
     'TIP': 'bond_lt',  # can also be classified as commodities due to their inflation hedge
     # "long" term, annual time series
@@ -56,7 +58,8 @@ strat_params_weights = {
 }
 
 #  parameters used in report.py
-DAYS_IN_YEAR = 260  # 365.2422
+DAYS_IN_YEAR = 252  # 365.2422
+DAYS_IN_YEAR_BOND_PRICE = 360
 
 report_params = {
     'fundmode': True,  # Calculate metrics in fund model vs asset mode

@@ -24,7 +24,7 @@ or run the bash script **install_reports.sh**
 # Usage of main
 
 ```bash
-python main.py [--historic [medium | long]] [--shares SHARES --shareclass SHARECLASS] [--weights WEIGHTS | --strategy STRATEGY] [--indicators] 
+python main.py [--historic [medium | long]] [--shares SHARES --shareclass SHARECLASS] [--weights WEIGHTS | --strategy STRATEGY] [--indicators] [--benchmark BENCHMARK]
                [--initial_cash INITIAL_CASH] [--contribution CONTRIBUTION] 
                [--startdate STARTDATE] [--enddate ENDDATE]
                [--system SYSTEM] [--leverage LEVERAGE] 
@@ -62,6 +62,7 @@ For example:
 * `--weights`              list of portfolio weights for each share specified after `--shares` (e.g. `0.35,0.35,0.30`). The weights need to sum to 1. When weights are specified a custom weights strategy is used that simply loads the weights specified. Alternative is `--strategy`. __Either this argument or `--strategy` is mandatory__
 * `--strategy`             name of one of the strategy to run for the PDF report. Possibilities are `riskparity, riskparity_nested, rotationstrat, uniform, vanillariskparity, onlystocks, sixtyforty`. Alternative is --weights. __Either this argument or `--weights` is mandatory__
 * `--indicators`           include the indicator assets (no backtest will be run on these) that are used to decide which assets are used in the strategy. At present these are used only in the asset rotation strategy.  __This argument is mandatory when `--strategy rotationstrat` is chosen__
+* `--benchmark`            name of a benchmark to compare against the portfolio allocations. The benchmark is bought using the money available in the portfolio. No leverage is applied to the benchmark. 
 * `--initial_cash`         initial_cash to start with. Default is 100000.
 * `--contribution`         cash invested or withdrawn in a given year. If the data frequency is daily cash is added or removed on the 20th of each month; if the data frequency is yearly, cash is added or removed each year. If the amount is between (-1,1) the amount is considered to be a % of the portfolio value (e.g. if the amount is -0.04, the 4% of the portfolio is withdrawn). Default is 0.
 * `--startdate`            starting date of the simulation. If not specified backtrader will take the earliest possible date. (To test) 
@@ -74,15 +75,14 @@ For example:
 * `--memo`                 description of the report. Default is "Backtest". __This argument should be specified ony when `--create_report` is chosen__ 
 
 ### Hidden parameters 
-
 The parameters below are hardcoded in the `GLOBAL_VARS.py` file. 
 
 #### General parameters
 * __DAYS_IN_YEAR__ Number of days in a year. Default is 260
+* __APPLY_LEVERAGE_ON_LIVE_STOCKS__ Flag to apply leverage to downloaded stock prices or not
 * __assetclass_dict__ Mapping between historic assets and asset classes
 
 #### Strategy parameters
-
 * __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30 for daily data and 1 for yearly data.
 * __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 20 for daily data and 10 for yearly data. 
 * __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 120 for daily data and 10 for yearly data.
@@ -106,58 +106,60 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 1. Historical data, uniform strategy
 
 ```bash
-python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB  --strategy uniform --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB  --strategy uniform --initial_cash 100000 --contribution 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 2. Historical data, custom weights
 
 ```bash
-python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --historic "medium" --shares GLD,COM,SP500,LTB,ITB --weights "0.2, 0.3, 0.1, 0.1, 0.3" --initial_cash 100000 --contribution 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
  3. Automatically downloaded data, custom weights
 
 ```bash
-python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --weights "0.2, 0.3, 0.1, 0.4" --initial_cash 100000 --contribution 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 4. Automatically downloaded data, 60-40 strategy
 
 ```bash
-python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --monthly_cash 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
+python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold" --strategy sixtyforty --initial_cash 100000 --contribution 10000 --create_report --report_name example --startdate "2015-01-01" --enddate "2020-01-01" --system windows --leverage 3
 ```
 
 5. Multiple strategies backtest
 ```bash
-python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --monthly_cash 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
+python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --contribution 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
 ```
-
+https://clio-infra.eu/Indicators/LongTermGovernmentBondYield.html
 # Dataset explanation
-| Symbol Name                       | File name                  |Used (Y/N)| Used for                                                           | Frequency |                 Description                            																       | Source                                                                              |
-|-----------------------------------|----------------------------|----------|--------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| TIP                               | DFII10.csv                 | Y | Medium term backtest                                               | Daily     | 10 Year Treasury Inflation-Indexed Security																				   | https://fred.stlouisfed.org/series/DFII10                                           |
-| GLD                               | Gold.csv                   | Y | Medium term backtest                                               | Daily     | Gold Prices                    																					           | ???                                                                                 |
-| COM                               | SPGSCITR_IND.csv           | Y | Medium term backtest                                               | Daily     | SP500 GSCI Total Return Index (commodity and infl.)  																	   | https://tradingeconomics.com/commodity/gsci (Not sure)                              |
-| ITB                               | ^FVX.csv                   | Y | Medium term backtest                                               | Daily     | Treasury Yield 5 Years                     																				   | https://finance.yahoo.com/quote/%5EFVX/history?p=%5EFVX                             |
-| SP500                             | ^GSPC.csv                  | Y | Medium term backtest                                               | Daily     | SP500 Index                           																					   | https://finance.yahoo.com/quote/%5EGSPC/history?p=%5EGSPC                           |
-| SP500TR                           | ^SP500TR.csv               | Y | Medium term backtest                                               | Daily     | SP500 Index total return                          																		   | https://finance.yahoo.com/quote/%5ESP500TR/history?p=%5ESP500TR                     |
-| LTB                               | ^TYX.csv                   | Y | Medium term backtest                                               | Daily     | Treasury Yield 30 Years                    																				   | https://finance.yahoo.com/quote/%5ETYX/history?p=%5ETYX                             |
-|                                   | T10Y2Y                     | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity          									   | https://fred.stlouisfed.org/series/T10Y2Y                                           |
-|                                   | DFII20                     | Y | Indicator for rotational strategy                                  | Daily     | 20-Year Treasury Inflation-Indexed Security, Constant Maturity                     										   | https://fred.stlouisfed.org/series/DFII20                                           |
-|                                   | T10YIE                     | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Breakeven Inflation Rate (T10YIE)                                         										   | https://fred.stlouisfed.org/series/T10YIE                                           |
-| OIL_LNG                           | F000000__3a.xls            | Y | Long term backtest                                                 | Yearly    | U.S. Crude Oil First Purchase Price (Dollars per Barrel) from 1900 to 2019 (annual frequency)                              | http://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=F000000__3&f=A            |
-| EQ_LNG, RE_LNG, LTB_LNG, ITB_LNG  | JSTdatasetR4.xlsx          | Y | Long term backtest (US equity, bond, bills, housing total return)  | Yearly    | Macroeconomic data from 1870 to 2019                                          											   | http://www.macrohistory.net/data/#DownloadData                                      |
-| 10YB_LNG                          | 10usy_b_y.csv              | Y | Long term backtest                                                 | Yearly    | US 10Y Bond yield   																									   | https://stooq.com/q/d/?s=10usy.b													 |
-|                                   | GOLD_1800-2019.csv         | N | Replaced. It was used for the long term backtest.                  | Yearly    | Gold prices                                                                     										   | https://www.measuringworth.com/datasets/gold/                                       |
-| GLD_LNG                           | GOLD_PIKETTY_1850-2011.csv | Y | Long term backtest                                                 | Yearly    | Gold prices   																											   | http://piketty.pse.ens.fr/files/capital21c/xls/RawDataFiles/GoldPrices17922012.pdf  |
+| Symbol Name                       | File name                  | Start date   |Used (Y/N)| Used for                                                           | Frequency |                 Description                            																       | Source                                                                              |
+|-----------------------------------|----------------------------|--------------|----------|--------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| TIP                               | DFII10.csv                 | 02/01/2003   | Y | Medium term backtest                                               | Daily     | 10 Year Treasury Inflation-Indexed Security																				   | https://fred.stlouisfed.org/series/DFII10                                           |
+| GLD                               | Gold.csv                   | 29/12/1978   | N | Medium term backtest                                               | Daily     | Gold Prices                    																					           | ???                                                                                 |
+| GLD                               | GOLDAMGBD228NLBM.csv       | 02/04/1968   | Y | Medium term backtest                                               | Daily     | Gold Prices                    																					           | https://fred.stlouisfed.org/series/GOLDAMGBD228NLBM                                |
+| COM                               | SPGSCITR_IND.csv           | Dec 31, 1969 | Y | Medium term backtest                                               | Daily     | SP500 GSCI Total Return Index (commodity and infl.)  																	   | https://tradingeconomics.com/commodity/gsci (Not sure)                              |
+| ITB                               | ^FVX.csv                   | 02/01/1962   | Y | Medium term backtest                                               | Daily     | Treasury Yield 5 Years                     																				   | https://finance.yahoo.com/quote/%5EFVX/history?p=%5EFVX                             |
+| SP500                             | ^GSPC.csv                  | 30/12/1927   | Y | Medium term backtest                                               | Daily     | SP500 Index                           																					   | https://finance.yahoo.com/quote/%5EGSPC/history?p=%5EGSPC                           |
+| SP500TR                           | ^SP500TR.csv               | 04/01/1988   | Y | Medium term backtest                                               | Daily     | SP500 Index total return                          																		   | https://finance.yahoo.com/quote/%5ESP500TR/history?p=%5ESP500TR                     |
+| US20YB                            | DGS20.csv                  | 04/01/1962   | Y | Medium term backtest                                               | Daily     | Treasury Yield 20 Years                    																				   | https://fred.stlouisfed.org/series/DGS20                                            |
+| LTB                               | ^TYX.csv                   | 15/02/1977   | Y | Medium term backtest                                               | Daily     | Treasury Yield 30 Years                    																				   | https://finance.yahoo.com/quote/%5ETYX/history?p=%5ETYX                             |
+|                                   | T10Y2Y                     |              | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity          									   | https://fred.stlouisfed.org/series/T10Y2Y                                           |
+|                                   | DFII20                     |              | Y | Indicator for rotational strategy                                  | Daily     | 20-Year Treasury Inflation-Indexed Security, Constant Maturity                     										   | https://fred.stlouisfed.org/series/DFII20                                           |
+|                                   | T10YIE                     |              | Y | Indicator for rotational strategy                                  | Daily     | 10-Year Breakeven Inflation Rate (T10YIE)                                         										   | https://fred.stlouisfed.org/series/T10YIE                                           |
+| OIL_LNG                           | F000000__3a.xls            | 1900         | Y | Long term backtest                                                 | Yearly    | U.S. Crude Oil First Purchase Price (Dollars per Barrel) from 1900 to 2019 (annual frequency)                              | http://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=PET&s=F000000__3&f=A            |
+| EQ_LNG, RE_LNG, LTB_LNG, ITB_LNG  | JSTdatasetR4.xlsx          | 1891         | Y | Long term backtest (US equity, bond, bills, housing total return)  | Yearly    | Macroeconomic data from 1870 to 2019                                          											   | http://www.macrohistory.net/data/#DownloadData                                      |
+| US10YB_LNG                        | 10usy_b_y.csv              | 1900         | Y | Long term backtest                                                 | Yearly    | US 10Y Treasury yield   																									   | https://stooq.com/q/d/?s=10usy.b													 |
+|                                   | GOLD_1800-2019.csv         |              | N | Replaced. It was used for the long term backtest.                  | Yearly    | Gold prices                                                                     										   | https://www.measuringworth.com/datasets/gold/                                       |
+| GLD_LNG                           | GOLD_PIKETTY_1850-2011.csv | 1850         | Y | Long term backtest                                                 | Yearly    | Gold prices   																											   | http://piketty.pse.ens.fr/files/capital21c/xls/RawDataFiles/GoldPrices17922012.pdf  |
 
 
 # Todo List
-- [ ] Add drawdown plots (for portfolio and assets)
-- [ ] Add money withdrawal functionality
+- [x] Add drawdown plots (for portfolio and assets)
+- [x] Add money withdrawal functionality
 - [ ] Create a script to create and execute orders on IBKR (paper trading and live)
 - [ ] think about alarms if something is going wrong (e.g. Telegram)
-- [ ] Integrate asset rotation strategy with risk parity (comparison with RP)
+- [ ] Integrate asset rotation strategy with risk parity (comparison with RP) __Implemented: results are wrong__
 - [X] Check money drawdown in report that is probably wrong
 - [X] Clean yearly data and add functionality to run backtest on them, regression testing 
 - [X] ~~Scan galaxy of assets that are uncorrelated by buckets and save them~~ See Uncorrelated asset Jupyter notebook

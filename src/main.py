@@ -6,6 +6,9 @@ import argparse
 import backtrader as bt
 from report import Cerebro
 from report_aggregator import ReportAggregator
+import sys
+pd.options.mode.chained_assignment = None  # default='warn'
+
 
 # Strategy parameters not passed
 from strategies import customweights
@@ -24,6 +27,7 @@ def parse_args():
                         help='string corresponding to list of weights. if no values, strategy weights are taken')
     parser.add_argument('--indicators', action='store_true', default=False, required=False,
                         help='include indicators for rotational strategy, if true')
+    parser.add_argument('--benchmark', type=str, required=False, help='Benchmark index')
     parser.add_argument('--initial_cash', type=int, default=100000, required=False, help='initial_cash to start with')
     parser.add_argument('--contribution', type=float, default=0, required=False, help='investment or withdrawal')
     parser.add_argument('--strategy', type=str, required=False,
@@ -76,7 +80,8 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
+            #data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
+            data.append(df)
 
         if args.shareclass is None:
             shareclass = [assetclass_dict[x] for x in shares_list]
@@ -102,7 +107,8 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
+            #data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
+            data.append(df)
 
         if args.shareclass is None:
             shareclass = [assetclass_dict[x] for x in shares_list]
@@ -118,19 +124,22 @@ def runOneStrat(strategy=None):
         cerebro.broker.set_cash(args.initial_cash)
 
         # download the datas
-        assets_dic = {}
         for i in range(len(shares_list)):
-            assets_dic[shares_list[i]] = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"]
-            assets_dic[shares_list[i]] = add_leverage(assets_dic[shares_list[i]], leverage=args.leverage,
-                                                      expense_ratio=expense_ratio,timeframe=timeframe).to_frame("close")
+            this_assets = web.DataReader(shares_list[i], "yahoo", startdate, enddate)["Adj Close"]
+
+            if APPLY_LEVERAGE_ON_LIVE_STOCKS == True:
+                this_assets = add_leverage(this_assets, leverage=args.leverage,
+                                                          expense_ratio=expense_ratio,timeframe=timeframe).to_frame("close")
+            else:
+                this_assets = this_assets.to_frame("close")
 
             for column in ['open', 'high', 'low']:
-                assets_dic[shares_list[i]][column] = assets_dic[shares_list[i]]['close']
+                this_assets[column] = this_assets['close']
 
-            assets_dic[shares_list[i]]['volume'] = 0
+            this_assets['volume'] = 0
 
-            data.append(bt.feeds.PandasData(dataname=assets_dic[shares_list[i]], fromdate=startdate, todate=enddate,
-                                            timeframe=timeframe))
+            #data.append(bt.feeds.PandasData(dataname=this_assets, fromdate=startdate, todate=enddate, timeframe=timeframe))
+            data.append(this_assets)
 
         shareclass = args.shareclass.split(',')
 
@@ -143,6 +152,9 @@ def runOneStrat(strategy=None):
     elif timeframe == bt.TimeFrame.Years:
         strat_params = strat_params_years
 
+    if timeframe != bt.TimeFrame.Days and args.indicators:
+        sys.exit('Error: Indicators can only added in backtest with daily frequency')
+
     if args.indicators:
         # now import the non-tradable indexes for the rotational strategy
         indicatorLabels = ['DFII20', 'T10Y2Y', 'T10YIE_T10Y2Y']
@@ -154,22 +166,46 @@ def runOneStrat(strategy=None):
 
             df['volume'] = 0
             df = df[['open', 'high', 'low', 'close', 'volume']]
-            data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            #data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=bt.TimeFrame.Days))
+            data.append(df)
 
         shareclass = shareclass + ['non-tradable', 'non-tradable', 'non-tradable']
         shares_list = shares_list + indicatorLabels
 
+    if args.benchmark is not None:
+        # download the datas
+        benchmark_df = import_process_hist(args.benchmark, args) # First look for the benchmark in the historical "database"
+
+        if benchmark_df is None: # if not, download it
+            benchmark_df = web.DataReader(args.benchmark, "yahoo", startdate, enddate)["Adj Close"]
+            benchmark_df = benchmark_df.to_frame("close")
+
+        if benchmark_df is not None:
+            for column in ['open', 'high', 'low']:
+                benchmark_df[column] = benchmark_df['close']
+
+            benchmark_df['volume'] = 0
+
+        #data.append(bt.feeds.PandasData(dataname=benchmark_df, fromdate=startdate, todate=enddate, timeframe=timeframe))
+        data.append(benchmark_df)
+
+        shareclass = shareclass + ['benchmark']
+        shares_list = shares_list + [args.benchmark]
+
+    data = common_dates(data=data, fromdate=startdate, todate=enddate, timeframe=timeframe)
+
     i = 0
     for dt in data:
-        cerebro.adddata(dt, name=shares_list[i])
+        dt_feed = bt.feeds.PandasData(dataname=dt, fromdate=startdate, todate=enddate, timeframe=timeframe)
+        cerebro.adddata(dt_feed, name=shares_list[i])
         i = i + 1
 
-    n_assets = len([x for x in shareclass if x != 'non-tradable'])
+    n_assets = len([x for x in shareclass if x not in ['non-tradable', 'benchmark']])
     cerebro.addobserver(targetweightsobserver, n_assets=n_assets)
     cerebro.addobserver(effectiveweightsobserver, n_assets=n_assets)
 
     # if you provide the weights, use them
-    if args.weights != '' or strategy is None:
+    if args.weights != '' and strategy == 'customweights':
         weights_list = args.weights.split(',')
         weights_listt = [float(i) for i in weights_list]
 
@@ -228,9 +264,12 @@ if __name__ == '__main__':
     print_header(args)
 
     if args.strategy is None:
-        strategy_list = ["Custom Weights"]
+        strategy_list = ["customweights"]
     else:
         strategy_list = args.strategy.split(',')
+
+    if args.benchmark is not None:
+        strategy_list = strategy_list + ['benchmark']
 
     # Output list description:
     # list index, content

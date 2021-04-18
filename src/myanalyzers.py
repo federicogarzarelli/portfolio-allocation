@@ -185,7 +185,7 @@ class MyTimeReturn(MyTimeFrameAnalyzerBase):
         if not self._fundmode:
             # Record current value
             if self.p.data is None:
-                self._value = value  # the portofolio value if tracking no data
+                self._value = value  # the portfolio value if tracking no data
             else:
                 self._value = self.p.data[0]  # the data value if tracking data
         else:

@@ -15,61 +15,6 @@ import numpy.random as nrand
 from GLOBAL_VARS import *
 
 
-def backtest(datas, strategy, plot=False, **kwargs):
-    # initialize cerebro
-    cerebro = bt.Cerebro()
-
-    # add the data
-    for data in datas:
-        cerebro.adddata(data)
-
-    # keep track of certain metrics
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, riskfreerate=0.03, timeframe=bt.TimeFrame.Months, fund=True)
-    cerebro.addanalyzer(bt.analyzers.Returns, fund=True)
-    cerebro.addanalyzer(bt.analyzers.DrawDown, fund=True)
-    cerebro.addanalyzer(bt.analyzers.TimeDrawDown, timeframe=bt.TimeFrame.Months, fund=True)
-    cerebro.addanalyzer(bt.analyzers.PeriodStats, timeframe=bt.TimeFrame.Months, fund=True)
-
-    # Add custom observer to get the weights
-    n_assets = kwargs.get('n_assets')
-    cerebro.addobserver(WeightsObserver, n_assets=n_assets)
-    cerebro.addobserver(GetDate)
-
-    # add the strategy
-    cerebro.addstrategy(strategy, **kwargs)
-
-    res = cerebro.run()
-
-    if plot:  # plot results if asked
-        figure = cerebro.plot(volume=False, iplot=False)[0][0]
-        figure.savefig('Strategy %s.png' % strategy.strategy_name)
-
-    metrics = (res[0].analyzers.returns.get_analysis()['rnorm100'],
-               res[0].analyzers.periodstats.get_analysis()['stddev'],
-               res[0].analyzers.sharperatio.get_analysis()['sharperatio'],
-               res[0].analyzers.timedrawdown.get_analysis()['maxdrawdown'],
-               res[0].analyzers.drawdown.get_analysis()['max']['drawdown']
-               )
-
-    # Asset weights
-    size_weights = 60  # get weights for the last 60 days
-    weight_df = pd.DataFrame()
-
-    weight_df['Year'] = pd.Series(res[0].observers[3].year.get(size=size_weights))
-    weight_df['Month'] = pd.Series(res[0].observers[3].month.get(size=size_weights))
-    weight_df['Day'] = pd.Series(res[0].observers[3].day.get(size=size_weights))
-    for i in range(0, n_assets):
-        weight_df['asset_' + str(i)] = res[0].observers[2].lines[i].get(size=size_weights)
-
-    """    
-    weights = [res[0].observers[3].year.get(size=size_weights),
-               res[0].observers[3].month.get(size=size_weights),
-               res[0].observers[3].day.get(size=size_weights),
-               [res[0].observers[2].lines[i].get(size=size_weights) for i in range(0, n_assets)]]
-    """
-    return metrics, weight_df
-
-
 def delete_in_dir(mydir, *args, **kwargs):
     """
     Deletes all files in a directory
@@ -117,21 +62,6 @@ def print_header(args):
     print('###    --leverage' + ' ' + str(vars(args)['leverage']))
     print('##############################################################################')
 
-
-def reportbacktest(datas, strategy, initial_cash, **kwargs):
-    cerebro = bt.Cerebro()
-    cerebro.broker.set_cash(initial_cash)
-
-    for data in datas:
-        cerebro.adddata(data)
-
-    cerebro.addstrategy(strategy, **kwargs)
-
-    cerebro.run()
-    cerebro.plot(volume=False)
-    cerebro.report('reports')
-
-
 def import_process_hist(dataLabel, args):
     wd = os.path.dirname(os.getcwd())
 
@@ -142,6 +72,7 @@ def import_process_hist(dataLabel, args):
         'SP500TR': wd + '/modified_data/clean_sp500tr.csv',
         'COM': wd + '/modified_data/clean_spgscitr.csv',
         'LTB': wd + '/modified_data/clean_tyx.csv',
+        'US20YB': wd + '/modified_data/clean_DGS20.csv',
         'ITB': wd + '/modified_data/clean_fvx.csv',
         'TIP': wd + '/modified_data/clean_dfii10.csv',
         # "long" term, annual time series
@@ -162,6 +93,7 @@ def import_process_hist(dataLabel, args):
         'SP500TR': wd + '\modified_data\clean_sp500tr.csv',
         'COM': wd + '\modified_data\clean_spgscitr.csv',
         'LTB': wd + '\modified_data\clean_tyx.csv',
+        'US20YB': wd + '\modified_data\clean_DGS20.csv',
         'ITB': wd + '\modified_data\clean_fvx.csv',
         'TIP': wd + '\modified_data\clean_dfii10.csv',
         # "long" term, annual time series
@@ -176,10 +108,19 @@ def import_process_hist(dataLabel, args):
     }
 
     if args.system == 'linux':
-        datapath = (mapping_path_linux[dataLabel])
+        if dataLabel in mapping_path_linux.keys():
+            datapath = (mapping_path_linux[dataLabel])
+        else:
+            datapath = None
     else:
-        datapath = (mapping_path_windows[dataLabel])
-    df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
+        if dataLabel in mapping_path_windows.keys():
+            datapath = (mapping_path_windows[dataLabel])
+        else:
+            datapath = None
+    if datapath is not None:
+        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
+    else:
+        df = None
 
     return df
 
@@ -250,6 +191,27 @@ def bond_total_return(ytm, dt, maturity):
     total_return_df.columns = ["total_return"]
     return total_return_df
 
+def common_dates(data, fromdate, todate, timeframe):
+    # Get latest startdate and earlier end date
+    start = fromdate
+    end = todate
+    for i in range(0, len(data)):
+        start = max(data[i].index[0], start)
+        end = min(data[i].index[-1], end)
+
+    if timeframe == bt.TimeFrame.Days: # 5
+        dates = pd.bdate_range(start, end)
+    elif timeframe == bt.TimeFrame.Years: # 8
+        dates = pd.date_range(start,end,freq='ys')
+
+    left = pd.DataFrame(index=dates)
+    data_dates = []
+    for i in range(0, len(data)):
+        right=data[i]
+        this_data_dates = pd.merge(left, right, left_index=True, right_index=True, how="left")
+        this_data_dates = this_data_dates.fillna(method='ffill')
+        data_dates.append(this_data_dates)
+    return data_dates
 
 
 class WeightsObserver(bt.observer.Observer):
@@ -392,30 +354,6 @@ def load_economic_curves(start, end):
     df_fundamental['Max'] = df_fundamental.idxmax(axis=1)
     df_fundamental.index.name = 'Date'
     return df_fundamental
-
-
-def strat_dictionary(stratname):
-    assert stratname in ['sixtyforty', 'onlystocks',
-                         'vanillariskparity', 'uniform', 'riskparity', 'meanvar'], "unknown strategy"
-
-    if stratname == 'sixtyforty':
-        return sixtyforty
-
-    elif stratname == 'onlystocks':
-        return onlystocks
-
-    elif stratname == 'vanillariskparity':
-        return vanillariskparity
-
-    elif stratname == 'riskparity':
-        return riskparity
-
-    elif stratname == 'uniform':
-        return uniform
-
-    elif stratname == 'meanvarStrat':
-        return meanvarStrat
-
 
 """
 Functions to calculate performance metrics
