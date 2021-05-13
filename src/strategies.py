@@ -54,9 +54,6 @@ class GetDate(bt.observer.Observer):
         self.lines.month[0] = self._owner.datas[0].datetime.date(0).month
         self.lines.day[0] = self._owner.datas[0].datetime.date(0).day
 
-
-
-
 """
 Custom indicator to set the minimum period. 
 """
@@ -87,11 +84,10 @@ class StandaloneStrat(bt.Strategy):
         ('corrmethod', 'pearson'),  # 'spearman' # method for the calculation of the correlation matrix
     )
 
-
     def __init__(self):
         # To keep track of pending orders and buy price/commission
         self.order = None
-        #self.cheating = self.cerebro.p.cheat_on_open
+        # self.cheating = self.cerebro.p.cheat_on_open
         self.buyprice = None
         self.buycomm = None
 
@@ -111,6 +107,14 @@ class StandaloneStrat(bt.Strategy):
         for asset in range(0, self.params.n_assets):
             self.assets.append(self.datas[asset])
             self.assetclose.append(self.datas[asset].close)
+
+        self.benchmark_assets = []  # Save indicators here
+        self.benchmark_assetsclose = []  # Keep a reference to the close price
+        benchmark_idxs = [i for i, e in enumerate(self.params.shareclass) if e == 'benchmark']
+        if benchmark_idxs:
+            for benchmark_idx in benchmark_idxs:
+                self.benchmark_assets.append(self.datas[benchmark_idx])
+                self.benchmark_assetsclose.append(self.datas[benchmark_idx].close)
 
         self.indassets = []  # Save indicators here
         self.indassetsclose = []  # Keep a reference to the close price
@@ -257,6 +261,29 @@ class StandaloneStrat(bt.Strategy):
                 self.buy(data=self.datas[asset], exectype=bt.Order.Limit,
                          price=self.assetclose[asset].get(0)[0], size=target_size, coo=True)
 
+    def buybenchmark(self): #TODO: check that benchmark equals to only stocks when benchmark is the stock
+        sold_value = 0
+        # Sell at open price
+        benchmark_idx = self.params.shareclass.index('benchmark')
+        position = self.broker.getposition(data=self.benchmark_assets[0]).size
+        if position > 0:
+            self.sell(data=self.datas[benchmark_idx], exectype=bt.Order.Limit,
+                      price=self.benchmark_assetsclose[0].get(0)[0], size=position, coo=True)
+            sold_value = sold_value + (self.benchmark_assetsclose[0].get(0)[0] * position)
+
+        cash_after_sell = sold_value + self.broker.get_cash()
+
+        if cash_after_sell < 0: # If after having sold everything, the portfolio value is negative, close the backtesting
+        #    self.env.runstop()
+        #    print('Early stop envoked! Portfolio value is %.f.' % cash_after_sell)
+            print('Portfolio value is negative %.f.' % cash_after_sell)
+
+        # Buy at open price
+        target_size = int(cash_after_sell * 1 / self.benchmark_assetsclose[0].get(0)[0])
+        if target_size > 0:
+            self.buy(data=self.datas[benchmark_idx], exectype=bt.Order.Limit,
+                     price=self.benchmark_assetsclose[0].get(0)[0], size=target_size, coo=True)
+
 """
 The child classes below are specific to one strategy.
 """
@@ -289,7 +316,7 @@ class sixtyforty(StandaloneStrat):
             "bond_it": 0.2
         }
 
-        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+        tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
 
         assetclass_cnt = {}
         for key in assetclass_allocation:
@@ -324,7 +351,7 @@ class onlystocks(StandaloneStrat):
             "bond_it": 0
         }
 
-        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+        tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
 
         assetclass_cnt = {}
         for key in assetclass_allocation:
@@ -346,6 +373,21 @@ class onlystocks(StandaloneStrat):
 
             self.rebalance()
 
+class benchmark(StandaloneStrat):
+    """
+    dummy class to buy the benchmark
+    """
+    strategy_name = "Benchmark"
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+                    self.broker.get_cash(),
+                    self.broker.get_value(),
+                    self.broker.get_fundshares(),
+                    self.broker.get_fundvalue()))
+            self.buybenchmark()
+
 
 class vanillariskparity(StandaloneStrat):
     strategy_name = "Vanilla Risk Parity Portfolio"
@@ -359,7 +401,7 @@ class vanillariskparity(StandaloneStrat):
             "bond_it": 0.4
         }
 
-        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+        tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
 
         assetclass_cnt = {}
         for key in assetclass_allocation:
@@ -374,10 +416,10 @@ class vanillariskparity(StandaloneStrat):
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
             self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
-            self.broker.get_cash(),
-            self.broker.get_value(),
-            self.broker.get_fundshares(),
-            self.broker.get_fundvalue()))
+                    self.broker.get_cash(),
+                    self.broker.get_value(),
+                    self.broker.get_fundshares(),
+                    self.broker.get_fundvalue()))
 
             self.rebalance()
 
@@ -393,7 +435,7 @@ class uniform(StandaloneStrat):
             "bond_it": 0.2
         }
 
-        tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+        tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
 
         assetclass_cnt = {}
         assetclass_flag = {}
@@ -446,11 +488,62 @@ class rotationstrat(StandaloneStrat):
 
             winningAsset = strat.get(which_max)
 
-            tradable_shareclass = [x for x in self.params.shareclass if x != 'non-tradable']
+            tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
 
             for key in assetclass_allocation:
                 if key == winningAsset:
                     assetclass_allocation[key] = 1
+
+            assetclass_cnt = {}
+
+            for key in assetclass_allocation:
+                count = sum(map(lambda x: x == key, tradable_shareclass))
+                assetclass_cnt[key] = count
+
+            a = list(map(assetclass_allocation.get, tradable_shareclass))
+            b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+            self.weights = [float(x) / y for x, y in zip(a, b)]
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class rotationuniform(StandaloneStrat):
+    strategy_name = "Asset rotation strategy"
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            assetclass_allocation = {
+                "gold": 0,
+                "commodity": 0,
+                "equity": 0,
+                "bond_lt": 0,
+                "bond_it": 0
+            }
+
+            strat = {
+                1: "gold",
+                2: "bond_lt",
+                3: "equity"
+            }
+
+            which_max = self.indassetsclose.index(max(self.indassetsclose))
+
+            winningAsset = strat.get(which_max)
+
+            tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable','benchmark']]
+
+            assetclass_allocation_winner = 2 / len(assetclass_allocation)
+            for key in assetclass_allocation:
+                if key == winningAsset:
+                    assetclass_allocation[key] = assetclass_allocation_winner
+                else:
+                    assetclass_allocation[key] = (1-assetclass_allocation_winner)/(len(assetclass_allocation)-1)
 
             assetclass_cnt = {}
             for key in assetclass_allocation:
@@ -469,7 +562,6 @@ class rotationstrat(StandaloneStrat):
             self.broker.get_fundvalue()))
 
             self.rebalance()
-
 
 # Risk parity portfolio. The implementation is based on:
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /

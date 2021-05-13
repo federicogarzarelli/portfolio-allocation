@@ -7,8 +7,11 @@
 # Federico Garzarelli
 ###############################################################################
 
-# main.py
+# parameters used in main.py
 # Set the strategy parameters
+
+expense_ratio = 0.01
+APPLY_LEVERAGE_ON_LIVE_STOCKS = False
 
 assetclass_dict = {
     # "medium" term, daily time series
@@ -17,6 +20,7 @@ assetclass_dict = {
     'SP500': 'equity',
     'SP500TR': 'equity',
     'LTB': 'bond_lt',
+    'US20YB': 'bond_lt',
     'ITB': 'bond_it',
     'TIP': 'bond_lt',  # can also be classified as commodities due to their inflation hedge
     # "long" term, annual time series
@@ -29,17 +33,8 @@ assetclass_dict = {
     'US10YB_LNG': 'bond_it'
 }
 
-"""
 strat_params_days = {
-    'reb_days': 1,  # every month: we rebalance the portfolio
-    'lookback_period_short': 2,  # period to calculate the variance (Minimum 2)
-    'lookback_period_long': 2,  # period to calculate the correlation (Minimum 2)
-    'printlog': True,  # Print log in the console
-    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
-}
-"""
-strat_params_days = {
-    'reb_days': 30,  # every month: we rebalance the portfolio
+    'reb_days': 30,  # rebalance the portfolio every month
     'lookback_period_short': 20,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 120,  # period to calculate the correlation (Minimum 2)
     'printlog': True,  # Print log in the console
@@ -51,7 +46,7 @@ strat_params_years = {
     'lookback_period_short': 5,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 10,  # period to calculate the correlation (Minimum 2)
     'printlog': True,  # Print log in the console
-    'corrmethod': 'pearson'  # 'spea    rman' # method for the calculation of the correlation matrix
+    'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
 
 strat_params_weights = {
@@ -62,8 +57,9 @@ strat_params_weights = {
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
 
-# report.py
-DAYS_IN_YEAR = 260  # 365.2422
+#  parameters used in report.py
+DAYS_IN_YEAR = 252  # 365.2422
+DAYS_IN_YEAR_BOND_PRICE = 360
 
 report_params = {
     'fundmode': True,  # Calculate metrics in fund model vs asset mode

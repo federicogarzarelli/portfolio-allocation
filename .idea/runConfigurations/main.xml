@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="main" type="PythonConfigurationType" factoryName="Python">
+    <module name="portfolio-allocation" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="PYTHONUNBUFFERED" value="1" />
+    </envs>
+    <option name="SDK_HOME" value="C:\Users\feder\Anaconda3\envs\portfolio-allocation\python.exe" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+    <option name="IS_MODULE_SDK" value="false" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
+    <option name="PARAMETERS" value="--historic &quot;long&quot; --shares GLD_LNG,OIL_LNG,EQ_LNG,LTB_LNG,RE_LNG --shareclass gold,commodity,equity,bond_lt,bond_it --strategy uniform,onlystocks,vanillariskparity,sixtyforty,riskparity --initial_cash 100000000 --contribution 0 --create_report --report_name Raising_interests_50_80 --startdate &quot;1950-01-01&quot; --enddate &quot;1971-01-01&quot; --system windows --leverage 1" />
+    <option name="SHOW_COMMAND_LINE" value="false" />
+    <option name="EMULATE_TERMINAL" value="false" />
+    <option name="MODULE_MODE" value="false" />
+    <option name="REDIRECT_INPUT" value="false" />
+    <option name="INPUT_FILE" value="" />
+    <method v="2" />
+  </configuration>
+</component>
