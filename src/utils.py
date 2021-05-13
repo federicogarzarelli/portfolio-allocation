@@ -7,7 +7,6 @@ from strategies import *
 from datetime import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 import pandas_datareader.data as web
 import math

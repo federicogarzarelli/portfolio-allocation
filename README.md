@@ -6,7 +6,7 @@ Backtest portfolio allocation strategies and live trade them on Interactive Brok
 A requirements file has been added to be able to install the required libraries. To install them, you need to run:
 
 ```bash
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 A virtual environment should normally also be setup.
@@ -16,7 +16,7 @@ A virtual environment should normally also be setup.
 
 ```bash
 $ pip3 install jinja2
-$ pip install WeasyPrint
+$ pip3 install WeasyPrint
 ```
 
 or run the bash script **install_reports.sh**
