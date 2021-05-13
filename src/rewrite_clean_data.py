@@ -47,7 +47,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_gld.csv')
+    df.to_csv(wd+'/modified_data/GLD.csv')
 
     # S&P 500
     if args.system == 'linux':
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_gspc.csv')
+    df.to_csv(wd+'/modified_data/SP500.csv')
 
     # S&P 500 Total return
     if args.system == 'linux':
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_sp500tr.csv')
+    df.to_csv(wd+'/modified_data/SP500TR.csv')
 
 
     # GSCI Commodity Index
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_spgscitr.csv')
+    df.to_csv(wd+'/modified_data/COM.csv')
 
     # 30 years treasury yield
     if args.system == 'linux':
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_tyx.csv')
+    df.to_csv(wd+'/modified_data/LTB.csv')
 
     # 5 years treasury yield
     if args.system == 'linux':
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_fvx.csv')
+    df.to_csv(wd+'/modified_data/ITB.csv')
 
     # TIPS 10 years
     if args.system == 'linux':
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_dfii10.csv')
+    df.to_csv(wd+'/modified_data/TIP.csv')
 
 
     # US Bonds 20 years
@@ -201,4 +201,4 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
     df.index = df.index.rename('Date')
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_DGS20.csv')
+    df.to_csv(wd+'/modified_data/US20YB.csv')

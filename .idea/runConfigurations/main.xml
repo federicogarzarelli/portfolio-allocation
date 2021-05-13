@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-    <option name="PARAMETERS" value="--historic &quot;long&quot; --shares GLD_LNG,OIL_LNG,EQ_LNG,LTB_LNG,RE_LNG --shareclass gold,commodity,equity,bond_lt,bond_it --strategy uniform,onlystocks,vanillariskparity,sixtyforty,riskparity --initial_cash 100000000 --contribution 0 --create_report --report_name Raising_interests_50_80 --startdate &quot;1950-01-01&quot; --enddate &quot;1971-01-01&quot; --system windows --leverage 1" />
+    <option name="PARAMETERS" value="--shares VEU,IVV,BIL,AGG --shareclass equity_intl,equity,money_market,bond_lt --strategy GEM,riskparity,trend_rp,relmom_rp,momtrend_rp --initial_cash 10000000 --contribution 0 --create_report --report_name GEM --startdate &quot;1990-01-01&quot; --enddate &quot;2020-06-30&quot; --system windows --leverage 1" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

@@ -53,7 +53,7 @@ if __name__ == '__main__':
     df.loc[:, 'volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
-    df.to_csv(wd + '/modified_data/clean_gld_yearly.csv')
+    df.to_csv(wd + '/modified_data/GLD_LNG.csv')
 
     # Oil
     if args.system == 'linux':
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     df.loc[:, 'volume'] = 0
     df = df[["open", "high", "low", "close", "volume"]]
     # save the modified csv
-    df.to_csv(wd + '/modified_data/clean_oil_yearly.csv')
+    df.to_csv(wd + '/modified_data/OIL_LNG.csv')
 
     # Gov bond 10 years (from https://stooq.com/q/d/?s=10usy.b)
     if args.system == 'linux':
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     df = df[["open", "high", "low", "close", "volume"]]
 
     # save the modified csv
-    df.to_csv(wd+'/modified_data/clean_US10Y_yearly.csv')
+    df.to_csv(wd+'/modified_data/US10YB_LNG.csv')
 
     # Equity, Housing, Gov Bond
     if args.system == 'linux':
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     # 4. Bill rate, nominal. r[t] = coupon[t] / p[t-1] (column bill_rate)
     P0 = 0.01
 
-    outname = ['clean_equity_yearly', 'clean_housing_yearly', 'clean_bond_yearly', 'clean_bill_yearly']
+    outname = ['EQ_LNG', 'RE_LNG', 'LTB_LNG', 'ITB_LNG']
     i = 0
     for asset in ["eq_tr", "housing_tr", "bond_tr", "bill_rate"]:
         data = df[[asset]]

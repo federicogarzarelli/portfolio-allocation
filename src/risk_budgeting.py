@@ -19,7 +19,7 @@ def risk_contribution(w, cov):
 
 def target_risk_contribution(target_risk, cov):
     """
-    Returns the weights of the portfolio such that the contributions to portfolio risk are as close as possiblem
+    Returns the weights of the portfolio such that the contributions to portfolio risk are as close as possible
     to the target_risk, given the covariance matrix
     """
     n = cov.shape[0]

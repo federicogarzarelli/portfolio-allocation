@@ -4,7 +4,6 @@ import backtrader as bt
 import numpy as np
 import datetime
 from strategies import *
-from datetime import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
@@ -12,7 +11,29 @@ import pandas_datareader.data as web
 import math
 import numpy.random as nrand
 from GLOBAL_VARS import *
+from PortfolioDB import PortfolioDB
 
+# finds file in a folder
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)
+
+# Converts a date in "yyyy-mm-dd" format to a dateTime object
+def convertDate(dateString):
+   return datetime.strptime(dateString, '%Y-%m-%d %H:%M:%S')
+
+# Takes in a date in the format "yyyy-mm-dd hh:mm:ss" and increments it by one day. Or if the
+# day is a Friday, increment by 3 days, so the next day of data we get is the next
+# Monday.
+def incrementDate(dateString):
+    dateTime = datetime.strptime(dateString, '%Y-%m-%d %H:%M:%S')
+    # If the day of the week is a friday increment by 3 days.
+    if dateTime.isoweekday() == 5:
+        datePlus = dateTime + timedelta(3)
+    else:
+        datePlus = dateTime + timedelta(1)
+    return str(datePlus)
 
 def delete_in_dir(mydir, *args, **kwargs):
     """
@@ -66,43 +87,43 @@ def import_process_hist(dataLabel, args):
 
     mapping_path_linux = {
         # "medium" term, daily time series
-        'GLD': wd + '/modified_data/clean_gld.csv',
-        'SP500': wd + '/modified_data/clean_gspc.csv',
-        'SP500TR': wd + '/modified_data/clean_sp500tr.csv',
-        'COM': wd + '/modified_data/clean_spgscitr.csv',
-        'LTB': wd + '/modified_data/clean_tyx.csv',
-        'US20YB': wd + '/modified_data/clean_DGS20.csv',
-        'ITB': wd + '/modified_data/clean_fvx.csv',
-        'TIP': wd + '/modified_data/clean_dfii10.csv',
+        'GLD': wd + '/modified_data/GLD.csv',
+        'SP500': wd + '/modified_data/SP500.csv',
+        'SP500TR': wd + '/modified_data/SP500TR.csv',
+        'COM': wd + '/modified_data/COM.csv',
+        'LTB': wd + '/modified_data/LTB.csv',
+        'US20YB': wd + '/modified_data/US20YB.csv',
+        'ITB': wd + '/modified_data/ITB.csv',
+        'TIP': wd + '/modified_data/TIP.csv',
         # "long" term, annual time series
-        'GLD_LNG': wd + '/modified_data/clean_gld_yearly.csv',
-        'OIL_LNG': wd + '/modified_data/clean_oil_yearly.csv',
-        'EQ_LNG' : wd + '/modified_data/clean_equity_yearly.csv',
-        'RE_LNG': wd + '/modified_data/clean_housing_yearly.csv',
-        'LTB_LNG': wd + '/modified_data/clean_bond_yearly.csv',
-        'ITB_LNG': wd + '/modified_data/clean_bill_yearly.csv',
-        'US10YB_LNG': wd + '/modified_data/clean_US10Y_yearly.csv',
+        'GLD_LNG': wd + '/modified_data/GLD_LNG.csv',
+        'OIL_LNG': wd + '/modified_data/OIL_LNG.csv',
+        'EQ_LNG' : wd + '/modified_data/EQ_LNG.csv',
+        'RE_LNG': wd + '/modified_data/RE_LNG.csv',
+        'LTB_LNG': wd + '/modified_data/LTB_LNG.csv',
+        'ITB_LNG': wd + '/modified_data/ITB_LNG.csv',
+        'US10YB_LNG': wd + '/modified_data/US10YB_LNG.csv',
 
     }
 
     mapping_path_windows = {
         # "medium" term, daily time series
-        'GLD': wd + '\modified_data\clean_gld.csv',
-        'SP500': wd + '\modified_data\clean_gspc.csv',
-        'SP500TR': wd + '\modified_data\clean_sp500tr.csv',
-        'COM': wd + '\modified_data\clean_spgscitr.csv',
-        'LTB': wd + '\modified_data\clean_tyx.csv',
-        'US20YB': wd + '\modified_data\clean_DGS20.csv',
-        'ITB': wd + '\modified_data\clean_fvx.csv',
-        'TIP': wd + '\modified_data\clean_dfii10.csv',
+        'GLD': wd + '\modified_data\GLD.csv',
+        'SP500': wd + '\modified_data\SP500.csv',
+        'SP500TR': wd + '\modified_data\SP500TR.csv',
+        'COM': wd + '\modified_data\COM.csv',
+        'LTB': wd + '\modified_data\LTB.csv',
+        'US20YB': wd + '\modified_data\\US20YB.csv',
+        'ITB': wd + '\modified_data\ITB.csv',
+        'TIP': wd + '\modified_data\TIP.csv',
         # "long" term, annual time series
-        'GLD_LNG': wd + '\modified_data\clean_gld_yearly.csv',
-        'OIL_LNG': wd + '\modified_data\clean_oil_yearly.csv',
-        'EQ_LNG': wd + '\modified_data\clean_equity_yearly.csv',
-        'RE_LNG': wd + '\modified_data\clean_housing_yearly.csv',
-        'LTB_LNG': wd + '\modified_data\clean_bond_yearly.csv',
-        'ITB_LNG': wd + '\modified_data\clean_bill_yearly.csv',
-        'US10YB_LNG': wd + '\modified_data\clean_US10Y_yearly.csv',
+        'GLD_LNG': wd + '\modified_data\GLD_LNG.csv',
+        'OIL_LNG': wd + '\modified_data\OIL_LNG.csv',
+        'EQ_LNG': wd + '\modified_data\EQ_LNG.csv',
+        'RE_LNG': wd + '\modified_data\RE_LNG.csv',
+        'LTB_LNG': wd + '\modified_data\LTB_LNG.csv',
+        'ITB_LNG': wd + '\modified_data\ITB_LNG.csv',
+        'US10YB_LNG': wd + '\modified_data\\US10YB_LNG.csv',
 
     }
 
@@ -120,6 +141,34 @@ def import_process_hist(dataLabel, args):
         df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
     else:
         df = None
+
+    return df
+
+def import_histprices_db(dataLabel):
+    db = PortfolioDB(databaseName = DB_NAME)
+    df = db.getPrices(dataLabel)
+
+    stock_info = db.getStockInfo(dataLabel)
+    if stock_info['treatment_type'].values[0] == 'yield':
+        maturity = stock_info['maturity'].values[0]
+        if not type(maturity) == np.float64:
+            print("Error: maturity is needed for ticker " + dataLabel + '. Please update DIM_STOCKS.')
+            #return
+
+        frequency = stock_info['frequency'].values[0]
+        if frequency == 'D':
+            dt = 1 / DAYS_IN_YEAR_BOND_PRICE
+        elif frequency == 'Y':
+            dt = 1
+
+        total_return = bond_total_return(ytm=df[['close']], dt=dt, maturity=maturity)
+        df['close'] = 100 * np.exp(np.cumsum(total_return['total_return']))
+        df['close'].iloc[0] = 100
+        df = df.dropna()
+
+    df = df.set_index('date')
+    df.index.name = 'Date'
+    df = df[['close','open','high','low','volume']]
 
     return df
 
@@ -207,7 +256,7 @@ def common_dates(data, fromdate, todate, timeframe):
     data_dates = []
     for i in range(0, len(data)):
         right=data[i]
-        this_data_dates = pd.merge(left, right, left_index=True, right_index=True, how="left")
+        this_data_dates = pd.merge(left, right, left_index=True,right_index=True, how="left")
         this_data_dates = this_data_dates.fillna(method='ffill')
         data_dates.append(this_data_dates)
     return data_dates
@@ -279,7 +328,7 @@ def target_risk_contribution(target_risk, cov):
     return w.x
 
 
-def covariances(shares=['GLD', 'TLT', 'SPY'], start=datetime.datetime(2020, 1, 1), end=datetime.datetime(2020, 6, 1)):
+def covariances(shares, start, end):
     '''
     function that provides the covariance matrix of a certain number of shares
 
@@ -330,7 +379,8 @@ def timestamp2str(ts):
 def get_now():
     """ Return current datetime as str
     """
-    return timestamp2str(datetime.datetime.now())
+    #return timestamp2str(datetime.datetime.now())
+    return timestamp2str(datetime.now())
 
 
 def dir_exists(foldername):

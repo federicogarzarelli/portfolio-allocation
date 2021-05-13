@@ -1,5 +1,5 @@
 # portfolio-allocation
-Backtest portfolio allocation strategies and live trade them on Interactive Brokers  
+Backtest portfolio allocation strategies.   
 
 # Install Requirements
 
@@ -16,7 +16,7 @@ A virtual environment should normally also be setup.
 
 ```bash
 $ pip3 install jinja2
-$ pip3 install WeasyPrint
+$ pip install WeasyPrint
 ```
 
 or run the bash script **install_reports.sh**
@@ -32,9 +32,11 @@ python main.py [--historic [medium | long]] [--shares SHARES --shareclass SHAREC
 ```
 
 ## DESCRIPTION
-Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. It is recommended to run the code in a jupyter notebook to obtain the pyfolio reports in the right format. A jupyter notebook is created for this purpose in 'src/apply_jupyter.ipynb'.
+Running main.py with the options below a backtest is performed on the assets specified following a specified strategy. It is recommended to run the code in a jupyter notebook. Jupyter notebooks are available in the 'src' folder.
 
 ### Strategies
+
+#### Passive strategies
 * __riskparity__ Dynamic allocation of weights according to the risk parity methodology (see https://thequantmba.wordpress.com/2016/12/14/risk-parityrisk-budgeting-portfolio-in-python/). Here the risk parity is run at portfolio level.
 * __riskparity_nested__ Dynamic allocation of weights according to the risk parity methodology (see https://thequantmba.wordpress.com/2016/12/14/risk-parityrisk-budgeting-portfolio-in-python/). Here the risk parity is run first at asset classe level (for assets belonging to the same asset class) and then at portfolio level.
 * __rotationstrat__ Asset rotation strategy that buy either gold, bonds or equities based on a signal (see https://seekingalpha.com/article/4283733-simple-rules-based-asset-rotation-strategy). To use this strategy specify the parameter `--indicators`.
@@ -43,15 +45,24 @@ Running main.py with the options below a backtest is performed on the assets spe
 * __onlystocks__ Static allocation only to the equity class. Assets are allocated uniformly within the equity class.
 * __sixtyforty__ Static allocation 60% to the equity class, 20% to the Long Term Bonds class and 20% to the Short Term Bonds class. Assets are allocated uniformly within the asset classes.
 
+#### Semi-passive strategies
+* __trend_u__ First weights are assigned according to the "uniform" strategy. Then, if the current asset price is smaller than the simple moving average, the weight is set to zero (leave as cash). 
+* __absmom_u__ First weights are assigned according to the "uniform" strategy. Then, if the asset return over the period (momentum) is less than 0, the weight is set to zero (leave as cash).
+* __relmom_u__ First assets are ranked based on their return over the period (momentum) and divided in two classes. The portfolio is formed by the assets belonging to the higher return class. Then, weights are assigned to this portfolio according to the "uniform" strategy.
+* __momtrend_u__ First weights are assigned according to the "uniform" strategy. Second, assets are ranked based on their return over the period (momentum) and divided in two classes. For the assets belonging to the lower return class, the weight is set to zero (leave as cash). Finally, a trend filter is then applied to assets with positive weight: if the current asset price is smaller than the simple moving average, the weight is set to zero (leave as cash). 
+* __trend_rp__ First weights are assigned according to the "riskparity" strategy. Then, if the current asset price is smaller than the simple moving average, the weight is set to zero (leave as cash).
+* __absmom_rp__ First weights are assigned according to the "riskparity" strategy. Then, if the asset return over the period (momentum) is less than 0, the weight is set to zero (leave as cash).
+* __relmom_rp__ First assets are ranked based on their return over the period (momentum) and divided in two classes. The portfolio is formed by the assets belonging to the higher return class. Then, weights are assigned to this portfolio according to the "risk parity" strategy.
+* __momtrend_rp__ First weights are assigned according to the "riskparity" strategy. Second, assets are ranked based on their return over the period (momentum) and divided in two classes. For the assets belonging to the lower return class, the weight is set to zero (leave as cash). Finally, a trend filter is then applied to assets with positive weight: if the current asset price is smaller than the simple moving average, the weight is set to zero (leave as cash).
+* __GEM__ Global equity momentum strategy. Needs only 4 assets of classes equity, equity_intl, bond_lt, money_market. example: `--shares VEU,IVV,BIL,AGG --shareclass equity_intl,equity,money_market,bond_lt`. See https://blog.thinknewfound.com/2019/01/fragility-case-study-dual-momentum-gem/
 __Note__: the asset classes (`--shareclass` argument) used in the strategies are: Gold, Commodities, Equities, Long Term Bonds, Short Term Bonds (see "OPTIONS" section below). When `--historic` is __not__ specified, every asset after `--shares` must be assigned to one of these 
 
 ### Taking into account the minimum period
 
-Please note that the backtest starts after the periods used to calculate the covariance matrix and variance of assets, necessary to compute the weights of `riskparity` and `riskparity_nested` strategies.
+Please note that the backtest starts after the periods used to calculate the covariance matrix and variance of assets, necessary to compute the weights of `riskparity` and `riskparity_nested` strategies and the periods to calculate the moving average and the momentum.
+The minimum period is defined as the maximum between `lookback_period_short`, `lookback_period_long`, `moving_average_period` and `moving_average_period` (see `GLOBAL_VARS.py`)
 
-The number of periods is set to 120 days for daily data and to 10 years for yearly data (see `GLOBAL_VARS.py`).
-
-For example:
+For example, if the minimum period is 120 days for daily data and to 10 years for yearly data:
 * __Years__ i.e. when `--historic` is `long`, if startdate is between "1916-01-02" and "1917-01-01" the backtest starts on the "1926-01-01"
 * __Days__ e.g. when `--historic` is `medium` or when `--shares` are specified, if startdate is "1999-01-01" the backtest starts on the "1999-06-18"
 
@@ -78,16 +89,19 @@ For example:
 The parameters below are hardcoded in the `GLOBAL_VARS.py` file. 
 
 #### General parameters
-* __DAYS_IN_YEAR__ Number of days in a year. Default is 260
+* __DAYS_IN_YEAR__ Number of days in a year. Default is 260.
+* __DAYS_IN_YEAR_BOND_PRICE__ Number of days in a year used for calculating bond prices from yields. Default is 360.
 * __APPLY_LEVERAGE_ON_LIVE_STOCKS__ Flag to apply leverage to downloaded stock prices or not
-* __assetclass_dict__ Mapping between historic assets and asset classes
 
 #### Strategy parameters
 * __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30 for daily data and 1 for yearly data.
 * __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 20 for daily data and 10 for yearly data. 
 * __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 120 for daily data and 10 for yearly data.
+* __moving_average_period__ Window to calculate simple moving average. Applies to strategies `trend_uniform`, `trend_riskparity`, `momentumtrend_uniform`  and `momentumtrend_riskparity`. Default is 252 for daily data and 5 for yearly data.
+* __momentum_period__ Window to calculate the momentum. Applies to strategies `absolutemomentum_uniform`, `relativemomentum_uniform`, `momentumtrend_uniform`, `absolutemomentum_riskparity`, `relativemomentum_riskparity`  and `momentumtrend_riskparity`. Default is 252 for daily data and 5 for yearly data.
 * __printlog__ If true a log is output in the terming. Default is True.
 * __corrmethod__ Method for the calculation of the correlation matrix. Applies to strategies `riskparity` and `riskparity_nested`. Default is 'pearson'. Alternative is 'spearman'. 
+* __momentum_percentile__ Percentile of assets with the highest return in a period to form the relative momentum portfolio. The higher the percentile, the higher the return quantile. 
 
 #### Report parameters
 * __riskfree__ Risk free rate to be used in metrics like treynor_ratio, sharpe_ratio, etc. Default is 0.01.
@@ -132,7 +146,54 @@ python main.py --shares SPY,IWM,TLT,GLD --shareclass "equity,equity,bond_lt,gold
 python main.py --shares UPRO,UGLD,TYD,TMF,UTSL --shareclass "equity,gold,bond_it,bond_lt,commodity" --strategy riskparity_nested,riskparity,riskparity_pylib --initial_cash 100000 --contribution 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
 ```
 https://clio-infra.eu/Indicators/LongTermGovernmentBondYield.html
-# Dataset explanation
+
+6. GEM
+```bash
+python main.py --shares VEU,IVV,BIL,AGG --shareclass equity_intl,equity,money_market,bond_lt --strategy GEM --initial_cash 10000000 --contribution 0 --create_report --report_name MyCurrentPortfolio --startdate "2019-01-01" --enddate "2020-06-30" --system windows --leverage 1
+```
+
+# Dataset 
+
+Data are stored in a sqlite3 database "myPortfolio.db" with the following structure: 
+
+* __DIM_STOCKS__
+   * "NAME"  TEXT NOT NULL,
+   * "TICKER"        TEXT,
+   * "EXCHANGE"      TEXT,
+   * "CURRENCY"      TEXT,
+   * "ISIN"  TEXT,
+   * "SOURCE"        TEXT,
+   * "FREQUENCY"     TEXT,
+   * "ASSET_CLASS"   TEXT,
+   * "TREATMENT_TYPE"        TEXT,
+   * PRIMARY KEY("TICKER")
+* __FACT_HISTPRICES__
+   * "DATE"  DATETIME NOT NULL,
+   * "TICKER"        TEXT NOT NULL,
+   * "OPEN"  REAL NOT NULL,
+   * "HIGH"  REAL,
+   * "LOW"   REAL,
+   * "CLOSE" REAL,
+   * "VOLUME"        REAL,
+   * PRIMARY KEY("DATE","TICKER"),
+   * FOREIGN KEY("TICKER") REFERENCES "DIM_STOCKS"("TICKER")
+* __FACT_DIVIDENDS__
+   * "DIVIDEND_DATE" DATETIME NOT NULL,
+   * "TICKER"        TEXT NOT NULL,
+   * "DIVIDEND_AMOUNT"       REAL NOT NULL,
+   * PRIMARY KEY("DIVIDEND_DATE","TICKER"),
+   * FOREIGN KEY("TICKER") REFERENCES "DIM_STOCKS"("TICKER")
+* __DIM_STOCK_DATES__ (view) 
+    * TICKER
+    * MIN_DT
+    * MAX_DT
+
+The database is populated using two main sources of financial data:
+* stooq (https://stooq.com/db/h/)
+* manual (dowloaded from various online sources and cleaned)
+
+Below the data which have been manually downloaded from various online sources. 
+
 | Symbol Name                       | File name                  | Start date   |Used (Y/N)| Used for                                                           | Frequency |                 Description                            																       | Source                                                                              |
 |-----------------------------------|----------------------------|--------------|----------|--------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | TIP                               | DFII10.csv                 | 02/01/2003   | Y | Medium term backtest                                               | Daily     | 10 Year Treasury Inflation-Indexed Security																				   | https://fred.stlouisfed.org/series/DFII10                                           |
@@ -155,10 +216,13 @@ https://clio-infra.eu/Indicators/LongTermGovernmentBondYield.html
 
 
 # Todo List
-- [x] Add drawdown plots (for portfolio and assets)
-- [x] Add money withdrawal functionality
-- [ ] Create a script to create and execute orders on IBKR (paper trading and live)
-- [ ] think about alarms if something is going wrong (e.g. Telegram)
+- [ ] Implement and test momentum and trending strategies
+- [ ] Assign weight to money market, instead of cash, for assets excluded by trend or momentum
+- [ ] Integrate the database in the backtesting engine
+- [ ] Create a GUI (Googlesheet or dash)  
+- [X] Add drawdown plots (for portfolio and assets)
+- [X] Add money withdrawal functionality
+- [X] Create a script to create and execute orders on IBKR (paper trading and live) __Separate repository__
 - [ ] Integrate asset rotation strategy with risk parity (comparison with RP) __Implemented: results are wrong__
 - [X] Check money drawdown in report that is probably wrong
 - [X] Clean yearly data and add functionality to run backtest on them, regression testing 

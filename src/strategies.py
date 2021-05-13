@@ -7,6 +7,7 @@ import pandas as pd
 import riskparityportfolio as rp
 from backtrader.utils.py3 import range
 from scipy import stats
+import sys
 
 from risk_budgeting import target_risk_contribution
 
@@ -75,7 +76,10 @@ class StandaloneStrat(bt.Strategy):
         ('reb_days', 20),  # every month, we rebalance the portfolio
         ('lookback_period_short', 60),  # period to calculate the variance
         ('lookback_period_long', 180),  # period to calculate the correlation
-        ('initial_cash', 100000),  # initial amount of cash to be invested
+        ('moving_average_period', 180),  # period to calculate the moving average
+        ('momentum_period', 180),  # period to calculate the momentum return
+        ('momentum_percentile', 0.5),  # percentile of assets with the highest return in a period to form the relative momentum portfolio
+        ('initial_cash', 1000000),  # initial amount of cash to be invested
         ('contribution', 0),  # amount of cash to buy invested every month
         ('n_assets', 5),  # number of assets
         ('shareclass', []),  # class of assets
@@ -104,9 +108,15 @@ class StandaloneStrat(bt.Strategy):
 
         self.assets = []  # Save data to backtest into assets, other data (e.g. used in indicators) will not be saved here
         self.assetclose = []  # Keep a reference to the close price
+        self.sma = []
+        self.momentum = []
         for asset in range(0, self.params.n_assets):
             self.assets.append(self.datas[asset])
             self.assetclose.append(self.datas[asset].close)
+            self.sma.append(bt.indicators.MovingAverageSimple(self.datas[asset].close,
+                                                              period=self.params.moving_average_period))
+            self.momentum.append(bt.indicators.RateOfChange(self.datas[asset].close,
+                                                              period=self.params.momentum_period))
 
         self.benchmark_assets = []  # Save indicators here
         self.benchmark_assetsclose = []  # Keep a reference to the close price
@@ -124,7 +134,8 @@ class StandaloneStrat(bt.Strategy):
                 self.indassets.append(self.datas[indicator_idx])
                 self.indassetsclose.append(self.datas[indicator_idx].close)
 
-        MinPeriodSetter(period=self.params.lookback_period_long)  # Set the minimum period
+        min_period = max(self.params.lookback_period_long, self.params.moving_average_period, self.params.momentum_period)
+        MinPeriodSetter(period=min_period)  # Set the minimum period
 
     def start(self):
         self.broker.set_fundmode(fundmode=True, fundstartval=100.00)  # Activate the fund mode, default has 100 shares
@@ -135,11 +146,19 @@ class StandaloneStrat(bt.Strategy):
             self.add_timer(
                 bt.timer.SESSION_START,
                 monthdays=[20],  # called on the 20th day of the month
-                monthcarry=True  # called on another day if 20th day is vacation/weekend)
+                monthcarry=True,  # called on another day if 20th day is vacation/weekend)
+                timername = 'contribution_timer',
             )
+            # self.add_timer(
+            #     bt.timer.SESSION_START,
+            #     monthdays=[1],  # rebalance the portfolio on the 1st day of the month
+            #     monthcarry=True,  # called on another day if 20th day is vacation/weekend)
+            #     timername = 'rebalance_timer',
+            # )
         elif self.timeframe == "Years":
             # Add a timer which will be called every year
-            self.add_timer(bt.timer.SESSION_START)
+            self.add_timer(bt.timer.SESSION_START,timername = 'contribution_timer',)
+            self.add_timer(bt.timer.SESSION_START,timername = 'rebalance_timer',)
 
     def get_timeframe(self):
         dates = [self.datas[0].datetime.datetime(i) for i in range(1, len(self.datas[0].datetime.array) + 1)]
@@ -149,23 +168,34 @@ class StandaloneStrat(bt.Strategy):
         elif datediff < timedelta(days=2):
             return "Days"
 
-    def notify_timer(self, timer, when, *args, **kwargs):
-        # Add/Remove the cash to the broker
-        if self.startdate is not None and self.datas[0].datetime.datetime(0) >= self.startdate: # Start adding removing cash after the minimum period
-            if self.params.contribution != 0:
-                if abs(self.params.contribution) < 1: # The user specifies a % amount
-                    contribution = self.broker.get_value() * self.params.contribution
-                else: # the user specifies a dollar amount
-                    contribution = self.params.contribution
-                if self.timeframe == "Days":
-                    contribution = contribution / 12
+    def notify_timer(self, timer, when, timername, *args, **kwargs):
+        if timername == 'contribution_timer':
+            # Add/Remove the cash to the broker
+            if self.startdate is not None and self.datas[0].datetime.datetime(0) >= self.startdate: # Start adding removing cash after the minimum period
+                if self.params.contribution != 0:
+                    if abs(self.params.contribution) < 1: # The user specifies a % amount
+                        contribution = self.broker.get_value() * self.params.contribution
+                    else: # the user specifies a dollar amount
+                        contribution = self.params.contribution
+                    if self.timeframe == "Days":
+                        contribution = contribution / 12
 
-                if self.broker.get_value() > 0: # Withdraw money only is value is positive
-                    self.broker.add_cash(contribution)  # Add monthly cash on the 20th day OR withdraw money
-                    if contribution > 0:
-                        self.log('CASH ADDED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
-                    else:
-                        self.log('CASH REMOVED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
+                    if self.broker.get_value() > 0: # Withdraw money only is value is positive
+                        self.broker.add_cash(contribution)  # Add monthly cash on the 20th day OR withdraw money
+                        if contribution > 0:
+                            self.log('CASH ADDED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
+                        else:
+                            self.log('CASH REMOVED: portfolio value was %.f. New portfolio value is %.f' % (self.broker.get_value(), (self.broker.get_value() + contribution)))
+        # if timername == 'rebalance_timer':
+        #     self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+        #             self.broker.get_cash(),
+        #             self.broker.get_value(),
+        #             self.broker.get_fundshares(),
+        #             self.broker.get_fundvalue()))
+        #     if self.strategy_name == 'benchmark':
+        #         self.buybenchmark()
+        #     else:
+        #         self.rebalance()
 
     def log(self, txt, dt=None):
         ''' Logging function for this strategy txt is the statement and dt can be used to specify a specific datetime'''
@@ -289,7 +319,10 @@ The child classes below are specific to one strategy.
 """
 
 class customweights(StandaloneStrat):
-    strategy_name = "Custom weights"
+    def __init__(self):
+        self.strategy_name = "customweights"
+        super().__init__()
+
 
     def prenext(self):
         self.weights = self.params.assetweights
@@ -301,11 +334,13 @@ class customweights(StandaloneStrat):
             self.broker.get_value(),
             self.broker.get_fundshares(),
             self.broker.get_fundvalue()))
-
             self.rebalance()
 
 class sixtyforty(StandaloneStrat):
-    strategy_name = "60-40 Portfolio"
+    def __init__(self):
+        self.strategy_name = "sixtyforty"
+        super().__init__()
+
 
     def prenext(self):
         assetclass_allocation = {
@@ -338,9 +373,11 @@ class sixtyforty(StandaloneStrat):
 
             self.rebalance()
 
-
 class onlystocks(StandaloneStrat):
-    strategy_name = "Only Stocks Portfolio"
+    def __init__(self):
+        self.strategy_name = "onlystocks"
+        super().__init__()
+
 
     def prenext(self):
         assetclass_allocation = {
@@ -377,7 +414,10 @@ class benchmark(StandaloneStrat):
     """
     dummy class to buy the benchmark
     """
-    strategy_name = "Benchmark"
+    def __init__(self):
+        self.strategy_name = "benchmark"
+        super().__init__()
+
 
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
@@ -388,9 +428,10 @@ class benchmark(StandaloneStrat):
                     self.broker.get_fundvalue()))
             self.buybenchmark()
 
-
 class vanillariskparity(StandaloneStrat):
-    strategy_name = "Vanilla Risk Parity Portfolio"
+    def __init__(self):
+        self.strategy_name = "vanillariskparity"
+        super().__init__()
 
     def prenext(self):
         assetclass_allocation = {
@@ -424,7 +465,9 @@ class vanillariskparity(StandaloneStrat):
             self.rebalance()
 
 class uniform(StandaloneStrat):
-    strategy_name = "Uniform Portfolio"
+    def __init__(self):
+        self.strategy_name = "uniform"
+        super().__init__()
 
     def prenext(self):
         assetclass_allocation = {
@@ -466,7 +509,10 @@ class uniform(StandaloneStrat):
             self.rebalance()
 
 class rotationstrat(StandaloneStrat):
-    strategy_name = "Asset rotation strategy"
+    def __init__(self):
+        self.strategy_name = "rotationstrat"
+        super().__init__()
+
 
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
@@ -514,7 +560,10 @@ class rotationstrat(StandaloneStrat):
             self.rebalance()
 
 class rotationuniform(StandaloneStrat):
-    strategy_name = "Asset rotation strategy"
+    def __init__(self):
+        self.strategy_name = "rotationuniform"
+        super().__init__()
+
 
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
@@ -567,7 +616,10 @@ class rotationuniform(StandaloneStrat):
 # https: // thequantmba.wordpress.com / 2016 / 12 / 14 / risk - parityrisk - budgeting - portfolio - in -python /
 # Here the risk parity is run only at portfolio level
 class riskparity(StandaloneStrat):
-    strategy_name = "Risk Parity"
+    def __init__(self):
+        self.strategy_name = "riskparity"
+        super().__init__()
+
 
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
@@ -604,7 +656,10 @@ class riskparity(StandaloneStrat):
 # Here the risk parity is run first at asset class level and then at portfolio level. To be used when more than an asset
 # is present in each category
 class riskparity_nested(StandaloneStrat):
-    strategy_name = "Risk Parity (Nested)"
+    def __init__(self):
+        self.strategy_name = "riskparity_nested"
+        super().__init__()
+
 
     def next_open(self):
         assetclass_allocation = {
@@ -715,7 +770,10 @@ class riskparity_nested(StandaloneStrat):
 
 # Risk parity portfolio. The implementation is based on the Python library riskparity portfolio
 class riskparity_pylib(StandaloneStrat):
-    strategy_name = "Risk Parity (PythonLib)"
+    def __init__(self):
+        self.strategy_name = "riskparity_pylib"
+        super().__init__()
+
 
     def next_open(self):
         if len(self) % self.params.reb_days == 0:
@@ -756,3 +814,619 @@ class meanvarStrat(StandaloneStrat):
     def next(self):
         print("Work in progress")
 
+# Semi-passive strategies
+class trend_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "trend_u"
+        super().__init__()
+
+    '''
+    First allocate to each asset class and instrument; then check the trending value.
+    If the current price is lower than the moving average then set the weight at 0 (that is keep cash). 
+    This is a simplification of buying T-Bills. 
+    '''
+    def next_open(self):
+        assetclass_allocation = {
+            "gold": 0.2,
+            "commodity": 0.2,
+            "equity": 0.2,
+            "bond_lt": 0.2,
+            "bond_it": 0.2
+        }
+
+        if len(self) % self.params.reb_days == 0:
+            tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable', 'benchmark']]
+
+            assetclass_cnt = {}
+            assetclass_flag = {}
+            for key in assetclass_allocation:
+                count = sum(map(lambda x: x == key, tradable_shareclass))
+                assetclass_cnt[key] = count
+                if count > 0:
+                    assetclass_flag[key] = 1
+                else:
+                    assetclass_flag[key] = 0
+
+            num_assetclasses = sum(assetclass_flag.values())
+            assetclass_weight = {k: v / num_assetclasses for k, v in assetclass_flag.items()}
+
+            a = list(map(assetclass_weight.get, tradable_shareclass))
+            b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+            self.weights = [float(x) / y for x, y in zip(a, b)]
+
+            # Apply the trend filter here
+            for asset in range(0, self.params.n_assets):
+                if self.assetclose[asset].get(0)[0] < self.sma[asset][0]:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class trend2_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "trend2_u"
+        super().__init__()
+
+    strategy_name = "Trend Uniform"
+    '''
+    First allocate to each asset class and instrument; then check the trending value.
+    If the current price is lower than the moving average then set the weight at 0 (that is keep cash). 
+    This is a simplification of buying T-Bills. 
+    '''
+    def next_open(self):
+
+        if len(self) % self.params.reb_days == 0:
+        # Apply the relative momentum filter here
+            trend = []
+            price = []
+            for asset in range(0, self.params.n_assets):
+                trend.append(self.sma[asset][0])
+                price.append(self.assetclose[asset].get(0)[0])
+
+            trend_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'trend': trend,
+                                        'price': price,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            trend_df['trend_buy_flag'] = \
+                trend_df['trend'] > trend_df['price']
+
+            tradable_shareclass_trend = list(
+                trend_df.loc[trend_df['trend_buy_flag'] == True]['tradable_shareclass'].unique())
+            num_assetclasses = len(tradable_shareclass_trend)
+
+            assetclass_cnt = \
+                trend_df.loc[trend_df['trend_buy_flag'] == True].groupby('tradable_shareclass').agg(['count'])[
+                    'idx']
+            trend_df = pd.merge(trend_df, assetclass_cnt, how="left", on='tradable_shareclass')
+
+            conditions = [(trend_df['tradable_shareclass'].isin(tradable_shareclass_trend)) & (
+                        trend_df['trend_buy_flag'] == True)]
+
+            if num_assetclasses > 0:
+                values = [1 / num_assetclasses]
+            else:
+                values = [0]
+            trend_df['assetclass_weight'] = np.select(conditions, values)
+            trend_df['asset_weight'] = trend_df['assetclass_weight'] / trend_df['count']
+            trend_df['asset_weight'] = trend_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = trend_df['asset_weight'].to_list()
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class trend_rp(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "trend_rp"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
+                return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            self.weights = target_risk_contribution(target_risk, cov)
+
+            # Apply the trend filter here
+            for asset in range(0, self.params.n_assets):
+                if self.assetclose[asset].get(0)[0] < self.sma[asset][0]:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class absmom_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "absmom_u"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            assetclass_allocation = {
+                "gold": 0.2,
+                "commodity": 0.2,
+                "equity": 0.2,
+                "bond_lt": 0.2,
+                "bond_it": 0.2
+            }
+
+            tradable_shareclass = [x for x in self.params.shareclass if x not in ['non-tradable', 'benchmark']]
+
+            assetclass_cnt = {}
+            assetclass_flag = {}
+            for key in assetclass_allocation:
+                count = sum(map(lambda x: x == key, tradable_shareclass))
+                assetclass_cnt[key] = count
+                if count > 0:
+                    assetclass_flag[key] = 1
+                else:
+                    assetclass_flag[key] = 0
+
+            num_assetclasses = sum(assetclass_flag.values())
+            assetclass_weight = {k: v / num_assetclasses for k, v in assetclass_flag.items()}
+
+            a = list(map(assetclass_weight.get, tradable_shareclass))
+            b = list(map(assetclass_cnt.get, tradable_shareclass))
+
+            self.weights = [float(x) / y for x, y in zip(a, b)]
+
+            # Apply the absolute momentum filter here
+            for asset in range(0, self.params.n_assets):
+                if self.momentum[asset][0] < 0:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class absmom_rp(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "absmom_rp"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            target_risk = [1 / self.params.n_assets] * self.params.n_assets  # Same risk for each asset = risk parity
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in self.assetclose]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
+                return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            self.weights = target_risk_contribution(target_risk, cov)
+
+            # Apply the absolute momentum filter here
+            for asset in range(0, self.params.n_assets):
+                if self.momentum[asset][0] < 0:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class relmom_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "relmom_u"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+
+            # Apply the relative momentum filter here
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = \
+                momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+
+            tradable_shareclass_momentum = list(
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True]['tradable_shareclass'].unique())
+            num_assetclasses = len(tradable_shareclass_momentum)
+
+            assetclass_cnt = \
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True].groupby('tradable_shareclass').agg(['count'])[
+                    'idx']
+            momentum_df = pd.merge(momentum_df, assetclass_cnt, how="left", on='tradable_shareclass')
+
+            conditions = [(momentum_df['tradable_shareclass'].isin(tradable_shareclass_momentum)) & (
+                        momentum_df['momentum_buy_flag'] == True)]
+            values = [1 / num_assetclasses]
+            momentum_df['assetclass_weight'] = np.select(conditions, values)
+            momentum_df['asset_weight'] = momentum_df['assetclass_weight'] / momentum_df['count']
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class relmom_rp(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "relmom_rp"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+            n_momentum_assets = momentum_df['momentum_buy_flag'].sum()
+
+            target_risk = [1 / n_momentum_assets] * n_momentum_assets # Same risk for each asset in momentum portfolio = risk parity
+            assetclose_momentum = [self.assetclose[i] for i in range(0, self.params.n_assets) if momentum_df['momentum_buy_flag'][i]]
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in assetclose_momentum]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
+                return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            weights_momentum = target_risk_contribution(target_risk, cov)
+            momentum_idx = momentum_df.loc[momentum_df['momentum_buy_flag']]['idx'].to_list()
+            weights_df = pd.DataFrame({'idx':momentum_idx, 'asset_weight':weights_momentum})
+            momentum_df = pd.merge(left=momentum_df, right=weights_df, how='left', on='idx')
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class momtrend_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "momtrend_u"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+
+            # Apply the relative momentum filter here
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+
+            tradable_shareclass_momentum = list(
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True]['tradable_shareclass'].unique())
+            num_assetclasses = len(tradable_shareclass_momentum)
+
+            assetclass_cnt = \
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True].groupby('tradable_shareclass').agg(['count'])[
+                    'idx']
+            momentum_df = pd.merge(momentum_df, assetclass_cnt, how="left", on='tradable_shareclass')
+
+            conditions = [(momentum_df['tradable_shareclass'].isin(tradable_shareclass_momentum)) & (
+                        momentum_df['momentum_buy_flag'] == True)]
+            values = [1 / num_assetclasses]
+            momentum_df['assetclass_weight'] = np.select(conditions, values)
+            momentum_df['asset_weight'] = momentum_df['assetclass_weight'] / momentum_df['count']
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            # Apply the trend filter here
+            for asset in range(0, self.params.n_assets):
+                if self.assetclose[asset].get(0)[0] < self.sma[asset][0]:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class momtrend_rp(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "momtrend_rp"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+            n_momentum_assets = momentum_df['momentum_buy_flag'].sum()
+
+            target_risk = [1 / n_momentum_assets] * n_momentum_assets # Same risk for each asset in momentum portfolio = risk parity
+            assetclose_momentum = [self.assetclose[i] for i in range(0, self.params.n_assets) if momentum_df['momentum_buy_flag'][i]]
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in assetclose_momentum]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
+                return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            weights_momentum = target_risk_contribution(target_risk, cov)
+            momentum_idx = momentum_df.loc[momentum_df['momentum_buy_flag']]['idx'].to_list()
+            weights_df = pd.DataFrame({'idx':momentum_idx, 'asset_weight':weights_momentum})
+            momentum_df = pd.merge(left=momentum_df, right=weights_df, how='left', on='idx')
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            # Apply the trend filter here
+            for asset in range(0, self.params.n_assets):
+                if self.assetclose[asset].get(0)[0] < self.sma[asset][0]:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class momtrelabs_u(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "momtrelabs_u"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+
+            # Apply the relative momentum filter here
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+
+            tradable_shareclass_momentum = list(
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True]['tradable_shareclass'].unique())
+            num_assetclasses = len(tradable_shareclass_momentum)
+
+            assetclass_cnt = \
+                momentum_df.loc[momentum_df['momentum_buy_flag'] == True].groupby('tradable_shareclass').agg(['count'])[
+                    'idx']
+            momentum_df = pd.merge(momentum_df, assetclass_cnt, how="left", on='tradable_shareclass')
+
+            conditions = [(momentum_df['tradable_shareclass'].isin(tradable_shareclass_momentum)) & (
+                        momentum_df['momentum_buy_flag'] == True)]
+            values = [1 / num_assetclasses]
+            momentum_df['assetclass_weight'] = np.select(conditions, values)
+            momentum_df['asset_weight'] = momentum_df['assetclass_weight'] / momentum_df['count']
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            # Apply the absolute momentum filter here
+            for asset in range(0, self.params.n_assets):
+                if self.momentum[asset][0] < 0:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class momrelabs_rp(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "momrelabs_rp"
+        super().__init__()
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+            momentum_df['momentum_buy_flag'] = momentum_df['momentum'] > momentum_df['momentum'].quantile(self.params.momentum_percentile)
+            n_momentum_assets = momentum_df['momentum_buy_flag'].sum()
+
+            target_risk = [1 / n_momentum_assets] * n_momentum_assets # Same risk for each asset in momentum portfolio = risk parity
+            assetclose_momentum = [self.assetclose[i] for i in range(0, self.params.n_assets) if momentum_df['momentum_buy_flag'][i]]
+            thisAssetClose = [x.get(size=self.params.lookback_period_long) for x in assetclose_momentum]
+            # Check if asset prices is equal to the lookback period for all assets exist
+            thisAssetClose_len = [len(i) for i in thisAssetClose]
+            if not all(elem == self.params.lookback_period_long for elem in thisAssetClose_len):
+                return
+
+            logrets = [np.diff(np.log(x)) for x in thisAssetClose]
+
+            if self.params.corrmethod == 'pearson':
+                corr = np.corrcoef(logrets)
+            elif self.params.corrmethod == 'spearman':
+                corr, p, = stats.spearmanr(logrets, axis=1)
+
+            stddev = np.array([np.std(x[len(x) - self.params.lookback_period_short:len(x)]) for x in logrets])  # standard dev indicator
+            stddev_matrix = np.diag(stddev)
+            cov = stddev_matrix @ corr @ stddev_matrix  # covariance matrix
+
+            weights_momentum = target_risk_contribution(target_risk, cov)
+            momentum_idx = momentum_df.loc[momentum_df['momentum_buy_flag']]['idx'].to_list()
+            weights_df = pd.DataFrame({'idx':momentum_idx, 'asset_weight':weights_momentum})
+            momentum_df = pd.merge(left=momentum_df, right=weights_df, how='left', on='idx')
+            momentum_df['asset_weight'] = momentum_df['asset_weight'].replace(np.nan, 0)
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            # Apply the absolute momentum filter here
+            for asset in range(0, self.params.n_assets):
+                if self.momentum[asset][0] < 0:
+                    self.weights[asset] = 0
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()
+
+class GEM(StandaloneStrat):
+    def __init__(self):
+        self.strategy_name = "GEM"
+        super().__init__()
+
+    """
+    https://blog.thinknewfound.com/2019/01/fragility-case-study-dual-momentum-gem/
+    """
+
+    def next_open(self):
+        if len(self) % self.params.reb_days == 0:
+            # Required asset classes to execute the strategy
+            assetclasses = ["equity","equity_intl","bond_lt","money_market"]
+
+            # Get the assets belonging to the categories required and ignore the rest
+            tradable_shareclass = [x for x in self.params.shareclass if x in assetclasses]
+
+            # Check that only 4 assets are delivered with the shareclasses defined above
+            assetclass_cnt = {}
+            assetclass_flag = {}
+            for assetclass in assetclasses:
+                count = sum(map(lambda x: x == assetclass, tradable_shareclass))
+                assetclass_cnt[assetclass] = count
+                if count > 0:
+                    assetclass_flag[assetclass] = 1
+                else:
+                    assetclass_flag[assetclass] = 0
+
+            for key in assetclass_cnt.keys():
+                if not assetclass_cnt[key] == 1:
+                    sys.exit('Error: ' + str(assetclass_cnt[key]) + ' assets found for the category ' + str(key) + '. GEM strategy requires exactly one asset for this category.')
+
+            # calculate the momentum
+            momentum = []
+            for asset in range(0, self.params.n_assets):
+                momentum.append(self.momentum[asset][0])
+
+            momentum_df = pd.DataFrame({'idx': range(0, self.params.n_assets),
+                                        'momentum': momentum,
+                                        'tradable_shareclass': [x for x in self.params.shareclass if
+                                                                x not in ['non-tradable', 'benchmark']]})
+
+            momentum_df['asset_weight'] = 0
+            if momentum_df.loc[momentum_df['tradable_shareclass']=='equity','momentum'].values[0] > momentum_df.loc[momentum_df['tradable_shareclass']=='money_market','momentum'].values[0]:
+                if momentum_df.loc[momentum_df['tradable_shareclass']=='equity','momentum'].values[0] > momentum_df.loc[momentum_df['tradable_shareclass']=='equity_intl','momentum'].values[0]:
+                    momentum_df.loc[momentum_df['tradable_shareclass'] == 'equity','asset_weight'] = 1
+                else:
+                    momentum_df.loc[momentum_df['tradable_shareclass'] == 'equity_intl','asset_weight'] = 1
+            else:
+                momentum_df.loc[momentum_df['tradable_shareclass'] == 'bond_lt','asset_weight'] = 1
+
+            self.weights = momentum_df['asset_weight'].to_list()
+
+            self.log("Pre-rebalancing CASH %.2f, VALUE  %.2f, FUND SHARES %.2f, FUND VALUE %.2f:" % (
+            self.broker.get_cash(),
+            self.broker.get_value(),
+            self.broker.get_fundshares(),
+            self.broker.get_fundvalue()))
+
+            self.rebalance()

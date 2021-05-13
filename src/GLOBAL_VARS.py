@@ -6,6 +6,7 @@
 #
 # Federico Garzarelli
 ###############################################################################
+from datetime import date, timedelta, datetime
 
 # parameters used in main.py
 # Set the strategy parameters
@@ -13,30 +14,13 @@
 expense_ratio = 0.01
 APPLY_LEVERAGE_ON_LIVE_STOCKS = False
 
-assetclass_dict = {
-    # "medium" term, daily time series
-    'GLD': 'gold',
-    'COM': 'commodity',
-    'SP500': 'equity',
-    'SP500TR': 'equity',
-    'LTB': 'bond_lt',
-    'US20YB': 'bond_lt',
-    'ITB': 'bond_it',
-    'TIP': 'bond_lt',  # can also be classified as commodities due to their inflation hedge
-    # "long" term, annual time series
-    'GLD_LNG': 'gold',
-    'OIL_LNG': 'commodity',
-    'EQ_LNG': 'equity',
-    'LTB_LNG': 'bond_lt',
-    'ITB_LNG': 'bond_it',
-    'RE_LNG': 'commodity',  # can also be classified as equities
-    'US10YB_LNG': 'bond_it'
-}
-
 strat_params_days = {
-    'reb_days': 30,  # rebalance the portfolio every month
+    'reb_days': 21,  # rebalance the portfolio every month
     'lookback_period_short': 20,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 120,  # period to calculate the correlation (Minimum 2)
+    'moving_average_period': 250, # period to calculate the moving average (Minimum 2)
+    'momentum_period': 250, # period to calculate the momentum returns (Minimum 2)
+    'momentum_percentile': 0.5, # percentile of assets with the highest return in a period to form the relative momentum portfolio
     'printlog': True,  # Print log in the console
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
@@ -45,14 +29,20 @@ strat_params_years = {
     'reb_days': 1,  # rebalance the portfolio every year
     'lookback_period_short': 5,  # period to calculate the variance (Minimum 2)
     'lookback_period_long': 10,  # period to calculate the correlation (Minimum 2)
+    'moving_average_period': 2,  # period to calculate the moving average (Minimum 2)
+    'momentum_period': 2,  # period to calculate the momentum returns (Minimum 2)
+    'momentum_percentile': 0.75, # percentile of assets with the highest return in a period to form the relative momentum portfolio
     'printlog': True,  # Print log in the console
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
 
 strat_params_weights = {
-    'reb_days': 30,  #  rebalance the portfolio every month
+    'reb_days': 21,  #  rebalance the portfolio every month
     'lookback_period_short': 2,  # set the minimum period to the minimum possible value (i.e. 2), when weights are provided
     'lookback_period_long': 2,
+    'moving_average_period': 190,  # period to calculate the moving average (Minimum 2)
+    'momentum_period': 190,  # period to calculate the momentum returns (Minimum 2)
+    'momentum_percentile': 0.75, # percentile of assets with the highest return in a period to form the relative momentum portfolio.
     'printlog': True,  # Print log in the console
     'corrmethod': 'pearson'  # 'spearman' # method for the calculation of the correlation matrix
 }
@@ -72,3 +62,9 @@ report_params = {
     'stddev_sample': True,  # Bessel correction (N-1) when calculating standard deviation from a sample
     'logreturns': False  # Use logreturns instead of percentage returns when calculating metrics (not recommended)
 }
+
+# DB parameters
+DEFAULT_DATE = str(date.today())+ " 00:00:00"
+DEFAULT_STARTDATE = "1920-01-01 00:00:00" #"1975-01-01 00:00:00"
+
+DB_NAME = 'myPortfolio.db'

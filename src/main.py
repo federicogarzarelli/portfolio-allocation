@@ -8,6 +8,7 @@ from report import Cerebro
 from report_aggregator import ReportAggregator
 import sys
 pd.options.mode.chained_assignment = None  # default='warn'
+from PortfolioDB import PortfolioDB
 
 
 # Strategy parameters not passed
@@ -71,7 +72,8 @@ def runOneStrat(strategy=None):
         # Import the historical assets
         shares_list = args.shares.split(',') # GLD,COM,SP500,LTB,ITB,TIP
         for share in shares_list:
-            df = import_process_hist(share, args)
+            #df = import_process_hist(share, args)
+            df = import_histprices_db(share)
             for column in ['open', 'high', 'low', 'close']:
                 df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=expense_ratio, timeframe=timeframe)
 
@@ -84,7 +86,12 @@ def runOneStrat(strategy=None):
             data.append(df)
 
         if args.shareclass is None:
-            shareclass = [assetclass_dict[x] for x in shares_list]
+            db = PortfolioDB(databaseName=DB_NAME)
+            shareclass = []
+            for share in shares_list:
+                thisshareinfo = db.getStockInfo(share)
+                shareclass.append(thisshareinfo['asset_class'].values[0])
+            #shareclass = [assetclass_dict[x] for x in shares_list]
         else:
             shareclass = args.shareclass.split(',')
 
@@ -98,7 +105,8 @@ def runOneStrat(strategy=None):
         # Import the historical assets
         shares_list = args.shares.split(',') # GLD_LNG,OIL_LNG,EQ_LNG,LTB_LNG,ITB_LNG,RE_LNG
         for share in shares_list:
-            df = import_process_hist(share, args)
+            #df = import_process_hist(share, args)
+            df = import_histprices_db(share)
             for column in ['open', 'high', 'low', 'close']:
                 df[column] = add_leverage(df[column], leverage=args.leverage, expense_ratio=expense_ratio, timeframe=timeframe)
 
@@ -173,8 +181,9 @@ def runOneStrat(strategy=None):
         shares_list = shares_list + indicatorLabels
 
     if args.benchmark is not None:
-        # download the datas
-        benchmark_df = import_process_hist(args.benchmark, args) # First look for the benchmark in the historical "database"
+        # look for the benchmark in the database
+        #benchmark_df = import_process_hist(args.benchmark, args) # First look for the benchmark in the historical "database"
+        benchmark_df = import_histprices_db(args.benchmark)
 
         if benchmark_df is None: # if not, download it
             benchmark_df = web.DataReader(args.benchmark, "yahoo", startdate, enddate)["Adj Close"]
@@ -219,7 +228,10 @@ def runOneStrat(strategy=None):
                             corrmethod=strat_params.get('corrmethod'),
                             reb_days=strat_params.get('reb_days'),
                             lookback_period_short=strat_params.get('lookback_period_short'),
-                            lookback_period_long=strat_params.get('lookback_period_long')
+                            lookback_period_long=strat_params.get('lookback_period_long'),
+                            moving_average_period=strat_params.get('moving_average_period'),
+                            momentum_period=strat_params.get('momentum_period'),
+                            momentum_percentile=strat_params.get('momentum_percentile')
                             )
 
     # otherwise, rely on the weights of a strategy
@@ -234,7 +246,10 @@ def runOneStrat(strategy=None):
                             corrmethod=strat_params.get('corrmethod'),
                             reb_days=strat_params.get('reb_days'),
                             lookback_period_short=strat_params.get('lookback_period_short'),
-                            lookback_period_long=strat_params.get('lookback_period_long')
+                            lookback_period_long=strat_params.get('lookback_period_long'),
+                            moving_average_period=strat_params.get('moving_average_period'),
+                            momentum_period=strat_params.get('momentum_period'),
+                            momentum_percentile=strat_params.get('momentum_percentile')
                             )
 
     # Run backtest
