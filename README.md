@@ -95,8 +95,8 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 
 #### Strategy parameters
 * __reb_days__ Number of days (of bars) every which the portfolio is rebalanced. Default is 30 for daily data and 1 for yearly data.
-* __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 20 for daily data and 10 for yearly data. 
-* __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and `riskparity_nested`. Default is 120 for daily data and 10 for yearly data.
+* __lookback_period_short__ Window to calculate the standard deviation of assets returns. Applies to strategy `riskparity` and derived strategies. Default is 20 for daily data and 10 for yearly data. 
+* __lookback_period_long__ Window to calculate the correlation matrix of assets returns. Applies to strategies `riskparity` and derived strategies. Default is 120 for daily data and 10 for yearly data.
 * __moving_average_period__ Window to calculate simple moving average. Applies to strategies `trend_uniform`, `trend_riskparity`, `momentumtrend_uniform`  and `momentumtrend_riskparity`. Default is 252 for daily data and 5 for yearly data.
 * __momentum_period__ Window to calculate the momentum. Applies to strategies `absolutemomentum_uniform`, `relativemomentum_uniform`, `momentumtrend_uniform`, `absolutemomentum_riskparity`, `relativemomentum_riskparity`  and `momentumtrend_riskparity`. Default is 252 for daily data and 5 for yearly data.
 * __printlog__ If true a log is output in the terming. Default is True.
@@ -111,7 +111,7 @@ The parameters below are hardcoded in the `GLOBAL_VARS.py` file.
 * __market_sigma__ Annual standard deviation of the market, to be used in Treynor ratio, Information ratio. Default is  0.15.
 * __fundmode__ Calculate metrics in fund model vs asset mode. Default is True.
 * __stddev_sample__ Bessel correction (N-1) when calculating standard deviation from a sample. Default is True.
-* __logreturns__ Use logreturns instead of percentage returns when calculating metrics (recommended). Default is True.
+* __logreturns__ Use logreturns instead of percentage returns when calculating metrics (not recommended). Default is False.
 * __annualize__  Calculate annualized metrics by annualizing returns first. Default is True.
 
 
