@@ -24,3 +24,4 @@ empyrical>=0.5.3
 statsmodels>=0.12.1
 yfinance>=0.1.54
 streamlit>=0.82.0
+plotly>=4.14.3

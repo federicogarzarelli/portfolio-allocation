@@ -36,7 +36,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from GLOBAL_VARS import *
+import GLOBAL_VARS
 import collections
 import math
 from collections import OrderedDict
@@ -375,7 +375,7 @@ class MyReturns(MyTimeFrameAnalyzerBase):
     )
 
     _TANN = {
-        bt.TimeFrame.Days: DAYS_IN_YEAR, #bt.TimeFrame.Days: 252.0,
+        bt.TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'], #bt.TimeFrame.Days: 252.0,
         bt.TimeFrame.Weeks: 52.0,
         bt.TimeFrame.Months: 12.0,
         bt.TimeFrame.Years: 1.0,
@@ -619,7 +619,7 @@ class MyDistributionMoments(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: DAYS_IN_YEAR, #TimeFrame.Days: 252,
+        TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'], #TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -712,7 +712,7 @@ class MyRiskAdjusted_VolBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: DAYS_IN_YEAR, #TimeFrame.Days: 252,
+        TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'], #TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -817,7 +817,7 @@ class MyRiskAdjusted_VaRBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
+        TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'],  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -919,7 +919,7 @@ class MyRiskAdjusted_LPMBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
+        TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'],  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,
@@ -1024,7 +1024,7 @@ class MyRiskAdjusted_DDBased(Analyzer):
     )
 
     RATEFACTORS = {
-        TimeFrame.Days: DAYS_IN_YEAR,  # TimeFrame.Days: 252,
+        TimeFrame.Days: GLOBAL_VARS.params['DAYS_IN_YEAR'],  # TimeFrame.Days: 252,
         TimeFrame.Weeks: 52,
         TimeFrame.Months: 12,
         TimeFrame.Years: 1,

@@ -9,9 +9,11 @@ logo = Image.open('src/app/logo.png')
 
 st.image(logo)
 
+
+
 st.markdown("""
 # Backtest engine
-This app backtests portfolio allocation strategies using historica data.   
+This app backtests portfolio allocation strategies using historical data.   
 """)
 
 # Add all your application here

@@ -12,6 +12,7 @@ import math
 import numpy.random as nrand
 from GLOBAL_VARS import *
 from PortfolioDB import PortfolioDB
+import platform
 
 # finds file in a folder
 def find(name, path):
@@ -61,88 +62,25 @@ def print_section_divider(strategy_name):
     print("##############################################################################")
 
 
-def print_header(args):
+def print_header(params, strategy_list):
     print('##############################################################################')
     print('##############################################################################')
     print('### Backtest starting')
     print('###  Parameters:')
-    print('###    --historic' + ' ' + str(vars(args)['historic']))
-    print('###    --shares' + ' ' + str(vars(args)['shares']))
-    print('###    --shareclass' + ' ' + str(vars(args)['shareclass']))
-    print('###    --weights' + ' ' + str(vars(args)['weights']))
-    print('###    --indicators' + ' ' + str(vars(args)['indicators']))
-    print('###    --initial_cash' + ' ' + str(vars(args)['initial_cash']))
-    print('###    --contribution' + ' ' + str(vars(args)['contribution']))
-    print('###    --create_report' + ' ' + str(vars(args)['create_report']))
-    print('###    --report_name' + ' ' + str(vars(args)['report_name']))
-    print('###    --strategy' + ' ' + str(vars(args)['strategy']))
-    print('###    --startdate' + ' ' + str(vars(args)['startdate']))
-    print('###    --enddate' + ' ' + str(vars(args)['enddate']))
-    print('###    --system' + ' ' + str(vars(args)['system']))
-    print('###    --leverage' + ' ' + str(vars(args)['leverage']))
+    print('###    historic' + ' ' + str(params['historic']))
+    print('###    shares' + ' ' + str(params['shares']))
+    print('###    shareclass' + ' ' + str(params['shareclass']))
+    print('###    weights' + ' ' + str(params['weights']))
+    print('###    indicators' + ' ' + str(params['indicator']))
+    print('###    initial_cash' + ' ' + str(params['initial_cash']))
+    print('###    contribution' + ' ' + str(params['contribution']))
+    print('###    create_report' + ' ' + str(params['create_report']))
+    print('###    report_name' + ' ' + str(params['report_name']))
+    print('###    strategy' + ' ' + str(strategy_list))
+    print('###    startdate' + ' ' + str(params['startdate']))
+    print('###    enddate' + ' ' + str(params['enddate']))
+    print('###    leverage' + ' ' + str(params['leverage']))
     print('##############################################################################')
-
-def import_process_hist(dataLabel, args):
-    wd = os.path.dirname(os.getcwd())
-
-    mapping_path_linux = {
-        # "medium" term, daily time series
-        'GLD': wd + '/modified_data/GLD.csv',
-        'SP500': wd + '/modified_data/SP500.csv',
-        'SP500TR': wd + '/modified_data/SP500TR.csv',
-        'COM': wd + '/modified_data/COM.csv',
-        'LTB': wd + '/modified_data/LTB.csv',
-        'US20YB': wd + '/modified_data/US20YB.csv',
-        'ITB': wd + '/modified_data/ITB.csv',
-        'TIP': wd + '/modified_data/TIP.csv',
-        # "long" term, annual time series
-        'GLD_LNG': wd + '/modified_data/GLD_LNG.csv',
-        'OIL_LNG': wd + '/modified_data/OIL_LNG.csv',
-        'EQ_LNG' : wd + '/modified_data/EQ_LNG.csv',
-        'RE_LNG': wd + '/modified_data/RE_LNG.csv',
-        'LTB_LNG': wd + '/modified_data/LTB_LNG.csv',
-        'ITB_LNG': wd + '/modified_data/ITB_LNG.csv',
-        'US10YB_LNG': wd + '/modified_data/US10YB_LNG.csv',
-
-    }
-
-    mapping_path_windows = {
-        # "medium" term, daily time series
-        'GLD': wd + '\modified_data\GLD.csv',
-        'SP500': wd + '\modified_data\SP500.csv',
-        'SP500TR': wd + '\modified_data\SP500TR.csv',
-        'COM': wd + '\modified_data\COM.csv',
-        'LTB': wd + '\modified_data\LTB.csv',
-        'US20YB': wd + '\modified_data\\US20YB.csv',
-        'ITB': wd + '\modified_data\ITB.csv',
-        'TIP': wd + '\modified_data\TIP.csv',
-        # "long" term, annual time series
-        'GLD_LNG': wd + '\modified_data\GLD_LNG.csv',
-        'OIL_LNG': wd + '\modified_data\OIL_LNG.csv',
-        'EQ_LNG': wd + '\modified_data\EQ_LNG.csv',
-        'RE_LNG': wd + '\modified_data\RE_LNG.csv',
-        'LTB_LNG': wd + '\modified_data\LTB_LNG.csv',
-        'ITB_LNG': wd + '\modified_data\ITB_LNG.csv',
-        'US10YB_LNG': wd + '\modified_data\\US10YB_LNG.csv',
-
-    }
-
-    if args.system == 'linux':
-        if dataLabel in mapping_path_linux.keys():
-            datapath = (mapping_path_linux[dataLabel])
-        else:
-            datapath = None
-    else:
-        if dataLabel in mapping_path_windows.keys():
-            datapath = (mapping_path_windows[dataLabel])
-        else:
-            datapath = None
-    if datapath is not None:
-        df = pd.read_csv(datapath, skiprows=0, header=0, parse_dates=True, index_col=0)
-    else:
-        df = None
-
-    return df
 
 def import_histprices_db(dataLabel):
     db = PortfolioDB(databaseName = DB_NAME)
@@ -157,7 +95,7 @@ def import_histprices_db(dataLabel):
 
         frequency = stock_info['frequency'].values[0]
         if frequency == 'D':
-            dt = 1 / DAYS_IN_YEAR_BOND_PRICE
+            dt = 1 / params['DAYS_IN_YEAR_BOND_PRICE']
         elif frequency == 'Y':
             dt = 1
 
@@ -183,11 +121,11 @@ def add_leverage(proxy, leverage=1, expense_ratio=0.0, timeframe=bt.TimeFrame.Da
     initial_value = proxy.iloc[0]
     pct_change = proxy.pct_change(1)
     if timeframe == bt.TimeFrame.Days:
-        pct_change = (pct_change - expense_ratio / DAYS_IN_YEAR) * leverage
+        pct_change = (pct_change - expense_ratio / params['DAYS_IN_YEAR']) * leverage
     elif timeframe == bt.TimeFrame.Years:
-        pct_change = ((1 + pct_change) ** (1 / DAYS_IN_YEAR)) - 1 # Transform into daily returns
-        pct_change = (pct_change - expense_ratio / DAYS_IN_YEAR) * leverage # Apply leverage
-        pct_change = ((1 + pct_change) ** DAYS_IN_YEAR) - 1 # Re-transform into yearly returns
+        pct_change = ((1 + pct_change) ** (1 / params['DAYS_IN_YEAR'])) - 1 # Transform into daily returns
+        pct_change = (pct_change - expense_ratio / params['DAYS_IN_YEAR']) * leverage # Apply leverage
+        pct_change = ((1 + pct_change) ** params['DAYS_IN_YEAR']) - 1 # Re-transform into yearly returns
     new_price = initial_value * (1 + pct_change).cumprod()
     new_price.iloc[0] = initial_value
     return new_price

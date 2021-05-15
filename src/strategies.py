@@ -76,7 +76,7 @@ class StandaloneStrat(bt.Strategy):
         ('reb_days', 20),  # every month, we rebalance the portfolio
         ('lookback_period_short', 60),  # period to calculate the variance
         ('lookback_period_long', 180),  # period to calculate the correlation
-        ('moving_average_period', 180),  # period to calculate the moving average
+        ('moving_average_period', 180),  # period to calcuate the moving average
         ('momentum_period', 180),  # period to calculate the momentum return
         ('momentum_percentile', 0.5),  # percentile of assets with the highest return in a period to form the relative momentum portfolio
         ('initial_cash', 1000000),  # initial amount of cash to be invested

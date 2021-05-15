@@ -180,7 +180,7 @@ class PortfolioDB(Database):
         # Reads database to get the list of stocks with the min and max price date
         sqlQuery = """SELECT * FROM {}; """ \
             .format(self.DATES_STOCKS_TABLE_NAME)
-        # print(sqlQuery)
+
         stockDataDates = self.readDatabase(sqlQuery)
 
         sqlQuery = """SELECT * FROM {}; """ \

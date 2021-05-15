@@ -8,6 +8,7 @@ from strategies import *
 import pybloqs.block.table_formatters as tf
 from pybloqs import Block
 import GLOBAL_VARS as GLOBAL_VARS
+from datetime import datetime
 
 class ReportAggregator:
     """ Aggregates one-strategy reports and creates a multi-strategy report
@@ -118,7 +119,25 @@ class ReportAggregator:
         return fig
 
     def get_report_params(self):
-        return GLOBAL_VARS.report_params
+        report_params = {
+            'fundmode': GLOBAL_VARS.params['fundmode'],  # Calculate metrics in fund model vs asset mode
+            'alpha': GLOBAL_VARS.params['alpha'],
+            # confidence interval to be used in VaR, CVaR and VaR based metrics (excess VaR, conditional Sharpe Ratio)
+            'annualize': GLOBAL_VARS.params['annualize'],  # calculate annualized metrics by annualizing returns first
+            'riskfree': GLOBAL_VARS.params['riskfree'],
+            # Risk free rate to be used in metrics like treynor_ratio, sharpe_ratio, etc
+            'targetrate': GLOBAL_VARS.params['targetrate'],
+            # target return rate to be used in omega_ratio, sortino_ratio, kappa_three_ratio, gain_loss_ratio, upside_potential_ratio
+            'market_mu': GLOBAL_VARS.params['market_mu'],
+            # avg return of the market, to be used in Treynor ratio, Information ratio
+            'market_sigma': GLOBAL_VARS.params['market_sigma'],
+            # std dev of the market, to be used in Treynor ratio, Information ratio
+            'stddev_sample': GLOBAL_VARS.params['stddev_sample'],
+            # Bessel correction (N-1) when calculating standard deviation from a sample
+            'logreturns': GLOBAL_VARS.params['logreturns']
+            # Use logreturns instead of percentage returns when calculating metrics (not recommended)
+        }
+        return report_params
 
     def get_strategy_names(self):
         return self.InputList[2].columns.to_list() # InputList[2] = Performance data
@@ -204,9 +223,9 @@ class ReportAggregator:
         fig_assets_dd.savefig(assets_dd_curve)
 
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("templates/template.html")
+        template = env.get_template("src/templates/template.html")
         header = self.get_header_data()
-        if self.system == 'windows':
+        if self.system == 'Windows':
             graphics = {'url_equity_curve': 'file:\\' + eq_curve,
                         'url_assetprices': 'file:\\' + assets_curve,
                         'url_eq_dd_curve': 'file:\\' + eq_dd_curve,

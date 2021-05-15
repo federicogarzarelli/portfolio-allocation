@@ -13,7 +13,7 @@ class PerformanceReport:
         self.stratbt = stratbt  # works for only 1 strategy
         self.system = system
         self.timeframe = timeframe
-        self.logreturns = report_params['logreturns']
+        self.logreturns = params['logreturns']
 
     def get_performance_stats(self):
         """ Return dict with performance stats for given strategy withing backtest
@@ -23,7 +23,7 @@ class PerformanceReport:
 
         # Total period for the backtesting in days
         bt_period_days = np.busday_count(dt[0].date().isoformat(), dt[-1].date().isoformat())
-        bt_period_years = bt_period_days / DAYS_IN_YEAR
+        bt_period_years = bt_period_days / params['DAYS_IN_YEAR']
 
         # Import analyzers results
         # Returns
@@ -65,9 +65,9 @@ class PerformanceReport:
 
         if self.timeframe == bt.TimeFrame.Days:
             if self.logreturns:
-                annual_return_asset = 100 * tot_return / bt_period_days * DAYS_IN_YEAR
+                annual_return_asset = 100 * tot_return / bt_period_days * params['DAYS_IN_YEAR']
             else:
-                annual_return_asset = 100 * ((1 + tot_return) ** (DAYS_IN_YEAR / bt_period_days) - 1)
+                annual_return_asset = 100 * ((1 + tot_return) ** (params['DAYS_IN_YEAR'] / bt_period_days) - 1)
         elif self.timeframe == bt.TimeFrame.Years:
             if self.logreturns:
                 annual_return_asset = 100 * tot_return / bt_period_days
@@ -279,9 +279,9 @@ class Cerebro(bt.Cerebro):
     def __init__(self, timeframe=None, **kwds):
         super().__init__(**kwds)
         self.timeframe = timeframe
-        self.add_report_analyzers(riskfree=report_params['riskfree'], targetrate=report_params['targetrate'],
-                                  alpha=report_params['alpha'], market_mu=report_params['market_mu'],
-                                  market_sigma=report_params['market_sigma'])
+        self.add_report_analyzers(riskfree=params['riskfree'], targetrate=params['targetrate'],
+                                  alpha=params['alpha'], market_mu=params['market_mu'],
+                                  market_sigma=params['market_sigma'])
         self.add_report_observers()
 
     def add_report_observers(self):
@@ -293,40 +293,40 @@ class Cerebro(bt.Cerebro):
         if self.timeframe == bt.TimeFrame.Years:
             scalar = 1
         elif self.timeframe == bt.TimeFrame.Days:
-            scalar = DAYS_IN_YEAR
+            scalar = params['DAYS_IN_YEAR']
 
         # Returns
         self.addanalyzer(MyAnnualReturn, _name="myAnnualReturn")
         self.addanalyzer(MyTimeReturn, _name="myTimeReturn",
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'])
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'])
         self.addanalyzer(MyLogReturnsRolling, _name="myLogReturnsRolling",
-                         fund=report_params['fundmode'])
+                         fund=params['fundmode'])
         self.addanalyzer(MyReturns, _name="myReturns",
-                         fund=report_params['fundmode'],
+                         fund=params['fundmode'],
                          tann=scalar)
         # Drawdowns
         self.addanalyzer(MyDrawDown, _name="myDrawDown",
-                         fund=report_params['fundmode'])
+                         fund=params['fundmode'])
         self.addanalyzer(MyTimeDrawDown, _name="myTimeDrawDown",
-                         fund=report_params['fundmode'])
+                         fund=params['fundmode'])
         # Distribution
         self.addanalyzer(MyDistributionMoments, _name="MyDistributionMoments",
                          timeframe=self.timeframe,
                          compression=1,
-                         annualize=report_params['annualize'],
+                         annualize=params['annualize'],
                          factor=scalar,
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'])
+                         stddev_sample=params['stddev_sample'],
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'])
         # Risk-adjusted return based on Volatility
         self.addanalyzer(MyRiskAdjusted_VolBased, _name="MyRiskAdjusted_VolBased",
                          timeframe=self.timeframe,
                          compression=1,
-                         annualize=report_params['annualize'],
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'],
+                         annualize=params['annualize'],
+                         stddev_sample=params['stddev_sample'],
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'],
                          riskfreerate=riskfree,
                          market_mu=market_mu,
                          market_sigma=market_sigma,
@@ -335,10 +335,10 @@ class Cerebro(bt.Cerebro):
         self.addanalyzer(MyRiskAdjusted_VaRBased, _name="MyRiskAdjusted_VaRBased",
                          timeframe=self.timeframe,
                          compression=1,
-                         annualize=report_params['annualize'],
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'],
+                         annualize=params['annualize'],
+                         stddev_sample=params['stddev_sample'],
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'],
                          riskfreerate=riskfree,
                          targetrate=targetrate,
                          factor=scalar,
@@ -347,10 +347,10 @@ class Cerebro(bt.Cerebro):
         self.addanalyzer(MyRiskAdjusted_LPMBased, _name="MyRiskAdjusted_LPMBased",
                          timeframe=self.timeframe,
                          compression=1,
-                         annualize=report_params['annualize'],
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'],
+                         annualize=params['annualize'],
+                         stddev_sample=params['stddev_sample'],
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'],
                          riskfreerate=riskfree,
                          targetrate=targetrate,
                          factor=scalar)
@@ -359,10 +359,10 @@ class Cerebro(bt.Cerebro):
         self.addanalyzer(MyRiskAdjusted_DDBased, _name="MyRiskAdjusted_DDBased",
                          timeframe=self.timeframe,
                          compression=1,
-                         annualize=report_params['annualize'],
-                         stddev_sample=report_params['stddev_sample'],
-                         logreturns=report_params['logreturns'],
-                         fund=report_params['fundmode'],
+                         annualize=params['annualize'],
+                         stddev_sample=params['stddev_sample'],
+                         logreturns=params['logreturns'],
+                         fund=params['fundmode'],
                          riskfreerate=riskfree,
                          factor=scalar)
 
