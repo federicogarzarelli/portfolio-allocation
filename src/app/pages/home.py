@@ -1,8 +1,11 @@
 import streamlit as st
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from scipy import stats
 import os, sys
 import plotly.figure_factory as ff
+import plotly.express as px
 import pandas as pd
+import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import SessionState
 
@@ -10,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from main import main
 from GLOBAL_VARS import params
 
-session_state = SessionState.get(startdate=datetime.strptime('1990-01-01', '%Y-%m-%d'), enddate = datetime.strptime('2021-01-01', '%Y-%m-%d'),
+session_state = SessionState.get(startdate=datetime.strptime('2010-01-01', '%Y-%m-%d'), enddate = datetime.strptime('2021-01-01', '%Y-%m-%d'),
                                 initial_cash=1000000.0, contribution=0.0, leverage=1.0, expense_ratio=0.01,
                                  historic="Historical DB (daily prices)", shares='SP500,ZB.F,ZN.F,BM.F,GC.C',
                                  shareclass='equity,bond_lt,bond_it,commodity,gold',
@@ -262,29 +265,62 @@ def app():
             st.plotly_chart(fig, use_container_width=True)
 
             # # Portfolio Returns
-            # idx = 1
-            # columns=input_df[idx].columns
-            # input_df[idx]['date'] = input_df[idx].index
-            # input_df_long = pd.melt(input_df[idx], id_vars=['date'], value_vars=columns,var_name='strategy', value_name='return')
-            #
-            # fig = px.line(input_df_long, x="date", y="return", color="strategy")
-            #
-            # st.markdown("### Portfolio returns")
-            # st.plotly_chart(fig, use_container_width=True)
-            #
-            # # Portfolio metrics
-            # st.markdown("### Portfolio metrics")
-            # st.dataframe(input_df[2])
+            idx = 1
+            # Determine the price frequency
+            dates=[]
+            for i in range(1, len(input_df[idx].index)):
+                dates.append(datetime.strptime(str(input_df[idx].index[i]), '%Y-%m-%d'))
+            datediff = stats.mode(np.diff(dates))[0][0]
+            if datediff > timedelta(days=250):
+                frequency = "Years"
+            elif datediff < timedelta(days=2):
+                frequency = "Days"
+
+            if frequency == "Days": # plot the rolling 1 year return
+                for column in input_df[idx]:
+                    if params['logreturns']:
+                        input_df[idx][column] = (input_df[idx][column]).rolling(window=params['DAYS_IN_YEAR']).mean()
+                    else:
+                        input_df[idx][column] = (1 + input_df[idx][column]).rolling(window=params['DAYS_IN_YEAR']).apply(np.prod) - 1
+            elif frequency == "Years": # plot the rolling 5 years return
+                for column in input_df[idx]:
+                    if params['logreturns']:
+                        input_df[idx][column] = (input_df[idx][column]).rolling(window=5).mean()
+                    else:
+                        input_df[idx][column] = (1 + input_df[idx][column]).rolling(window=5).apply(np.prod) - 1
+
+            columns=input_df[idx].columns
+            input_df[idx]['date'] = input_df[idx].index
+            input_df_long = pd.melt(input_df[idx], id_vars=['date'], value_vars=columns,var_name='strategy', value_name='rolling return')
+
+            fig = px.line(input_df_long, x="date", y="rolling return", color="strategy")
+
+            st.markdown("### Portfolio returns")
+            if frequency == "Days":  # plot the rolling 1 year return
+                st.write("1 year rolling return" )
+            elif frequency == "Years":  # plot the rolling 5 years return
+                st.write("5 years rolling returns")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Portfolio metrics
+            st.markdown("### Portfolio metrics")
+            st.dataframe(input_df[2])
 
             # Portfolio weights
             st.markdown("### Portfolio weights")
             col1, col2 = st.beta_columns(2)
 
+            idx = 3
+            for column in input_df[idx]:
+                input_df[idx][column] = input_df[idx][column].astype(float).map(lambda n: '{:.2%}'.format(n))
             col1.subheader("Target weights")
-            col1.dataframe(input_df[3])
+            col1.dataframe(input_df[idx])
 
+            idx = 4
+            for column in input_df[idx]:
+                input_df[idx][column] = input_df[idx][column].astype(float).map(lambda n: '{:.2%}'.format(n))
             col2.subheader("Effective weights")
-            col2.dataframe(input_df[4])
+            col2.dataframe(input_df[idx])
 
             # Asset value
             idx = 6

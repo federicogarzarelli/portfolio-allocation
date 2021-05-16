@@ -10,6 +10,7 @@ import sys
 pd.options.mode.chained_assignment = None  # default='warn'
 from PortfolioDB import PortfolioDB
 import platform
+import streamlit as st
 
 
 # Strategy parameters not passed
@@ -242,7 +243,7 @@ def runOneStrat(strategy=None):
 
     # Run backtest
     cerebro.run()
-    cerebro.plot(volume=False)
+    #cerebro.plot(volume=False)
 
     # Create report
     if params['create_report']:
@@ -321,6 +322,7 @@ def main():
 
     for strat in strategy_list:
         print_section_divider(strat)
+        st.write("Backtesting strategy: " + strat)
 
         ThisOutputList = runOneStrat(strat)
 
