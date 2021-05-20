@@ -23,6 +23,7 @@ This app backtests portfolio allocation strategies using historical data.
 # Add all your application here
 app.add_app("Home", home.app)
 app.add_app("Advanced Settings", settings.app)
+app.add_app("Explore Prices DB", exploreDB.app)
 # The main app
 app.run()
 

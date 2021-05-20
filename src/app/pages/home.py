@@ -32,7 +32,9 @@ session_state = SessionState.get(startdate=datetime.strptime('2010-01-01', '%Y-%
                                  corrmethod_days='pearson', corrmethod_years='pearson',
                                  corrmethod_custweights='pearson',
                                  riskfree=0.01, targetrate=0.01, alpha=0.05, market_mu=0.07, market_sigma=0.15,
-                                 stddev_sample=True, annualize=True, logreturns=False)
+                                 stddev_sample=True, annualize=True, logreturns=False,
+                                 assets_startdate=datetime.strptime('2010-01-01', '%Y-%m-%d'),assets_enddate = datetime.strptime('2021-01-01', '%Y-%m-%d'),
+                                 assets_multiselect=['SP500','ZB.F','ZN.F','BM.F','GC.C'])
 
 def app():
     st.title('Home')
