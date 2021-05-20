@@ -15,7 +15,7 @@ import os
 class Database():
     # Class initializer
     def __init__(self, databaseName):
-      wd = os.path.dirname(os.getcwd())
+      wd = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
       self.databasePath = utils.find(databaseName, wd)
 
       conn = sqlite3.connect(self.databasePath)

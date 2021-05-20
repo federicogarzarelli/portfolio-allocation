@@ -525,9 +525,9 @@ class rotationstrat(StandaloneStrat):
             }
 
             strat = {
-                1: "gold",
-                2: "bond_lt",
-                3: "equity"
+                0: "bond_lt",
+                1: "equity",
+                2: "gold"
             }
 
             which_max = self.indassetsclose.index(max(self.indassetsclose))
@@ -538,7 +538,7 @@ class rotationstrat(StandaloneStrat):
 
             for key in assetclass_allocation:
                 if key == winningAsset:
-                    assetclass_allocation[key] = 1
+                    assetclass_allocation[key] = 1.0
 
             assetclass_cnt = {}
 

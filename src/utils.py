@@ -13,11 +13,12 @@ import numpy.random as nrand
 from GLOBAL_VARS import *
 from PortfolioDB import PortfolioDB
 import platform
+import streamlit as st
 
 # finds file in a folder
 def find(name, path):
     for root, dirs, files in os.walk(path):
-        if name in files:
+        if name in files or name in dirs:
             return os.path.join(root, name)
 
 # Converts a date in "yyyy-mm-dd" format to a dateTime object
@@ -35,6 +36,13 @@ def incrementDate(dateString):
     else:
         datePlus = dateTime + timedelta(1)
     return str(datePlus)
+
+# Clear the output folder only the first time this is run
+@st.cache(allow_output_mutation=True)
+def delete_output_first():
+    outputdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    outputdir = find("output", outputdir)
+    delete_in_dir(outputdir)
 
 def delete_in_dir(mydir, *args, **kwargs):
     """

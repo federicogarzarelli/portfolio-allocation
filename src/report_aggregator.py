@@ -222,8 +222,8 @@ class ReportAggregator:
         fig_equity_dd.savefig(eq_dd_curve)
         fig_assets_dd.savefig(assets_dd_curve)
 
-        env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("src/templates/template.html")
+        env = Environment(loader=FileSystemLoader(images))
+        template = env.get_template("template.html")
         header = self.get_header_data()
         if self.system == 'Windows':
             graphics = {'url_equity_curve': 'file:\\' + eq_curve,

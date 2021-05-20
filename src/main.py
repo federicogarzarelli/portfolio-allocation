@@ -53,7 +53,7 @@ def runOneStrat(strategy=None):
             #data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
             data.append(df)
 
-        if params['shareclass'] is None:
+        if params['shareclass'] == '':
             db = PortfolioDB(databaseName=DB_NAME)
             shareclass = []
             for share in shares_list:
@@ -86,7 +86,7 @@ def runOneStrat(strategy=None):
             #data.append(bt.feeds.PandasData(dataname=df, fromdate=startdate, todate=enddate, timeframe=timeframe))
             data.append(df)
 
-        if params['shareclass'] is None:
+        if params['shareclass'] == '':
             db = PortfolioDB(databaseName=DB_NAME)
             shareclass = []
             for share in shares_list:
@@ -251,8 +251,8 @@ def runOneStrat(strategy=None):
 
         return OutputList
 
-
-def main():
+@st.cache(suppress_st_warning=True)
+def main(params):
     # Fund mode if contribution is 0 otherwise, asset mode
     if params['contribution'] == 0:
         params["fundmode"] = True
@@ -260,7 +260,8 @@ def main():
         params["fundmode"] = False
 
     # Clear the output folder
-    outputdir = os.path.join(os.path.abspath(os.getcwd()), "output")
+    outputdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    outputdir = find("output", outputdir)
     delete_in_dir(outputdir)
 
     strategy_list = []
@@ -296,7 +297,7 @@ def main():
         strategy_list.append('momtrend_rp')
     if params['GEM']:
         strategy_list.append('GEM')
-    if strategy_list is None:
+    if not strategy_list:
         strategy_list = ["customweights"]
     if params['benchmark'] != '':
         strategy_list = strategy_list + ['benchmark']
@@ -332,7 +333,7 @@ def main():
             else:
                 InputList[i][strat] = ThisOutputList[i]
 
-    if params['report_name'] is not None:
+    if params['report_name'] != '':
         outfilename = params['report_name'] + "_" + get_now() + ".pdf"
     else:
         outfilename = "Report_" + get_now() + ".pdf"
