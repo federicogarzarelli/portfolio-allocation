@@ -1,6 +1,6 @@
 import streamlit as st
 from app.multiapp import MultiApp
-from app.pages import home, settings # import your app modules here
+from app.pages import home, settings, exploreDB # import your app modules here
 from PIL import Image
 import utils
 import os, sys
